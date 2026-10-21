@@ -76,7 +76,8 @@
     <button id="btn-close" class="close" aria-label="Fermer le menu">×</button>
   </div>
   <nav class="drawer-nav">
-    <button data-page="infos" aria-current="page"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>Mes informations</button>
+    <button data-page="livret" aria-current="page"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3.5h11a3 3 0 0 1 3 3v14H8a3 3 0 0 1-3-3z"/><path d="M5 17.5a3 3 0 0 1 3-3h11"/><path d="M9 7.5h6M9 10.5h4"/></svg>Mon livret</button>
+    <button data-page="infos"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>Mes informations</button>
     <button data-page="fiches"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M2 5.5c3.2-1.2 6.4-1.2 10 1 3.6-2.2 6.8-2.2 10-1v13c-3.2-1.2-6.4-1.2-10 1-3.6-2.2-6.8-2.2-10-1z"/><path d="M12 6.5v13"/></svg>Fiches techniques</button>
   </nav>
   <div class="drawer-foot">
@@ -141,7 +142,22 @@
 
   <!-- Application -->
   <section id="view-app" class="view" hidden>
-    <div id="tab-profil">
+    <div id="tab-livret">
+      <div class="livret-head">
+        <h1>Mon livret</h1>
+        <label class="year-pick">Année
+          <select id="livret-year" aria-label="Année affichée"></select>
+        </label>
+      </div>
+      <p id="livret-state" class="muted small" role="status"></p>
+      <div id="livret-counters" class="counters" aria-label="Compteurs d'heures de formation"></div>
+      <div id="livret-stats" class="stats"></div>
+      <h2 class="section-title" id="livret-list-title">Formations effectuées</h2>
+      <ol id="livret-list" class="fmpa-list"></ol>
+      <p id="livret-empty" class="muted center small" hidden></p>
+    </div>
+
+    <div id="tab-profil" hidden>
       <form id="form-profil">
         <label>Grade
           <select name="grade" required></select>
