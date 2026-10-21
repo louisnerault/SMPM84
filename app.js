@@ -10,7 +10,7 @@
   // se voit attribuer la plus haute : c'est le rôle renvoyé par session.role.
   const ROLES = {
     equipier: 'Équipier',
-    chef_unite: "Chef d'équipe",
+    chef_unite: "Chef d'unité",
     chef_section: 'Chef de section',
     ctd: 'Conseiller technique et personnel de santé',
   };
