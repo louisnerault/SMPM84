@@ -16,8 +16,12 @@
   };
   const SECTIONS = { NORD: 'Nord', SUD: 'Sud', CENTRE: 'Centre', NEIGE: 'Neige', ISS: 'ISS' };
 
-  function roleLabel(session, me) {
+  function roleLabel(session, me, qualifications) {
     const base = ROLES[session.role] || session.role || '';
+    if (session.role === 'equipier') {
+      const sssm = (qualifications || []).some(q => q.code === 'SSSM' && q.acquis);
+      return sssm ? `${base} SSSM` : base;
+    }
     if (session.role !== 'chef_section') return base;
     const key = String(session.section || me.secteur || '').toUpperCase();
     const section = SECTIONS[key] || (key ? key.charAt(0) + key.slice(1).toLowerCase() : '');
@@ -159,7 +163,7 @@
 
   function renderApp() {
     const { me, session, qualifications } = state.data;
-    setIdentity(`${me.prenom} ${me.nom}`, roleLabel(session, me));
+    setIdentity(`${me.prenom} ${me.nom}`, roleLabel(session, me, qualifications));
     $('#info-secteur').textContent = me.secteur || '—';
 
     const form = $('#form-profil');
