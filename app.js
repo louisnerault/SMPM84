@@ -201,9 +201,10 @@
     }
   }
 
-  function livretYears(formations) {
+  function livretYears(formations, validations) {
     const set = new Set([new Date().getFullYear()]);
     formations.forEach(f => set.add(Number(f.date.slice(0, 4))));
+    Object.keys((validations && validations.annees) || {}).forEach(y => set.add(Number(y)));
     return Array.from(set).sort((a, b) => b - a);
   }
 
@@ -220,7 +221,7 @@
 
     const formations = (L && L.formations) || [];
     const sel = $('#livret-year');
-    const years = livretYears(formations);
+    const years = livretYears(formations, L && L.validations);
     if (!state.year || !years.includes(state.year)) state.year = years[0];
     sel.replaceChildren(...years.map(y => new Option(String(y), String(y))));
     sel.value = String(state.year);
@@ -235,7 +236,51 @@
     const list = ((L && L.formations) || []).filter(f => f.date.startsWith(String(year)));
     renderCounters(L, list, year);
     renderStats(L, list);
+    renderValidations(L, year);
     renderFormations(L, list, year);
+  }
+
+  // Validation annuelle : gris = non effectuée, vert = validée, rouge = non validée
+  const fmtDate = s => { const [y, m, d] = s.split('-'); return `${d}/${m}/${y}`; };
+
+  function renderValidations(L, year) {
+    const sec = $('#livret-valid');
+    const V = L && L.validations;
+    const criteres = (V && V.criteres) || [];
+    sec.hidden = !criteres.length;
+    if (!criteres.length) return;
+    $('#livret-valid-title').textContent = `Validation annuelle ${year}`;
+    const res = (V.annees && V.annees[String(year)]) || [];
+
+    $('#livret-valid-list').replaceChildren(...criteres.map((c, i) => {
+      const r = res[i];
+      const st = r ? r.statut : (c.requis ? 'todo' : 'na');
+      const li = document.createElement('li');
+      li.className = 'valid valid-' + st;
+
+      const ico = document.createElement('span');
+      ico.className = 'valid-ico';
+      ico.setAttribute('aria-hidden', 'true');
+      ico.textContent = st === 'valide' ? '✓' : st === 'non_valide' ? '✕' : '';
+
+      const txt = document.createElement('div');
+      const lab = document.createElement('p');
+      lab.className = 'valid-label';
+      lab.textContent = c.label;
+      const sub = document.createElement('p');
+      sub.className = 'valid-sub';
+      const qui = r && r.evaluateur ? r.evaluateur : '';
+      const quand = r && r.date ? fmtDate(r.date) : '';
+      const detail = [qui, quand].filter(Boolean).join(' · ');
+      sub.textContent =
+        st === 'valide' ? `Validé${detail ? ' — ' + detail : ''}` :
+        st === 'non_valide' ? `Non validé${detail ? ' — ' + detail : ''}` :
+        st === 'na' ? 'Non requis à votre niveau' : 'Non effectué';
+      txt.append(lab, sub);
+
+      li.append(ico, txt);
+      return li;
+    }));
   }
 
   function renderCounters(L, list, year) {

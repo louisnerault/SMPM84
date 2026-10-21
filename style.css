@@ -311,3 +311,33 @@ body.is-offline .status-net { color: #ffd66b; }
   .fmpa-list > li { grid-template-columns: 42px 1fr auto; gap: 10px; padding: 10px; }
   .counters { grid-template-columns: 1fr 1fr; }
 }
+
+/* ---------- validation annuelle ---------- */
+.valid-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.valid {
+  --v: var(--muted); --v-bg: var(--bg);
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--v-bg);
+  border-left: 4px solid var(--v);
+}
+.valid-ico {
+  flex: none; width: 24px; height: 24px; border-radius: 50%; margin-top: 1px;
+  display: grid; place-items: center; font-size: .8rem; font-weight: 800; color: #fff; background: var(--v);
+}
+.valid-label { margin: 0; font-size: .88rem; font-weight: 700; line-height: 1.25; }
+.valid-sub { margin: 2px 0 0; font-size: .78rem; font-weight: 600; color: var(--v); }
+.valid-valide { --v: #1a7f37; --v-bg: #e8f6ec; }
+.valid-non_valide { --v: #c0182f; --v-bg: #fdecee; }
+.valid-todo { --v: #9aa6b6; }
+.valid-todo .valid-ico { background: transparent; border: 2px solid var(--v); }
+.valid-todo .valid-label { color: var(--muted); }
+.valid-na { --v: #c3ccd8; border-style: dashed; border-left-style: solid; opacity: .7; }
+.valid-na .valid-ico { background: transparent; border: 2px dashed var(--v); }
+.valid-na .valid-label { color: var(--muted); font-weight: 600; }
+@media (prefers-color-scheme: dark) {
+  .valid-valide { --v: #4cc27a; --v-bg: #12301f; }
+  .valid-non_valide { --v: #ff7a8c; --v-bg: #3a1720; }
+  .valid-todo { --v: #5f7390; }
+  .valid-na { --v: #3a4f6b; }
+  .valid-valide .valid-ico, .valid-non_valide .valid-ico { color: #0b1726; }
+}
