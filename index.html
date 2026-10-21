@@ -21,10 +21,11 @@
 
 <!-- Silhouette du mont Ventoux, hélicoptère et civière sur tyrolienne -->
 <div class="landscape" aria-hidden="true">
-  <svg viewBox="0 0 800 160" preserveAspectRatio="xMidYMax slice" focusable="false">
-    <!-- Massif : dôme large, antenne au sommet -->
-    <path class="far" d="M0,150 L0,122 Q90,108 170,96 Q270,80 370,68 Q430,62 462,58 Q472,57 480,60 Q550,72 630,88 Q710,104 800,120 L800,150 Z"/>
-    <path class="near" d="M0,150 L0,134 Q120,120 240,112 Q340,106 420,100 Q500,96 560,104 Q660,116 800,132 L800,150 Z"/>
+  <svg viewBox="0 0 800 160" preserveAspectRatio="xMidYMax meet" focusable="false">
+    <!-- Massif : dôme large, antenne au sommet. Les couches sont prolongées hors du cadre
+         (overflow visible) pour remplir la largeur de l'écran sans couper le sommet. -->
+    <path class="far" d="M-2000,150 L-2000,122 L0,122 Q90,108 170,96 Q270,80 370,68 Q430,62 462,58 Q472,57 480,60 Q550,72 630,88 Q710,104 800,120 L2800,120 L2800,150 Z"/>
+    <path class="near" d="M-2000,150 L-2000,134 L0,134 Q120,120 240,112 Q340,106 420,100 Q500,96 560,104 Q660,116 800,132 L2800,132 L2800,150 Z"/>
     <!-- Antenne : pylône fin, pointe rouge -->
     <path class="mast" d="M468,58 L470,20 L472,58 Z"/>
     <rect class="mast-tip" x="469" y="0" width="2" height="22"/>

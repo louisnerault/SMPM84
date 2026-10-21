@@ -62,10 +62,10 @@ body {
 
 /* ---------- paysage : silhouette du mont Ventoux ---------- */
 .landscape {
-  position: relative; height: 112px; overflow: hidden;
+  position: relative; height: 150px; overflow: hidden;
   background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bottom) 100%);
 }
-.landscape svg { display: block; width: 100%; height: 100%; }
+.landscape svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .landscape .far { fill: #2f6aa8; }
 .landscape .near { fill: #0f2c52; }
 .landscape .mast { fill: #e9f0f8; }
