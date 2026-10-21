@@ -106,7 +106,7 @@
     show('login');
   }
 
-  const state = { data: null, options: null, pendingEmail: '' };
+  const state = { data: null, options: null, pendingEmail: '', mode: 'activate' };
 
   async function init() {
     const token = store.get(KEY_TOKEN);
@@ -198,8 +198,27 @@
   // ---------- événements ----------
   document.addEventListener('click', e => {
     const go = e.target.closest('[data-goto]');
-    if (go) { show(go.dataset.goto); prefillEmail(); }
+    if (!go) return;
+    const target = go.dataset.goto;
+    if (target === 'reset') { setMode('reset'); show('activate'); }
+    else if (target === 'activate') { setMode('activate'); show('activate'); }
+    else if (target === 'resend') { show('activate'); }       // garde le mode en cours
+    else show(target);
+    prefillEmail();
   });
+
+  // Activation et mot de passe oublié partagent le même parcours (code SMS puis nouveau mot de passe)
+  function setMode(mode) {
+    state.mode = mode;
+    const reset = mode === 'reset';
+    $('#activate-title').textContent = reset ? 'Mot de passe oublié' : 'Activer mon compte';
+    $('#activate-intro').textContent = reset
+      ? "Saisissez l'adresse e-mail de votre compte. Un code vous sera envoyé par SMS pour choisir un nouveau mot de passe."
+      : "Saisissez l'adresse e-mail enregistrée dans la liste du personnel. Un code vous sera envoyé par SMS.";
+    $('#verify-title').textContent = reset ? 'Nouveau mot de passe' : 'Code reçu par SMS';
+    $('#verify-pwd-label').textContent = reset ? 'Choisissez un nouveau mot de passe' : 'Choisissez un mot de passe';
+    $('#verify-submit').textContent = reset ? 'Changer le mot de passe' : 'Activer';
+  }
 
   $('#btn-logout').addEventListener('click', logout);
   $('#btn-menu').addEventListener('click', openMenu);

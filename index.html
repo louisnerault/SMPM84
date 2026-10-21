@@ -66,13 +66,14 @@
       <p class="error" role="alert"></p>
       <button type="submit" class="primary">Se connecter</button>
     </form>
+    <p class="center"><button class="link" data-goto="reset">Mot de passe oublié ?</button></p>
     <p class="center"><button class="link" data-goto="activate">Première connexion ? Activer mon compte</button></p>
   </section>
 
   <!-- Activation : étape 1 -->
   <section id="view-activate" class="view" hidden>
-    <h1>Activer mon compte</h1>
-    <p class="muted">Saisissez l'adresse e-mail enregistrée dans la liste du personnel. Un code vous sera envoyé par SMS.</p>
+    <h1 id="activate-title">Activer mon compte</h1>
+    <p class="muted" id="activate-intro">Saisissez l'adresse e-mail enregistrée dans la liste du personnel. Un code vous sera envoyé par SMS.</p>
     <form id="form-request" autocomplete="on">
       <label>Adresse e-mail
         <input type="email" name="email" autocomplete="username" required>
@@ -85,22 +86,22 @@
 
   <!-- Activation : étape 2 -->
   <section id="view-verify" class="view" hidden>
-    <h1>Code reçu par SMS</h1>
+    <h1 id="verify-title">Code reçu par SMS</h1>
     <p class="muted" id="verify-hint"></p>
     <form id="form-verify" autocomplete="off">
       <label>Code à 6 chiffres
         <input type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required>
       </label>
-      <label>Choisissez un mot de passe (8 caractères minimum)
+      <label><span id="verify-pwd-label">Choisissez un mot de passe</span> (8 caractères minimum)
         <input type="password" name="password" minlength="8" autocomplete="new-password" required>
       </label>
       <label>Confirmez le mot de passe
         <input type="password" name="password2" minlength="8" autocomplete="new-password" required>
       </label>
       <p class="error" role="alert"></p>
-      <button type="submit" class="primary">Activer</button>
+      <button type="submit" class="primary" id="verify-submit">Activer</button>
     </form>
-    <p class="center"><button class="link" data-goto="activate">Renvoyer un code</button></p>
+    <p class="center"><button class="link" data-goto="resend">Renvoyer un code</button></p>
   </section>
 
   <!-- Application -->
