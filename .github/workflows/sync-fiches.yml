@@ -1,0 +1,48 @@
+name: Synchroniser les fiches techniques
+
+on:
+  schedule:
+    - cron: '30 3 * * *'   # 05h30 à Paris l'été, 04h30 l'hiver
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-fiches
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installer Ghostscript et les dépendances Google
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ghostscript
+          pip install -q google-api-python-client google-auth
+
+      - name: Synchroniser depuis Google Drive
+        env:
+          GDRIVE_SA_KEY: ${{ secrets.GDRIVE_SA_KEY }}
+        run: python3 scripts/sync_fiches.py
+
+      - name: Publier les changements
+        run: |
+          git config user.name "smpm84-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add fiches
+          if git diff --cached --quiet; then
+            echo "Aucun changement."
+          else
+            git commit -m "Synchronisation des fiches techniques depuis Drive" \
+              -m "Co-Authored-By: Claude Haiku 5.5 <noreply@anthropic.com>" \
+              -m "Claude-Session: https://claude.ai/code/session_01PVKCkGWRDFNgXnkqztodU1"
+            git push
+          fi

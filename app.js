@@ -87,6 +87,8 @@
     });
     $('#tab-profil').hidden = name !== 'profil';
     $('#tab-qualifs').hidden = name !== 'qualifs';
+    $('#tab-fiches').hidden = name !== 'fiches';
+    if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
     closeMenu();
   }
 
@@ -226,6 +228,7 @@
   $('#scrim').addEventListener('click', closeMenu);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
   $$('.drawer-nav button').forEach(btn => btn.addEventListener('click', () => gotoPage(btn.dataset.page)));
+  $('#tile-fiches').addEventListener('click', () => gotoPage('fiches'));
 
   $('#form-login').addEventListener('submit', async e => {
     e.preventDefault();

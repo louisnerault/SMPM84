@@ -57,6 +57,7 @@ body {
   display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px;
   background: transparent; border: 0; border-radius: 10px; cursor: pointer;
 }
+.burger { position: relative; }
 .burger:hover { background: rgba(255,255,255,.12); }
 .burger span { display: block; width: 24px; height: 2.5px; border-radius: 2px; background: #fff; }
 
@@ -180,3 +181,38 @@ button { font: inherit; cursor: pointer; }
 
 footer { text-align: center; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); }
 footer img { height: 54px; width: auto; max-width: 70%; object-fit: contain; border-radius: 6px; }
+
+/* ---------- fiches techniques ---------- */
+.tile {
+  display: flex; align-items: center; gap: 14px; width: 100%; margin: 0 0 14px;
+  padding: 14px; text-align: left; font: inherit; color: var(--primary-dark);
+  background: var(--primary-soft); border: 1px solid var(--line); border-radius: var(--radius);
+}
+@media (prefers-color-scheme: dark) { .tile { color: #cfe2fb; } }
+.tile:hover { filter: brightness(.97); }
+.tile-icon { flex: none; display: flex; }
+.tile-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.tile-text strong { font-size: 1.05rem; }
+.tile-sub { font-size: .8rem; color: var(--muted); }
+.tile-sync { display: none; flex: none; }
+.fiches-syncing .tile-sync { display: flex; }
+.sync-icon { transform-origin: 50% 50%; }
+.fiches-syncing .sync-icon { animation: spin 1s linear infinite; }
+.sync-dot {
+  position: absolute; top: 4px; right: 4px; width: 10px; height: 10px; border-radius: 50%;
+  background: #f5c518; box-shadow: 0 0 0 2px var(--primary);
+  animation: pulse 1s ease-in-out infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 50% { transform: scale(1.5); opacity: .6; } }
+@media (prefers-reduced-motion: reduce) {
+  .fiches-syncing .sync-icon, .sync-dot { animation: none; }
+}
+.fiches-cat { font-size: 1rem; margin: 18px 0 8px; color: var(--primary-dark); }
+@media (prefers-color-scheme: dark) { .fiches-cat { color: #cfe2fb; } }
+.fiches-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.fiches-list a {
+  display: block; padding: 12px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg); color: var(--ink); text-decoration: none; font-size: .95rem;
+}
+.fiches-list a:hover { border-color: var(--primary); }

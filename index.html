@@ -15,6 +15,7 @@
 <header class="topbar">
   <button id="btn-menu" class="burger" aria-label="Ouvrir le menu" aria-controls="drawer" aria-expanded="false" hidden>
     <span></span><span></span><span></span>
+    <span class="sync-dot" data-sync-dot hidden></span>
   </button>
   <img src="assets/ecusson.png" alt="SMPM 84" class="logo">
 </header>
@@ -65,6 +66,7 @@
   <nav class="drawer-nav">
     <button data-page="profil" aria-current="page">Mon profil</button>
     <button data-page="qualifs">Qualifications</button>
+    <button data-page="fiches">Fiches techniques</button>
   </nav>
   <div class="drawer-foot">
     <button id="btn-logout" class="logout" hidden>Déconnexion</button>
@@ -133,6 +135,19 @@
       <p class="fonction" id="hello-sub"></p>
     </div>
 
+    <button type="button" class="tile" id="tile-fiches">
+      <span class="tile-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M2 5.5c3.2-1.2 6.4-1.2 10 1 3.6-2.2 6.8-2.2 10-1v13c-3.2-1.2-6.4-1.2-10 1-3.6-2.2-6.8-2.2-10-1z"/><path d="M12 6.5v13"/></svg>
+      </span>
+      <span class="tile-text">
+        <strong>Fiches techniques</strong>
+        <span class="tile-sub" data-sync-label></span>
+      </span>
+      <span class="tile-sync" aria-hidden="true">
+        <svg class="sync-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 1-14.3 4.9M4 12A8 8 0 0 1 18.3 7"/><path d="M18 2.5V7h-4.5M6 21.5V17h4.5"/></svg>
+      </span>
+    </button>
+
     <div id="tab-profil">
       <form id="form-profil">
         <label>Grade
@@ -159,6 +174,12 @@
       <ul id="list-qualifs" class="qualifs"></ul>
       <p class="muted small">Ces informations sont validées par les responsables de la spécialité. En cas d'erreur, contactez votre chef de section.</p>
     </div>
+
+    <div id="tab-fiches" hidden>
+      <p class="muted small">Documents de référence. Sur smartphone, ils sont synchronisés automatiquement et restent disponibles hors ligne.</p>
+      <p id="fiches-empty" class="muted center" hidden>Aucune fiche synchronisée pour le moment.</p>
+      <div id="fiches-groups"></div>
+    </div>
   </section>
 </main>
 
@@ -167,6 +188,7 @@
 </footer>
 
 <script src="config.js"></script>
+<script src="fiches.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
