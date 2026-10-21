@@ -1,10 +1,11 @@
-// Fiches techniques : liste, synchronisation automatique sur smartphone, indicateur animé.
+// Fiches techniques : liste, synchronisation sur smartphone, état réseau et dernière synchro.
 (() => {
   'use strict';
 
   const MANIFEST = 'fiches/manifest.json';
   const CACHE = 'smpm84-fiches';   // cache dédié, lu par sw.js
   const KEY = 'smpm_fiches_manifest';
+  const KEY_SYNCED = 'smpm_fiches_synced_at';
 
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -22,6 +23,12 @@
   }
   function writeLocal(m) {
     try { localStorage.setItem(KEY, JSON.stringify(m)); } catch (e) {}
+  }
+  function readSyncedAt() {
+    try { return localStorage.getItem(KEY_SYNCED); } catch (e) { return null; }
+  }
+  function writeSyncedAt(iso) {
+    try { localStorage.setItem(KEY_SYNCED, iso); } catch (e) {}
   }
 
   async function fetchManifest() {
@@ -63,6 +70,7 @@
         headers: { 'Content-Type': 'application/json' },
       }));
       writeLocal(remote);
+      writeSyncedAt(new Date().toISOString());
       state.manifest = remote;
       state.failed = false;
     } catch (e) {
@@ -87,22 +95,37 @@
     render();
   }
 
-  function subtitle() {
-    if (state.syncing) return 'Synchronisation en cours…';
-    const m = state.manifest || readLocal();
-    if (!m || !m.items) return 'Aucune fiche synchronisée';
-    const n = m.items.length;
-    let text = `${n} fiche${n > 1 ? 's' : ''}`;
-    if (m.generated_at) {
-      const when = new Date(m.generated_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
-      text += ` · contenu du ${when}`;
-    }
-    if (state.failed) text += ' · synchronisation impossible';
-    return text;
+  function formatWhen(iso) {
+    return new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+
+  // Barre d'état : dernière synchronisation de l'application (mot + heure, le mot se masque sur petit écran)
+  function syncParts() {
+    if (state.syncing) return { word: 'Synchro en cours…', when: '' };
+    const at = readSyncedAt() || ((state.manifest || readLocal()) || {}).generated_at;
+    if (!at) return { word: 'Jamais synchro', when: '' };
+    return { word: state.failed ? 'Échec' : 'Synchro', when: formatWhen(at) };
+  }
+
+  function writeSyncParts(el) {
+    const { word, when } = syncParts();
+    const a = document.createElement('span');
+    a.className = 'txt';
+    a.textContent = word;
+    const b = document.createElement('span');
+    b.textContent = when;
+    el.replaceChildren(a, b);
+  }
+
+  function updateNet() {
+    const online = navigator.onLine;
+    document.body.classList.toggle('is-offline', !online);
+    const label = $('#status-net-label');
+    if (label) label.textContent = online ? 'En ligne' : 'Hors ligne';
   }
 
   function render() {
-    $$('[data-sync-label]').forEach(el => { el.textContent = subtitle(); });
+    $$('[data-sync-label]').forEach(writeSyncParts);
     const groups = $('#fiches-groups');
     if (!groups) return;
 
@@ -150,7 +173,9 @@
   window.SMPM_FICHES = { sync, open, render };
 
   // Démarrage : affichage immédiat depuis le cache local, puis synchronisation
+  updateNet();
   render();
   sync();
-  window.addEventListener('online', sync);
+  window.addEventListener('online', () => { updateNet(); sync(); });
+  window.addEventListener('offline', updateNet);
 })();

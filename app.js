@@ -56,13 +56,22 @@
     return data;
   }
 
+  // ---------- bandeau : nom et fonction de l'utilisateur ----------
+  function setIdentity(title, sub) {
+    $('#top-title').textContent = title;
+    $('#top-sub').textContent = sub;
+  }
+
   // ---------- navigation ----------
   const views = ['loading', 'login', 'activate', 'verify', 'app'];
   function show(name) {
     views.forEach(v => { $('#view-' + v).hidden = v !== name; });
     $('#btn-logout').hidden = name !== 'app';
     $('#btn-menu').hidden = name !== 'app';
-    if (name !== 'app') closeMenu();
+    if (name !== 'app') {
+      closeMenu();
+      setIdentity('SMPM 84', 'Secours en milieu périlleux et montagne');
+    }
     $$('.error, .ok').forEach(p => { p.textContent = ''; });
   }
 
@@ -85,8 +94,7 @@
       if (b.dataset.page === name) b.setAttribute('aria-current', 'page');
       else b.removeAttribute('aria-current');
     });
-    $('#tab-profil').hidden = name !== 'profil';
-    $('#tab-qualifs').hidden = name !== 'qualifs';
+    $('#tab-profil').hidden = name !== 'infos';
     $('#tab-fiches').hidden = name !== 'fiches';
     if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
     closeMenu();
@@ -146,13 +154,12 @@
     setOffline(offline);
     renderApp();
     show('app');
-    gotoPage('profil');
+    gotoPage('infos');
   }
 
   function renderApp() {
     const { me, session, qualifications } = state.data;
-    $('#hello-name').textContent = `${me.prenom} ${me.nom}`;
-    $('#hello-sub').textContent = roleLabel(session, me);
+    setIdentity(`${me.prenom} ${me.nom}`, roleLabel(session, me));
     $('#info-secteur').textContent = me.secteur || '—';
 
     const form = $('#form-profil');
@@ -228,7 +235,6 @@
   $('#scrim').addEventListener('click', closeMenu);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
   $$('.drawer-nav button').forEach(btn => btn.addEventListener('click', () => gotoPage(btn.dataset.page)));
-  $('#tile-fiches').addEventListener('click', () => gotoPage('fiches'));
 
   $('#form-login').addEventListener('submit', async e => {
     e.preventDefault();
