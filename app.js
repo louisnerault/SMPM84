@@ -5,6 +5,7 @@
   const KEY_TOKEN = 'smpm_token';
   const KEY_CACHE = 'smpm_cache';
   const KEY_EMAIL = 'smpm_last_email';
+  const KEY_LIVRET = 'smpm_livret';
   const AUTH_ERRORS = ['Session invalide', 'Session expirée', 'Accès révoqué', 'Compte inactif'];
   // Fonction affichée sous le nom. Une personne qui cumule plusieurs casquettes
   // se voit attribuer la plus haute : c'est le rôle renvoyé par session.role.
@@ -98,6 +99,7 @@
       if (b.dataset.page === name) b.setAttribute('aria-current', 'page');
       else b.removeAttribute('aria-current');
     });
+    $('#tab-livret').hidden = name !== 'livret';
     $('#tab-profil').hidden = name !== 'infos';
     $('#tab-fiches').hidden = name !== 'fiches';
     if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
@@ -116,11 +118,14 @@
   function logout() {
     store.del(KEY_TOKEN);
     store.del(KEY_CACHE);          // important sur un appareil partagé
+    store.del(KEY_LIVRET);
     state.data = null;
+    state.livret = null;
+    state.year = null;
     show('login');
   }
 
-  const state = { data: null, options: null, pendingEmail: '', mode: 'activate' };
+  const state = { data: null, options: null, pendingEmail: '', mode: 'activate', livret: null, year: null };
 
   async function init() {
     const token = store.get(KEY_TOKEN);
@@ -158,7 +163,226 @@
     setOffline(offline);
     renderApp();
     show('app');
-    gotoPage('infos');
+    gotoPage('livret');
+    // Livret : affichage immédiat depuis l'appareil, puis rafraîchissement si en ligne
+    const cachedLivret = store.getJSON(KEY_LIVRET);
+    if (cachedLivret) state.livret = cachedLivret;
+    renderLivret(offline ? 'offline' : (cachedLivret ? 'refreshing' : 'loading'));
+    if (!offline) loadLivret();
+  }
+
+  // ---------- livret individuel : compteurs d'heures et formations ----------
+  const SMPM_SECTEURS = ['CENTRE', 'NORD', 'SUD'];
+  const CATS = [
+    { key: 'SMPM', label: 'SMPM', sub: 'Nord · Sud · Centre' },
+    { key: 'NEIGE', label: 'Neige', sub: 'Milieu enneigé' },
+    { key: 'ISS', label: 'ISS', sub: 'Site souterrain' },
+    { key: 'SSH', label: 'SSH', sub: 'Secours héliporté' },
+    { key: 'CAN', label: 'Canyon', sub: 'Milieu aquatique' },
+  ];
+  const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  const nf = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 });
+  const fmtH = n => nf.format(n) + ' h';
+  const catOf = secteur => (SMPM_SECTEURS.includes(secteur) ? 'SMPM' : secteur);
+
+  async function loadLivret() {
+    const token = store.get(KEY_TOKEN);
+    if (!token) return;
+    try {
+      const res = await api('livret', { token });
+      state.livret = res.livret;
+      store.set(KEY_LIVRET, JSON.stringify(res.livret));
+      renderLivret('ok');
+    } catch (err) {
+      if (AUTH_ERRORS.includes(err.message)) return logout();
+      if (err instanceof NetworkError) return renderLivret(state.livret ? 'offline' : 'error', 'Réseau indisponible.');
+      if (err.message === 'Action inconnue') return renderLivret('error', "Le livret n'est pas encore activé sur le serveur.");
+      renderLivret('error', err.message);
+    }
+  }
+
+  function livretYears(formations) {
+    const set = new Set([new Date().getFullYear()]);
+    formations.forEach(f => set.add(Number(f.date.slice(0, 4))));
+    return Array.from(set).sort((a, b) => b - a);
+  }
+
+  function renderLivret(status, message) {
+    const L = state.livret;
+    const stateEl = $('#livret-state');
+    const majTxt = L && L.maj ? new Date(L.maj).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+    stateEl.classList.toggle('error', status === 'error');
+    stateEl.textContent =
+      status === 'loading' ? 'Chargement du livret…' :
+      status === 'refreshing' ? 'Mise à jour…' :
+      status === 'offline' ? (L ? `Hors ligne : données du ${majTxt}.` : 'Hors ligne : livret indisponible sur cet appareil.') :
+      status === 'error' ? (message || 'Livret indisponible.') + (L ? ` Données du ${majTxt}.` : '') : '';
+
+    const formations = (L && L.formations) || [];
+    const sel = $('#livret-year');
+    const years = livretYears(formations);
+    if (!state.year || !years.includes(state.year)) state.year = years[0];
+    sel.replaceChildren(...years.map(y => new Option(String(y), String(y))));
+    sel.value = String(state.year);
+    sel.disabled = !L;
+    renderLivretYear();
+  }
+
+  // Partie qui dépend de l'année choisie dans la liste déroulante
+  function renderLivretYear() {
+    const L = state.livret;
+    const year = state.year;
+    const list = ((L && L.formations) || []).filter(f => f.date.startsWith(String(year)));
+    renderCounters(L, list, year);
+    renderStats(L, list);
+    renderFormations(L, list, year);
+  }
+
+  function renderCounters(L, list, year) {
+    const box = $('#livret-counters');
+    if (!L) { box.replaceChildren(); return; }
+    const quotas = L.quotas || {};
+    const hours = {};
+    list.forEach(f => { const c = catOf(f.secteur); hours[c] = (hours[c] || 0) + (Number(f.heures) || 0); });
+
+    const cards = CATS.filter(c => {
+      if (c.key === 'SMPM') return true;
+      const q = quotas[c.key];
+      return (q && (!q.depuis || q.depuis <= year)) || hours[c.key] > 0;
+    }).map(c => {
+      const done = hours[c.key] || 0;
+      const q = quotas[c.key] && (!quotas[c.key].depuis || quotas[c.key].depuis <= year) ? Number(quotas[c.key].quota) || 0 : 0;
+      const pct = q ? Math.min(100, Math.round(done / q * 100)) : 0;
+      const reached = q > 0 && done >= q;
+
+      const card = document.createElement('article');
+      card.className = 'counter' + (reached ? ' reached' : '') + (q ? '' : ' no-quota');
+      const head = document.createElement('div');
+      head.className = 'counter-head';
+      const name = document.createElement('strong');
+      name.textContent = c.label;
+      const sub = document.createElement('span');
+      sub.textContent = c.sub;
+      head.append(name, sub);
+
+      const val = document.createElement('p');
+      val.className = 'counter-value';
+      const big = document.createElement('span');
+      big.className = 'big';
+      big.textContent = nf.format(done);
+      const unit = document.createElement('span');
+      unit.className = 'unit';
+      unit.textContent = q ? ` / ${nf.format(q)} h` : ' h';
+      val.append(big, unit);
+
+      card.append(head, val);
+      if (q) {
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        bar.setAttribute('role', 'progressbar');
+        bar.setAttribute('aria-valuemin', '0');
+        bar.setAttribute('aria-valuemax', String(q));
+        bar.setAttribute('aria-valuenow', String(Math.min(done, q)));
+        bar.setAttribute('aria-label', `${c.label} : ${fmtH(done)} sur ${fmtH(q)}`);
+        const fill = document.createElement('span');
+        fill.style.width = pct + '%';
+        bar.append(fill);
+        const note = document.createElement('p');
+        note.className = 'counter-note';
+        note.textContent = reached ? 'Quota atteint' : `Reste ${fmtH(q - done)}`;
+        card.append(bar, note);
+      } else {
+        const note = document.createElement('p');
+        note.className = 'counter-note';
+        note.textContent = 'Hors quota';
+        card.append(note);
+      }
+      return card;
+    });
+    box.replaceChildren(...cards);
+  }
+
+  function renderStats(L, list) {
+    const box = $('#livret-stats');
+    if (!L) { box.replaceChildren(); return; }
+    const total = list.reduce((s, f) => s + (Number(f.heures) || 0), 0);
+    const corde = list.reduce((s, f) => s + (Number(f.corde) || 0), 0);
+    const items = [
+      [String(list.length), list.length > 1 ? 'formations' : 'formation'],
+      [fmtH(total), 'au total'],
+      [nf.format(corde) + ' m', 'de corde parcourue'],
+    ];
+    box.replaceChildren(...items.map(([v, l]) => {
+      const d = document.createElement('div');
+      const b = document.createElement('strong');
+      b.textContent = v;
+      const s = document.createElement('span');
+      s.textContent = l;
+      d.append(b, s);
+      return d;
+    }));
+  }
+
+  function renderFormations(L, list, year) {
+    $('#livret-list-title').textContent = `Formations effectuées en ${year}`;
+    const ol = $('#livret-list');
+    const empty = $('#livret-empty');
+    empty.hidden = !L || list.length > 0;
+    empty.textContent = `Aucune formation enregistrée en ${year}.`;
+    ol.replaceChildren(...list.map(f => {
+      const li = document.createElement('li');
+      const [y, m, d] = f.date.split('-').map(Number);
+
+      const date = document.createElement('time');
+      date.className = 'fmpa-date';
+      date.dateTime = f.date;
+      const dd = document.createElement('strong');
+      dd.textContent = String(d);
+      const mm = document.createElement('span');
+      mm.textContent = MOIS[m - 1] || '';
+      date.append(dd, mm);
+
+      const body = document.createElement('div');
+      body.className = 'fmpa-body';
+      const lieu = document.createElement('p');
+      lieu.className = 'fmpa-lieu';
+      lieu.textContent = f.lieu || 'Lieu non renseigné';
+      const meta = document.createElement('p');
+      meta.className = 'fmpa-meta';
+      const tag = document.createElement('span');
+      const cat = catOf(f.secteur);
+      tag.className = 'tag tag-' + cat.toLowerCase();
+      tag.textContent = cat === 'SMPM' && f.secteur ? `SMPM ${f.secteur.charAt(0) + f.secteur.slice(1).toLowerCase()}` : (f.secteur || '—');
+      meta.append(tag);
+      const extra = [f.position, f.cu ? `CU ${f.cu}` : ''].filter(Boolean).join(' · ');
+      if (extra) meta.append(document.createTextNode(' ' + extra));
+      body.append(lieu, meta);
+
+      if (f.themes && f.themes.length) {
+        const det = document.createElement('details');
+        const sum = document.createElement('summary');
+        sum.textContent = `Thèmes abordés (${f.themes.length})`;
+        const ul = document.createElement('ul');
+        ul.className = 'chips';
+        ul.append(...f.themes.map(t => { const c = document.createElement('li'); c.textContent = t; return c; }));
+        det.append(sum, ul);
+        body.append(det);
+      }
+
+      const fig = document.createElement('div');
+      fig.className = 'fmpa-fig';
+      const h = document.createElement('strong');
+      h.textContent = fmtH(Number(f.heures) || 0);
+      fig.append(h);
+      if (f.corde) {
+        const c = document.createElement('span');
+        c.textContent = nf.format(f.corde) + ' m';
+        fig.append(c);
+      }
+
+      li.append(date, body, fig);
+      return li;
+    }));
   }
 
   function renderApp() {
@@ -232,6 +456,11 @@
     $('#verify-pwd-label').textContent = reset ? 'Choisissez un nouveau mot de passe' : 'Choisissez un mot de passe';
     $('#verify-submit').textContent = reset ? 'Changer le mot de passe' : 'Activer';
   }
+
+  $('#livret-year').addEventListener('change', e => {
+    state.year = Number(e.target.value);
+    renderLivretYear();
+  });
 
   $('#btn-logout').addEventListener('click', logout);
   $('#btn-menu').addEventListener('click', openMenu);
