@@ -13,6 +13,9 @@
  *     E Secteur, F Lieu, G Corde parcourue)
  *   - onglet « LOGS » : réponses au formulaire (thèmes abordés, chef d'unité), rapprochées par date
  *   - onglet « paramètres » : quotas horaires (H2:I9)
+ *   - onglet « VALIDATION ANNUELLE » : critères en ligne 8 (C:F) ; pour chaque année, une ligne avec
+ *     le nom de l'évaluateur puis une ligne avec l'année en B et la date. Fond VERT = validé,
+ *     fond ROUGE = non validé, case vide = non effectué.
  * Les compteurs reprennent exactement les formules du livret :
  *   - SMPM = secteurs CENTRE + NORD + SUD ; quota selon le niveau (IMP3, sinon IMP2, sinon IMP1 hors SSSM) + quota SSSM
  *   - NEIGE, ISS, SSH, CAN : heures du secteur du même nom ; quota si la qualification est acquise
@@ -22,6 +25,7 @@ const LIVRET = {
   SHEET_HEURES: 'HEURES FMPA',
   SHEET_LOGS: 'LOGS',
   SHEET_PARAMS: 'paramètres',
+  SHEET_VALID: 'VALIDATION ANNUELLE',
   FIRST_ROW: 9,
   CACHE_SEC: 300,           // 5 min : évite de rouvrir le classeur à chaque ouverture de l'app
   SMPM_SECTEURS: ['CENTRE', 'NORD', 'SUD'],
@@ -43,7 +47,7 @@ function livret_(token) {
   if (!id) throw new Error('Aucun livret associé à votre fiche');
 
   const cache = CacheService.getScriptCache();
-  const key = 'livret_' + id;
+  const key = 'livret2_' + id;
   const hit = cache.get(key);
   let data = hit ? JSON.parse(hit) : null;
   if (!data) {
@@ -51,10 +55,19 @@ function livret_(token) {
     try { cache.put(key, JSON.stringify(data), LIVRET.CACHE_SEC); } catch (e) { /* trop gros : tant pis */ }
   }
 
+  // Critères requis selon le niveau (comme la mise en forme conditionnelle du livret) :
+  // le 1er pour tous, les 2e et 3e à partir d'IMP2, le 4e (commandement) pour IMP3.
+  const imp2 = isTrue_(pt.cell(row, 'IMP 2')), imp3 = isTrue_(pt.cell(row, 'IMP 3'));
+  const requis = [true, imp2 || imp3, imp2 || imp3, imp3];
+
   return {
     ok: true,
     livret: {
       formations: data.formations,
+      validations: {
+        criteres: (data.validations.criteres || []).map((label, i) => ({ label, requis: requis[i] !== false })),
+        annees: data.validations.annees,
+      },
       quotas: quotasPersonne_(pt, row, data.quotas),
       maj: new Date().toISOString(),
     },
@@ -132,7 +145,51 @@ function lireLivret_(id, nom) {
       if (k in quotas && n > 0) quotas[k] = n;
     });
   }
-  return { formations, quotas };
+  return { formations, quotas, validations: lireValidations_(ss, ymd) };
+}
+
+/**
+ * Lit « VALIDATION ANNUELLE ».
+ * Renvoie { criteres: [libellés], annees: { '2026': [ { statut, evaluateur, date } x 4 ] } }
+ * statut : 'valide' (fond vert), 'non_valide' (fond rouge) ; un critère sans nom ni date est absent (null).
+ */
+function lireValidations_(ss, ymd) {
+  const out = { criteres: [], annees: {} };
+  const sh = ss.getSheetByName(LIVRET.SHEET_VALID);
+  if (!sh || sh.getLastRow() < 8) return out;
+  const n = sh.getLastRow();
+  const rng = sh.getRange(1, 1, n, 6);           // A:F
+  const v = rng.getValues();
+  const bg = rng.getBackgrounds();
+
+  out.criteres = v[7].slice(2, 6).map(s => String(s || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
+  if (!out.criteres.length) return out;
+
+  for (let i = 8; i < n; i++) {                   // la ligne « année » suit la ligne « nom »
+    const y = Number(v[i][1]);
+    if (!(y > 1900 && y < 3000)) continue;
+    const names = v[i - 1], dates = v[i];
+    out.annees[String(y)] = out.criteres.map((_, k) => {
+      const c = k + 2;
+      const nom = String(names[c] || '').trim();
+      const d = dates[c];
+      const date = d instanceof Date && !isNaN(d) ? ymd(d) : '';
+      if (!nom && !date) return null;
+      const couleur = couleur_(bg[i - 1][c]) || couleur_(bg[i][c]);
+      return { statut: couleur === 'rouge' ? 'non_valide' : 'valide', evaluateur: nom, date };
+    });
+  }
+  return out;
+}
+
+/** '#rrggbb' -> 'vert' | 'rouge' | null (blanc, gris, autre). */
+function couleur_(hex) {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex || ''));
+  if (!m) return null;
+  const r = parseInt(m[1], 16), g = parseInt(m[2], 16), b = parseInt(m[3], 16);
+  if (r > g + 50 && r > b + 50) return 'rouge';
+  if (g > r + 40 && g > b + 40) return 'vert';
+  return null;
 }
 
 /** Durée → heures décimales (nombre, ou durée Sheets renvoyée comme Date à partir du 30/12/1899). */
