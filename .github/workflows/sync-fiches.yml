@@ -46,3 +46,5 @@ jobs:
               -m "Claude-Session: https://claude.ai/code/session_01PVKCkGWRDFNgXnkqztodU1"
             git push
           fi
+
+# Déclenché manuellement depuis Actions : synchronisation quotidienne des fiches.
