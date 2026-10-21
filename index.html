@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#c8102e">
+<meta name="theme-color" content="#1d4f91">
 <meta name="robots" content="noindex">
 <title>SMPM 84</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -13,12 +13,41 @@
 </head>
 <body>
 <header class="topbar">
+  <button id="btn-menu" class="burger" aria-label="Ouvrir le menu" aria-controls="drawer" aria-expanded="false" hidden>
+    <span></span><span></span><span></span>
+  </button>
   <img src="assets/ecusson.png" alt="" class="logo">
   <div class="brand"><strong>SMPM 84</strong><span>Secours en milieu périlleux et montagne</span></div>
-  <button id="btn-logout" class="ghost" hidden>Déconnexion</button>
 </header>
 
+<!-- Silhouette du mont Ventoux -->
+<div class="landscape" aria-hidden="true">
+  <svg viewBox="0 -14 800 134" preserveAspectRatio="xMidYMax slice" focusable="false">
+    <path class="far" d="M0,118 L0,86 Q70,76 140,62 Q230,44 320,40 Q400,36 452,28 Q490,20 508,6 Q516,0 524,6 Q546,22 600,40 Q680,62 740,80 Q780,88 800,94 L800,118 Z"/>
+    <path class="far-snow" d="M508,6 Q516,0 524,6 L532,14 Q520,11 508,14 Z"/>
+    <rect class="tower" x="519" y="-14" width="3" height="20"/>
+    <path class="near" d="M0,118 L0,104 Q120,88 240,78 Q340,70 420,62 Q480,56 520,46 Q560,56 620,68 Q700,84 800,102 L800,118 Z"/>
+  </svg>
+</div>
+
 <div id="offline-banner" class="banner" hidden>Mode hors ligne : données enregistrées sur cet appareil, modification impossible.</div>
+
+<!-- Menu latéral -->
+<div id="scrim" class="scrim" hidden></div>
+<aside id="drawer" class="drawer" aria-label="Menu principal">
+  <div class="drawer-head">
+    <img src="assets/ecusson.png" alt="" class="logo">
+    <strong>SMPM 84</strong>
+    <button id="btn-close" class="close" aria-label="Fermer le menu">×</button>
+  </div>
+  <nav class="drawer-nav">
+    <button data-page="profil" aria-current="page">Mon profil</button>
+    <button data-page="qualifs">Qualifications</button>
+  </nav>
+  <div class="drawer-foot">
+    <button id="btn-logout" class="logout" hidden>Déconnexion</button>
+  </div>
+</aside>
 
 <main>
   <!-- Chargement -->
@@ -78,13 +107,8 @@
   <section id="view-app" class="view" hidden>
     <div class="hello">
       <h1 id="hello-name"></h1>
-      <p class="muted" id="hello-sub"></p>
+      <p class="fonction" id="hello-sub"></p>
     </div>
-
-    <nav class="tabs" role="tablist">
-      <button role="tab" data-tab="profil" aria-selected="true">Mon profil</button>
-      <button role="tab" data-tab="qualifs" aria-selected="false">Qualifications</button>
-    </nav>
 
     <div id="tab-profil">
       <form id="form-profil">

@@ -1,6 +1,6 @@
 // Service worker : met en cache uniquement le « squelette » de l'application.
 // Les données personnelles ne passent jamais par ce cache (elles sont dans localStorage).
-const CACHE = 'smpm84-shell-v2';
+const CACHE = 'smpm84-shell-v3';
 const SHELL = [
   './', 'index.html', 'style.css', 'app.js', 'config.js', 'manifest.webmanifest',
   'assets/ecusson.png', 'assets/sdis84.png', 'assets/icon-192.png', 'assets/icon-512.png',

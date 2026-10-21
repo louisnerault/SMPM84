@@ -6,12 +6,23 @@
   const KEY_CACHE = 'smpm_cache';
   const KEY_EMAIL = 'smpm_last_email';
   const AUTH_ERRORS = ['Session invalide', 'Session expirée', 'Accès révoqué', 'Compte inactif'];
+  // Fonction affichée sous le nom. Une personne qui cumule plusieurs casquettes
+  // se voit attribuer la plus haute : c'est le rôle renvoyé par session.role.
   const ROLES = {
     equipier: 'Équipier',
-    chef_unite: "Chef d'unité",
+    chef_unite: "Chef d'équipe",
     chef_section: 'Chef de section',
-    ctd: 'Conseiller technique départemental',
+    ctd: 'Conseiller technique et personnel de santé',
   };
+  const SECTIONS = { NORD: 'Nord', SUD: 'Sud', CENTRE: 'Centre', NEIGE: 'Neige', ISS: 'ISS' };
+
+  function roleLabel(session, me) {
+    const base = ROLES[session.role] || session.role || '';
+    if (session.role !== 'chef_section') return base;
+    const key = String(session.section || me.secteur || '').toUpperCase();
+    const section = SECTIONS[key] || (key ? key.charAt(0) + key.slice(1).toLowerCase() : '');
+    return section ? `${base} ${section}` : base;
+  }
 
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -50,7 +61,33 @@
   function show(name) {
     views.forEach(v => { $('#view-' + v).hidden = v !== name; });
     $('#btn-logout').hidden = name !== 'app';
+    $('#btn-menu').hidden = name !== 'app';
+    if (name !== 'app') closeMenu();
     $$('.error, .ok').forEach(p => { p.textContent = ''; });
+  }
+
+  // ---------- menu burger ----------
+  function openMenu() {
+    $('#drawer').classList.add('open');
+    $('#scrim').hidden = false;
+    $('#btn-menu').setAttribute('aria-expanded', 'true');
+    $('#drawer .drawer-nav button[aria-current="page"]').focus();
+  }
+  function closeMenu() {
+    const drawer = $('#drawer');
+    if (!drawer) return;
+    drawer.classList.remove('open');
+    $('#scrim').hidden = true;
+    $('#btn-menu').setAttribute('aria-expanded', 'false');
+  }
+  function gotoPage(name) {
+    $$('.drawer-nav button').forEach(b => {
+      if (b.dataset.page === name) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    });
+    $('#tab-profil').hidden = name !== 'profil';
+    $('#tab-qualifs').hidden = name !== 'qualifs';
+    closeMenu();
   }
 
   function setOffline(flag) { $('#offline-banner').hidden = !flag; }
@@ -107,12 +144,13 @@
     setOffline(offline);
     renderApp();
     show('app');
+    gotoPage('profil');
   }
 
   function renderApp() {
     const { me, session, qualifications } = state.data;
     $('#hello-name').textContent = `${me.prenom} ${me.nom}`;
-    $('#hello-sub').textContent = ROLES[session.role] || session.role;
+    $('#hello-sub').textContent = roleLabel(session, me);
     $('#info-secteur').textContent = me.secteur || '—';
 
     const form = $('#form-profil');
@@ -164,12 +202,11 @@
   });
 
   $('#btn-logout').addEventListener('click', logout);
-
-  $$('.tabs button').forEach(btn => btn.addEventListener('click', () => {
-    $$('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b === btn)));
-    $('#tab-profil').hidden = btn.dataset.tab !== 'profil';
-    $('#tab-qualifs').hidden = btn.dataset.tab !== 'qualifs';
-  }));
+  $('#btn-menu').addEventListener('click', openMenu);
+  $('#btn-close').addEventListener('click', closeMenu);
+  $('#scrim').addEventListener('click', closeMenu);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
+  $$('.drawer-nav button').forEach(btn => btn.addEventListener('click', () => gotoPage(btn.dataset.page)));
 
   $('#form-login').addEventListener('submit', async e => {
     e.preventDefault();
