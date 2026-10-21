@@ -43,7 +43,16 @@ CATEGORIES = json.loads((Path(__file__).parent / 'categories.json').read_text(en
 
 
 def drive():
-    info = json.loads(os.environ['GDRIVE_SA_KEY'])
+    raw = os.environ.get('GDRIVE_SA_KEY', '').strip()
+    if not raw:
+        sys.exit('ERREUR : le secret GDRIVE_SA_KEY est vide ou absent (vérifier son nom et sa valeur).')
+    if not raw.startswith('{'):
+        sys.exit('ERREUR : le secret GDRIVE_SA_KEY ne contient pas le fichier JSON de la clé '
+                 '(il doit commencer par « { »).')
+    try:
+        info = json.loads(raw)
+    except json.JSONDecodeError:
+        sys.exit('ERREUR : le secret GDRIVE_SA_KEY est un JSON invalide (contenu tronqué ou modifié).')
     creds = service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
     return build('drive', 'v3', credentials=creds, cache_discovery=False)
 
