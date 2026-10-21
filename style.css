@@ -69,9 +69,18 @@ body {
 }
 .landscape svg { display: block; width: 100%; height: 100%; }
 .landscape .far { fill: #2f6aa8; }
-.landscape .far-snow { fill: #f4f8fc; }
-.landscape .tower { fill: #f4f8fc; }
 .landscape .near { fill: #0f2c52; }
+.landscape .mast { fill: #e9f0f8; }
+.landscape .mast-tip { fill: #d62828; }
+.landscape .cable { stroke: #e9f0f8; stroke-width: 1.2; stroke-dasharray: none; opacity: .85; }
+.landscape .hanger { stroke: #e9f0f8; stroke-width: 1; }
+.landscape .pulley { fill: #e9f0f8; }
+.landscape .stretcher { fill: #f5c518; stroke: #d62828; stroke-width: 1.5; }
+.landscape .heli { fill: #f5c518; stroke: none; }
+.landscape .heli .stripe { fill: #d62828; }
+.landscape .heli .skid, .landscape .heli .hook { stroke: #f5c518; stroke-width: 1.5; }
+.landscape .heli .rotor { stroke: #e9f0f8; stroke-width: 1.5; }
+.landscape .heli rect { fill: #e9f0f8; }
 @media (prefers-color-scheme: dark) {
   .landscape .far { fill: #1f4f83; }
   .landscape .near { fill: #061b35; }
