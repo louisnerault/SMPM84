@@ -196,7 +196,7 @@
       await api('request_code', { email });
       state.pendingEmail = email;
       $('#verify-hint').textContent =
-        "Si cette adresse est éligible (numéro de téléphone et consentement SMS renseignés), un code vient d'être envoyé. Il est valable 10 minutes.";
+        "Si cette adresse figure dans la liste avec un numéro de téléphone, un code vient d'être envoyé par SMS. Il est valable 10 minutes.";
       show('verify');
     } catch (err) {
       showError(f, err instanceof NetworkError ? 'Connexion impossible. Vérifiez votre réseau.' : err.message);
