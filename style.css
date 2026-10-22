@@ -53,6 +53,15 @@ body {
 }
 .logo { width: 44px; height: 44px; border-radius: 50%; background: #fff; flex: none; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
 .brand { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.15; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.45); }
+/* nom de l'utilisateur : bouton vers « Mes informations » une fois connecté */
+button.brand {
+  align-items: flex-start; text-align: left; font: inherit; line-height: 1.15;
+  margin: 0; padding: 4px 6px; border: 0; border-radius: 8px; background: none; cursor: pointer;
+}
+button.brand:disabled { cursor: default; opacity: 1; }
+button.brand:not(:disabled):active { background: rgba(255,255,255,.14); }
+@media (hover: hover) { button.brand:not(:disabled):hover { background: rgba(255,255,255,.14); } }
+button.brand > * { max-width: 100%; }
 .brand strong { font-size: 1.05rem; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brand span { font-size: .74rem; opacity: .95; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
