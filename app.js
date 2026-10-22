@@ -87,6 +87,9 @@
     views.forEach(v => { $('#view-' + v).hidden = v !== name; });
     $('#btn-logout').hidden = name !== 'app';
     $('#btn-menu').hidden = name !== 'app';
+    // Le nom ne mène à « Mes informations » qu'une fois connecté
+    $('#btn-identity').disabled = name !== 'app';
+    $('#btn-identity').title = name === 'app' ? 'Mes informations' : '';
     $('#mode-bar').hidden = name !== 'app';
     if (name !== 'app') {
       closeMenu();
@@ -611,6 +614,7 @@
     logout(true);
   });
   $('#btn-menu').addEventListener('click', openMenu);
+  $('#btn-identity').addEventListener('click', () => gotoPage('infos'));
   $('#btn-intervention').addEventListener('click', toggleMode);
   document.addEventListener('click', e => {
     const go = e.target.closest('[data-go]');
