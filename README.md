@@ -6,6 +6,8 @@ Site statique (GitHub Pages). Aucune donnée de personnel ici : tout passe par l
 2. Pousser ce dossier dans un dépôt GitHub, puis Settings > Pages > branche `main`, dossier `/ (root)`.
 3. Ouvrir l'URL Pages sur mobile, puis « Ajouter à l'écran d'accueil ».
 
+Notices d'utilisation par rôle : [`docs/notices/`](docs/notices/README.md).
+
 ## Back-end (dossier `backend/`)
 
 Fichiers à copier dans le projet Apps Script « Web App SMPM84 », à côté de `Code.gs` :
