@@ -423,3 +423,23 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
   font-size: .72rem; font-weight: 700; background: var(--line); color: var(--muted);
 }
 .sub-head { margin-bottom: 6px; }
+
+/* ---------- Connexion : état en cours / réussie / échec ---------- */
+.login-status { text-align: center; padding: 28px 8px 12px; }
+.login-status[hidden] { display: none; }
+.login-icon {
+  width: 56px; height: 56px; margin: 0 auto 14px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.9rem; font-weight: 800; color: #fff;
+}
+.login-status[data-phase="busy"] .login-icon {
+  border: 5px solid var(--line); border-top-color: var(--red, #c8102e); background: transparent;
+}
+.login-icon.spin { animation: login-spin .9s linear infinite; }
+.login-status[data-phase="ok"] .login-icon { background: var(--ok); }
+.login-status[data-phase="fail"] .login-icon { background: var(--danger); }
+.login-title { font-size: 1.15rem; font-weight: 700; margin: 0 0 6px; }
+.login-status[data-phase="ok"] .login-title { color: var(--ok); }
+.login-status[data-phase="fail"] .login-title { color: var(--danger); }
+@keyframes login-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .login-icon.spin { animation-duration: 3s; } }

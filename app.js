@@ -80,7 +80,29 @@
       setIdentity('SMPM 84', 'Secours en milieu périlleux et montagne');
     }
     $$('.error, .ok').forEach(p => { p.textContent = ''; });
+    if (name === 'login') resetLogin();
   }
+
+  // ---------- état de la connexion (remplace le formulaire) ----------
+  // phase : 'idle' (formulaire), 'busy' (en cours), 'ok' (réussie), 'fail' (échec)
+  function setLoginPhase(phase, detail) {
+    const idle = phase === 'idle';
+    $('#form-login').hidden = !idle;
+    $$('.login-links').forEach(p => { p.hidden = !idle; });
+    const box = $('#login-status');
+    box.hidden = idle;
+    box.dataset.phase = phase;
+    const texts = { busy: 'Connexion en cours…', ok: 'Connexion réussie', fail: 'Échec de connexion' };
+    const icons = { busy: '', ok: '✓', fail: '✕' };
+    $('#login-title').textContent = texts[phase] || '';
+    $('#login-icon').textContent = icons[phase] || '';
+    $('#login-icon').classList.toggle('spin', phase === 'busy');
+    $('#login-detail').textContent = detail || '';
+    const retry = $('#login-retry');
+    retry.hidden = phase !== 'fail';
+    if (phase === 'fail') retry.focus();
+  }
+  function resetLogin() { setLoginPhase('idle'); }
 
   // ---------- menu burger ----------
   function openMenu() {
@@ -549,17 +571,30 @@
   $('#form-login').addEventListener('submit', async e => {
     e.preventDefault();
     const f = e.target;
-    setBusy(f, true);
+    const email = f.elements.email.value.trim();
+    const password = f.elements.password.value;
+    setLoginPhase('busy');
+    let res;
     try {
-      const email = f.elements.email.value.trim();
-      const res = await api('login', { email, password: f.elements.password.value });
-      store.set(KEY_EMAIL, email);
-      store.set(KEY_TOKEN, res.token);
-      f.reset();
-      await init();
+      res = await api('login', { email, password });
     } catch (err) {
-      showError(f, err instanceof NetworkError ? 'Connexion impossible. Vérifiez votre réseau.' : err.message);
-    } finally { setBusy(f, false); }
+      f.elements.password.value = '';
+      setLoginPhase('fail', err instanceof NetworkError ? 'Connexion impossible. Vérifiez votre réseau.' : err.message);
+      return;
+    }
+    store.set(KEY_EMAIL, email);
+    store.set(KEY_TOKEN, res.token);
+    f.reset();
+    setLoginPhase('ok');
+    await new Promise(r => setTimeout(r, 700));      // laisse lire « Connexion réussie »
+    await init();
+  });
+
+  $('#login-retry').addEventListener('click', () => {
+    setLoginPhase('idle');
+    const f = $('#form-login');
+    if (!f.elements.email.value) prefillEmail();
+    f.elements.password.focus();
   });
 
   $('#form-request').addEventListener('submit', async e => {
