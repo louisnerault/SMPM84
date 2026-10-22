@@ -570,3 +570,52 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
   .seg button { min-width: 52px; padding: 0 6px; }
   .fmpa-count > span { display: none; }
 }
+
+/* ---------- menu : groupe FMPA repliable ---------- */
+.nav-group { display: grid; gap: 2px; }
+.nav-group-btn { width: 100%; }
+.nav-group-btn .chev { margin-left: auto; color: var(--muted); transition: transform .2s ease; }
+.nav-group-btn[aria-expanded="true"] .chev { transform: rotate(180deg); }
+.nav-sub { display: grid; gap: 2px; margin-left: 22px; padding-left: 12px; border-left: 2px solid var(--line); }
+.drawer-nav .nav-sub button { padding: 10px 12px; font-weight: 600; font-size: .95rem; }
+@media (prefers-reduced-motion: reduce) { .nav-group-btn .chev { transition: none; } }
+
+/* ---------- listes des FMPA ---------- */
+#fmpal-state:empty, #fmpal-intro:empty { display: none; }
+#fmpal-state.error { color: var(--danger); }
+.fmpal-tools { margin-top: 10px; }
+.fmpal-tools input { margin-top: 0; }
+.fmpal-filters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.fmpal-filters select { width: auto; margin: 0; padding: 8px 10px; }
+.fmpal-filters .year-pick { margin: 0; }
+#fmpal-count { margin-left: auto; font-weight: 600; }
+.fmpal-list > li { display: block; padding: 0; border: 0; background: none; }
+.fmpal-item {
+  width: 100%; display: grid; grid-template-columns: 48px 1fr auto; gap: 12px; align-items: start;
+  padding: 12px; text-align: left; font: inherit; color: var(--ink);
+  border: 1px solid var(--line); border-radius: 10px; background: var(--bg); cursor: pointer;
+}
+.fmpal-item:hover { border-color: var(--primary); }
+.fmpal-item .fmpa-body { display: flex; flex-direction: column; align-items: flex-start; }
+.chip {
+  display: inline-block; margin-top: 6px; padding: 2px 9px; border-radius: 99px;
+  font-size: .72rem; font-weight: 700; line-height: 1.5;
+}
+.chip-edit { background: #e8f6ec; color: #1a7f37; }
+.chip-ro { background: var(--line); color: var(--muted); }
+@media (prefers-color-scheme: dark) { .chip-edit { background: #12301f; color: #4cc27a; } }
+
+/* ---------- fiche FMPA : droits, lecture seule ---------- */
+.fmpa-meta-line { margin: 0 0 6px; }
+.fmpa-rights { margin: 6px 0 4px; padding: 10px 12px; border-radius: 10px; font-size: .85rem; font-weight: 600; line-height: 1.35; }
+.fmpa-rights.ok-box { background: #e8f6ec; color: #145c2a; }
+.fmpa-rights.ro-box { background: #fff3cd; color: #5c4400; }
+@media (prefers-color-scheme: dark) {
+  .fmpa-rights.ok-box { background: #12301f; color: #a7e3bd; }
+  .fmpa-rights.ro-box { background: #3a3010; color: #fde68a; }
+}
+.fmpa-msg.ok { color: var(--ok); }
+.fmpa-ro .grid-actions, .fmpa-ro .fmpa-other:has(input:placeholder-shown) { display: none; }
+.fmpa-ro .fmpa-choices .choice:not(:has(input:checked)) { opacity: .55; }
+.fmpa-ro .seg button:disabled { cursor: default; }
+.fmpa-ro input:disabled, .fmpa-ro select:disabled, .fmpa-ro textarea:disabled { color: var(--ink); opacity: 1; -webkit-text-fill-color: var(--ink); }

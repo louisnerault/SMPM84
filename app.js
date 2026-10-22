@@ -20,6 +20,16 @@
   // Déclaration de FMPA : chef d'unité ou supérieur, et administrateurs
   const FMPA_ROLES = ['chef_unite', 'chef_section', 'ctd', 'admin'];
   const canDeclare = session => !!session && (session.is_admin === true || FMPA_ROLES.includes(session.role));
+  // Toutes les FMPA : administrateurs et conseillers techniques ; FMPA du secteur : chefs de section
+  const canAllFmpa = session => !!session && (session.is_admin === true || ['ctd', 'admin'].includes(session.role));
+  const canSectorFmpa = session => !!session && session.role === 'chef_section';
+  const FMPA_LISTS = ['fmpa-mes', 'fmpa-secteur', 'fmpa-toutes'];
+  function allowedPage(name, session) {
+    if (name === 'fmpa' || name === 'fmpa-fiche' || name === 'fmpa-mes') return canDeclare(session);
+    if (name === 'fmpa-secteur') return canSectorFmpa(session);
+    if (name === 'fmpa-toutes') return canAllFmpa(session);
+    return true;
+  }
 
   function roleLabel(session, me, qualifications) {
     const base = ROLES[session.role] || session.role || '';
@@ -112,7 +122,8 @@
     $('#drawer').classList.add('open');
     $('#scrim').hidden = false;
     $('#btn-menu').setAttribute('aria-expanded', 'true');
-    $('#drawer .drawer-nav button[aria-current="page"]').focus();
+    const cur = $('#drawer .drawer-nav button[aria-current="page"]') || $('#drawer .drawer-nav button:not([hidden])');
+    if (cur) cur.focus();
   }
   function closeMenu() {
     const drawer = $('#drawer');
@@ -122,8 +133,8 @@
     $('#btn-menu').setAttribute('aria-expanded', 'false');
   }
   function gotoPage(name) {
-    if (name === 'fmpa' && !(state.data && canDeclare(state.data.session))) name = 'livret';
-    $$('.drawer-nav button').forEach(b => {
+    if (!allowedPage(name, state.data && state.data.session)) name = 'livret';
+    $$('.drawer-nav button[data-page]').forEach(b => {
       if (b.dataset.page === name) b.setAttribute('aria-current', 'page');
       else b.removeAttribute('aria-current');
     });
@@ -132,11 +143,20 @@
     $('#tab-fiches').hidden = name !== 'fiches';
     $('#tab-accueil').hidden = name !== 'accueil';
     $('#tab-annuaire').hidden = name !== 'annuaire';
-    $('#tab-fmpa').hidden = name !== 'fmpa';
+    $('#tab-fmpa').hidden = !(name === 'fmpa' || name === 'fmpa-fiche');
+    $('#tab-fmpa-list').hidden = !FMPA_LISTS.includes(name);
+    if (name.startsWith('fmpa')) setFmpaGroup(true);
     window.scrollTo(0, 0);
     if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
     if (name === 'fmpa' && window.SMPM_FMPA) window.SMPM_FMPA.open();
+    if (FMPA_LISTS.includes(name) && window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.open(name);
     closeMenu();
+  }
+
+  // Sous-menu FMPA (repliable)
+  function setFmpaGroup(open) {
+    $('#nav-fmpa .nav-group-btn').setAttribute('aria-expanded', String(open));
+    $('#nav-fmpa-sub').hidden = !open;
   }
 
   function setOffline(flag) { $('#offline-banner').hidden = !flag; }
@@ -173,6 +193,7 @@
     store.del(KEY_LIVRET);
     store.del(KEY_MODE);
     if (window.SMPM_FMPA) window.SMPM_FMPA.reset();
+    if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.reset();
     applyMode(false);
     state.data = null;
     state.livret = null;
@@ -497,7 +518,11 @@
     const { me, session, qualifications } = state.data;
     setIdentity(`${me.prenom} ${me.nom}`, roleLabel(session, me, qualifications));
     $('#info-secteur').textContent = me.secteur || '—';
-    $('#drawer [data-page="fmpa"]').hidden = !canDeclare(session);
+    $('#nav-fmpa').hidden = !canDeclare(session);
+    $('#drawer [data-page="fmpa-secteur"]').hidden = !canSectorFmpa(session);
+    $('#drawer [data-page="fmpa-toutes"]').hidden = !canAllFmpa(session);
+    const sect = String(session.section || me.secteur || '');
+    $('#drawer [data-page="fmpa-secteur"]').textContent = sect ? `FMPA du secteur ${SECTIONS[sect.toUpperCase()] || sect}` : 'FMPA du secteur';
 
     const form = $('#form-profil');
     const sel = form.elements.grade;
@@ -581,7 +606,10 @@
   $('#btn-close').addEventListener('click', closeMenu);
   $('#scrim').addEventListener('click', closeMenu);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
-  $$('.drawer-nav button').forEach(btn => btn.addEventListener('click', () => gotoPage(btn.dataset.page)));
+  $$('.drawer-nav button[data-page]').forEach(btn => btn.addEventListener('click', () => gotoPage(btn.dataset.page)));
+  $('#nav-fmpa .nav-group-btn').addEventListener('click', e => {
+    setFmpaGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
+  });
 
   $('#form-login').addEventListener('submit', async e => {
     e.preventDefault();
@@ -680,7 +708,11 @@
   window.addEventListener('offline', () => { if (!$('#view-app').hidden) { setOffline(true); lockForm($('#form-profil'), true); } });
 
   // Accès partagé pour les rubriques chargées à part (fmpa.js)
-  window.SMPM_APP = { api, token: () => store.get(KEY_TOKEN), NetworkError, AUTH_ERRORS, logout };
+  window.SMPM_APP = {
+    api, token: () => store.get(KEY_TOKEN), NetworkError, AUTH_ERRORS, logout,
+    goto: name => gotoPage(name),
+    section: () => (state.data ? String(state.data.session.section || state.data.me.secteur || '') : ''),
+  };
 
   // ---------- démarrage ----------
   if ('serviceWorker' in navigator) {

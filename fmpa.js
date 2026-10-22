@@ -1,8 +1,10 @@
-// Déclaration de FMPA (chefs d'unité et au-delà, administrateurs).
+// FMPA : déclaration, consultation et modification (chefs d'unité et au-delà, administrateurs).
 // Le formulaire est construit à partir de la structure du Google Form « Formulaire FMPA »
 // renvoyée par l'API (action fmpa_form) ; l'envoi soumet la réponse au formulaire lui-même
 // (action fmpa_submit), qui alimente le sheet FMPA comme une saisie classique.
 // Brouillon enregistré sur l'appareil à chaque saisie : rien n'est perdu hors ligne.
+// Une FMPA enregistrée s'ouvre dans le même formulaire (action fmpa_get), en lecture seule
+// ou modifiable selon les droits renvoyés par le serveur ; l'enregistrement passe par fmpa_update.
 (() => {
   'use strict';
 
@@ -21,7 +23,13 @@
     def: null, sig: '', personnes: {}, moi: {},
     answers: {}, sid: '', loaded: false, loading: false, sending: false, done: null,
     grids: [],            // { item, presence } — pour le compteur
+    mode: 'declare',      // 'declare' | 'edit' (FMPA modifiable) | 'view' (lecture seule)
+    rec: null,            // FMPA ouverte : { id, version, droits, meta, origin }
+    decl: null,           // déclaration en cours, mise de côté pendant la consultation d'une FMPA
   };
+  const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  const fmtDate = s => (/^\d{4}-\d{2}-\d{2}/.test(s || '') ? s.slice(0, 10).split('-').reverse().join('/') : (s || ''));
+  const fmtDateTime = iso => new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
   const app = () => window.SMPM_APP;
   const norm = s => String(s || '').trim().toUpperCase();
@@ -47,13 +55,57 @@
 
   // ---------- chargement ----------
   function open() {
+    if (S.mode !== 'declare') {
+      // retour à la déclaration : on reprend celle mise de côté
+      S.mode = 'declare';
+      S.rec = null;
+      if (S.decl) { S.answers = S.decl.answers; S.sid = S.decl.sid; S.draftAt = S.decl.draftAt; S.decl = null; }
+      else if (S.def) restoreDeclaration();
+      else { S.answers = {}; S.sid = ''; }
+      setState('');
+      $('#fmpa-msg').textContent = '';
+    }
     if (!S.def) {
       const cached = store.getJSON(KEY_FORM);
       if (cached && cached.form) apply(cached);
     }
-    if (S.done) return;
+    if (S.done) { render(); return; }
     if (!S.loaded && !S.loading) load();
     else render();
+  }
+
+  // ---------- FMPA enregistrée : consultation / modification ----------
+  async function openRecord(id, origin) {
+    if (S.mode === 'declare' && S.def) S.decl = { answers: S.answers, sid: S.sid, draftAt: S.draftAt };
+    S.mode = 'view';
+    S.rec = { id, origin, loading: true };
+    S.answers = {};
+    S.done = null;
+    $('#fmpa-msg').textContent = '';
+    $('#fmpa-form').replaceChildren();
+    $('#fmpa-form').hidden = true;
+    $('#fmpa-bar').hidden = true;
+    renderHead();
+    setState('Chargement de la FMPA…');
+    try {
+      const res = await app().api('fmpa_get', { token: app().token(), id });
+      if (!S.rec || S.rec.id !== id) return;              // l'utilisateur est parti entre-temps
+      applyDef(res);
+      setRecord(res.fmpa);
+      setState('');
+    } catch (err) {
+      if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
+      setState(err instanceof app().NetworkError ? 'Réseau indisponible : impossible d’ouvrir cette FMPA hors ligne.'
+        : err.message === 'Action inconnue' ? 'La consultation des FMPA n’est pas encore activée sur le serveur.' : err.message, true);
+    }
+  }
+
+  function setRecord(f) {
+    const { answers, version, droits } = f;
+    S.rec = Object.assign({}, S.rec, { id: f.id, version, droits, meta: f, loading: false });
+    S.answers = JSON.parse(JSON.stringify(answers || {}));
+    S.mode = droits && droits.modifier ? 'edit' : 'view';
+    render();
   }
 
   async function load() {
@@ -86,27 +138,42 @@
     return (form.sections || []).map(s => s.items.map(i => i.id + ':' + i.type + ':' + (i.rows ? i.rows.length : '')).join(',')).join('|');
   }
 
-  function apply(res) {
+  // Structure du formulaire et personnel : communs à la déclaration et à la consultation
+  function applyDef(res) {
     const sig = signature(res.form);
     const changed = sig !== S.sig;
     S.def = res.form;
-    S.personnes = res.personnes || {};
-    S.moi = res.moi || {};
-    if (changed) {
-      S.sig = sig;
-      const draft = store.getJSON(KEY_DRAFT);
-      if (draft && draft.sig === sig && draft.answers) {
-        S.answers = draft.answers;
-        S.sid = draft.sid || newSid();
-        S.draftAt = draft.ts;
-      } else {
-        S.answers = {};
-        S.sid = newSid();
-        S.draftAt = null;
-        defaults();
-      }
+    S.personnes = res.personnes || S.personnes || {};
+    S.moi = res.moi || S.moi || {};
+    S.sig = sig;
+    store.set(KEY_FORM, JSON.stringify({ form: S.def, personnes: S.personnes, moi: S.moi }));
+    return changed;
+  }
+
+  function apply(res) {
+    const changed = applyDef(res) || !S.sid;
+    if (S.mode !== 'declare') {
+      // structure rafraîchie pendant qu'une FMPA est ouverte : la déclaration sera reprise au retour
+      if (changed) S.decl = null;
+      return;
     }
+    if (changed) restoreDeclaration();
     render();
+  }
+
+  // Déclaration en cours : brouillon de l'appareil s'il correspond au formulaire, sinon préremplissage
+  function restoreDeclaration() {
+    const draft = store.getJSON(KEY_DRAFT);
+    if (draft && draft.sig === S.sig && draft.answers) {
+      S.answers = draft.answers;
+      S.sid = draft.sid || newSid();
+      S.draftAt = draft.ts;
+    } else {
+      S.answers = {};
+      S.sid = newSid();
+      S.draftAt = null;
+      defaults();
+    }
   }
 
   // Préremplissage : date du jour, chef d'unité = utilisateur, secteur de l'utilisateur
@@ -128,6 +195,7 @@
   // ---------- brouillon ----------
   let saveTimer = null;
   function saveDraft() {
+    if (S.mode !== 'declare') return;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       store.set(KEY_DRAFT, JSON.stringify({ sig: S.sig, sid: S.sid, answers: S.answers, ts: Date.now() }));
@@ -186,9 +254,52 @@
     p.classList.toggle('error', !!isError);
   }
 
+  // En-tête : titre, retour à la liste, droits sur la FMPA ouverte
+  function renderHead() {
+    const head = $('#fmpa-head');
+    if (S.mode === 'declare') {
+      head.replaceChildren(el('h1', { text: 'Déclarer une FMPA' }));
+      return;
+    }
+    const r = S.rec || {};
+    const m = r.meta || {};
+    const nodes = [];
+    if (r.origin) {
+      nodes.push(el('div', { class: 'sub-head' }, el('button', {
+        type: 'button', class: 'link', text: '← ' + (window.SMPM_FMPA_LIST ? window.SMPM_FMPA_LIST.label(r.origin) : 'Retour'),
+        onclick: () => app().goto(r.origin),
+      })));
+    }
+    nodes.push(el('h1', { text: m.date ? `FMPA du ${fmtDate(m.date)}` : 'FMPA' }));
+    if (m.id) {
+      const bits = [m.numero ? `N° ${m.numero}` : '', m.cu ? `CU ${m.cu}` : '', m.horodateur ? `déclarée le ${fmtDateTime(m.horodateur)}` : ''].filter(Boolean);
+      nodes.push(el('p', { class: 'muted small fmpa-meta-line', text: bits.join(' · ') }));
+      nodes.push(droitsBox(r.droits || {}, m));
+    }
+    head.replaceChildren(...nodes);
+  }
+
+  function droitsBox(d, m) {
+    if (d.modifier) {
+      const t = d.par === 'cu' && d.jusqua
+        ? `Modifiable jusqu’au ${fmtDateTime(d.jusqua)} (24 h après la déclaration). Ensuite, les modifications passeront par votre chef de section.`
+        : d.par === 'section' ? `Modifiable en tant que chef de section ${cap(m.secteur)}.`
+        : 'Modifiable en tant qu’administrateur.';
+      return el('p', { class: 'fmpa-rights ok-box', text: t });
+    }
+    const n1 = (d.n1 || []).join(', ');
+    const t = d.motif === 'delai'
+      ? `Lecture seule : le délai de 24 h est dépassé. Pour toute modification, contactez votre N+1${n1 ? ' : ' + n1 + ' (chef de section ' + cap(m.secteur) + ')' : ' (chef de section)'}.`
+      : 'Lecture seule.';
+    return el('p', { class: 'fmpa-rights ro-box', text: t });
+  }
+  const cap = s => (s ? s.charAt(0) + s.slice(1).toLowerCase() : '');
+
   function render() {
     const root = $('#fmpa-form');
     const done = $('#fmpa-done');
+    renderHead();
+    root.classList.toggle('fmpa-ro', S.mode === 'view');
     if (S.done) {
       root.hidden = true;
       $('#fmpa-bar').hidden = true;
@@ -196,18 +307,20 @@
       return;
     }
     done.hidden = true;
-    if (!S.def) { root.replaceChildren(); root.hidden = true; $('#fmpa-bar').hidden = true; return; }
+    if (!S.def || (S.mode !== 'declare' && (!S.rec || S.rec.loading))) {
+      root.replaceChildren(); root.hidden = true; $('#fmpa-bar').hidden = true; return;
+    }
     root.hidden = false;
     S.grids = [];
 
     const head = [];
-    if (S.draftAt) {
+    if (S.mode === 'declare' && S.draftAt) {
       const when = new Date(S.draftAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
       head.push(el('div', { class: 'fmpa-draft' },
         el('span', { text: `Brouillon du ${when} restauré.` }),
         el('button', { type: 'button', class: 'link', text: 'Repartir de zéro', onclick: () => { if (confirm('Effacer le brouillon en cours ?')) clearDraft(); } })));
     }
-    if (S.def.description) head.push(el('p', { class: 'muted small fmpa-desc', text: S.def.description }));
+    if (S.mode === 'declare' && S.def.description) head.push(el('p', { class: 'muted small fmpa-desc', text: S.def.description }));
 
     const secs = S.def.sections.map((sec, i) => {
       const box = el('section', { class: 'fmpa-sec', 'data-sec': String(i) });
@@ -217,6 +330,16 @@
       return box;
     });
     root.replaceChildren(...head, ...secs);
+
+    // Lecture seule : réponses figées, seules la recherche et les filtres de la grille restent actifs
+    if (S.mode === 'view') {
+      root.querySelectorAll('input, select, textarea, button').forEach(n => {
+        if (!n.closest('.grid-tools')) n.disabled = true;
+      });
+    }
+    const send = $('#fmpa-send');
+    send.hidden = S.mode === 'view';
+    send.textContent = S.mode === 'edit' ? 'Enregistrer' : 'Envoyer';
     $('#fmpa-bar').hidden = false;
     updateSections();
   }
@@ -270,7 +393,9 @@
       case 'list': {
         const sel = el('select', { 'aria-labelledby': lab, onchange: e => setAnswer(it, e.target.value) },
           el('option', { value: '', text: 'Choisir…' }),
-          ...it.choices.map(c => el('option', { value: c.v, text: c.v })));
+          ...it.choices.map(c => el('option', { value: c.v, text: c.v })),
+          // réponse enregistrée qui ne figure plus dans les choix du formulaire
+          v && !it.choices.some(c => c.v === v) ? el('option', { value: v, text: v }) : null);
         sel.value = v || '';
         return field(it, sel);
       }
@@ -391,12 +516,12 @@
     const secteurs = Array.from(new Set(rows.filter(r => r.actif && r.secteur).map(r => r.secteur))).sort();
 
     // barre d'outils : recherche + filtres
-    const state = { q: '', f: 'tous' };
+    const state = { q: '', f: S.mode === 'view' ? 'coches' : 'tous' };
     const search = el('input', { type: 'search', placeholder: 'Rechercher un nom', 'aria-label': 'Rechercher un nom', class: 'grid-search' });
     const chips = el('div', { class: 'grid-filters', role: 'group', 'aria-label': 'Filtrer la liste' });
     const filters = [['tous', 'Tous'], ...secteurs.map(s => [s, s.charAt(0) + s.slice(1).toLowerCase()]), ['coches', 'Cochés']];
     filters.forEach(([k, t]) => chips.append(el('button', {
-      type: 'button', class: 'pill', 'data-f': k, 'aria-pressed': String(k === 'tous'), text: t,
+      type: 'button', class: 'pill', 'data-f': k, 'aria-pressed': String(k === state.f), text: t,
       onclick: () => { state.f = k; chips.querySelectorAll('.pill').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === k))); applyFilter(); },
     })));
     search.addEventListener('input', () => { state.q = norm(search.value); applyFilter(); });
@@ -429,7 +554,7 @@
       wrap.append(el('details', { class: 'grid-inactive' },
         el('summary', { text: `Personnel inactif (${inactive.length})` }), inactList));
     }
-    const empty = el('p', { class: 'muted small center', hidden: true, text: 'Aucun nom ne correspond.' });
+    const empty = el('p', { class: 'muted small center', hidden: true, text: S.mode === 'view' ? 'Personne de cochée.' : 'Aucun nom ne correspond.' });
     wrap.append(empty);
 
     // légende des abréviations
@@ -461,6 +586,7 @@
         if (inactList.querySelector('.grid-row:not([hidden])')) d.open = true;
       }
     }
+    if (state.f !== 'tous') applyFilter();
     return wrap;
   }
 
@@ -563,7 +689,8 @@
   }
 
   async function submit() {
-    if (S.sending || !S.def) return;
+    if (S.sending || !S.def || S.mode === 'view') return;
+    const editing = S.mode === 'edit';
     const msg = $('#fmpa-msg');
     msg.textContent = '';
     msg.className = 'fmpa-msg';
@@ -578,7 +705,9 @@
       return;
     }
     if (!navigator.onLine) {
-      msg.textContent = 'Hors ligne : la déclaration est enregistrée sur cet appareil. Envoyez-la dès que le réseau revient.';
+      msg.textContent = editing
+        ? 'Hors ligne : enregistrement impossible. Gardez cette page ouverte et réessayez dès que le réseau revient.'
+        : 'Hors ligne : la déclaration est enregistrée sur cet appareil. Envoyez-la dès que le réseau revient.';
       msg.classList.add('error');
       return;
     }
@@ -588,11 +717,12 @@
       if (it.type === 'header') return;
       const v = it.type === 'grid' || it.type === 'checkgrid' ? gridValue(it) : S.answers[it.id];
       if (!isEmpty(v)) answers[it.id] = typeof v === 'string' ? v.trim() : v;
+      else if (editing) answers[it.id] = null;          // réponse effacée : la cellule sera vidée
     });
 
     const { total, per } = counts();
     const recap = summary(answers);
-    const lines = ['Envoyer la déclaration de FMPA ?', ''];
+    const lines = [editing ? 'Enregistrer les modifications de cette FMPA ?' : 'Envoyer la déclaration de FMPA ?', ''];
     if (recap) lines.push(recap);
     if (S.grids.some(g => g.presence)) {
       lines.push(`${total} personne${total > 1 ? 's' : ''} cochée${total > 1 ? 's' : ''}` +
@@ -603,7 +733,28 @@
     S.sending = true;
     const btn = $('#fmpa-send');
     btn.disabled = true;
-    btn.textContent = 'Envoi en cours…';
+    btn.textContent = editing ? 'Enregistrement…' : 'Envoi en cours…';
+    if (editing) {
+      try {
+        const res = await app().api('fmpa_update', { token: app().token(), id: S.rec.id, answers, version: S.rec.version });
+        const f = Object.assign({}, res.fmpa, { answers: S.answers });
+        const origin = S.rec.origin;
+        S.rec = { id: f.id, origin };
+        setRecord(f);
+        if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.invalidate();
+        msg.textContent = res.changed ? `Modifications enregistrées (${res.changed} champ${res.changed > 1 ? 's' : ''}).` : 'Aucune modification à enregistrer.';
+        msg.classList.add('ok');
+      } catch (err) {
+        if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
+        msg.textContent = err instanceof app().NetworkError ? 'Réseau indisponible : réessayez dans un instant.' : err.message;
+        msg.classList.add('error');
+      } finally {
+        S.sending = false;
+        btn.disabled = false;
+        btn.textContent = S.mode === 'edit' ? 'Enregistrer' : 'Envoyer';
+      }
+      return;
+    }
     try {
       const res = await app().api('fmpa_submit', { token: app().token(), answers, submission_id: S.sid });
       S.done = { recap, total, at: res.at || new Date().toISOString() };
@@ -611,6 +762,7 @@
       S.answers = {};
       S.sid = newSid();
       S.draftAt = null;
+      if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.invalidate();
       showDone();
     } catch (err) {
       if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
@@ -655,11 +807,11 @@
   function reset() {          // déconnexion : rien ne reste sur l'appareil
     store.del(KEY_FORM);
     store.del(KEY_DRAFT);
-    Object.assign(S, { def: null, sig: '', personnes: {}, moi: {}, answers: {}, sid: '', loaded: false, done: null, grids: [] });
+    Object.assign(S, { def: null, sig: '', personnes: {}, moi: {}, answers: {}, sid: '', loaded: false, done: null, grids: [], mode: 'declare', rec: null, decl: null });
   }
 
   $('#fmpa-send').addEventListener('click', submit);
   $('#fmpa-again').addEventListener('click', restart);
 
-  window.SMPM_FMPA = { open, reset };
+  window.SMPM_FMPA = { open, openRecord, reset };
 })();
