@@ -83,8 +83,16 @@
       <p class="error" role="alert"></p>
       <button type="submit" class="primary">Se connecter</button>
     </form>
-    <p class="center"><button class="link" data-goto="reset">Mot de passe oublié ?</button></p>
-    <p class="center"><button class="link" data-goto="activate">Première connexion ? Activer mon compte</button></p>
+    <p class="center login-links"><button class="link" data-goto="reset">Mot de passe oublié ?</button></p>
+    <p class="center login-links"><button class="link" data-goto="activate">Première connexion ? Activer mon compte</button></p>
+
+    <!-- État affiché à la place du formulaire pendant et après la tentative -->
+    <div id="login-status" class="login-status" role="status" aria-live="polite" hidden>
+      <div class="login-icon" id="login-icon" aria-hidden="true"></div>
+      <p class="login-title" id="login-title"></p>
+      <p class="muted" id="login-detail"></p>
+      <button type="button" class="primary" id="login-retry" hidden>Réessayer</button>
+    </div>
   </section>
 
   <!-- Activation : étape 1 -->
