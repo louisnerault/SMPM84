@@ -134,6 +134,7 @@
   }
   function gotoPage(name) {
     if (!allowedPage(name, state.data && state.data.session)) name = 'livret';
+    state.page = name;
     $$('.drawer-nav button[data-page]').forEach(b => {
       if (b.dataset.page === name) b.setAttribute('aria-current', 'page');
       else b.removeAttribute('aria-current');
@@ -187,12 +188,14 @@
   }
 
   // ---------- session ----------
-  function logout() {
+  // explicit : déconnexion volontaire (bouton), tout est effacé de l'appareil ;
+  // sinon (session expirée) les déclarations de FMPA non envoyées sont conservées
+  function logout(explicit) {
     store.del(KEY_TOKEN);
     store.del(KEY_CACHE);          // important sur un appareil partagé
     store.del(KEY_LIVRET);
     store.del(KEY_MODE);
-    if (window.SMPM_FMPA) window.SMPM_FMPA.reset();
+    if (window.SMPM_FMPA) window.SMPM_FMPA.reset(explicit === true);
     if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.reset();
     applyMode(false);
     state.data = null;
@@ -234,18 +237,23 @@
 
   // ---------- application ----------
   function enterApp(data, options, offline) {
+    const wasInApp = !$('#view-app').hidden;
     state.data = data;
     state.options = options;
     setOffline(offline);
     renderApp();
     show('app');
     applyMode(store.get(KEY_MODE) === 'intervention');
-    gotoPage(isIntervention() ? 'accueil' : 'livret');
+    // Au retour du réseau, on rafraîchit sans quitter la page en cours (ex. déclaration de FMPA en cours de saisie)
+    if (!(state.keepPage && wasInApp && state.page)) gotoPage(isIntervention() ? 'accueil' : 'livret');
+    state.keepPage = false;
     // Livret : affichage immédiat depuis l'appareil, puis rafraîchissement si en ligne
     const cachedLivret = store.getJSON(KEY_LIVRET);
     if (cachedLivret) state.livret = cachedLivret;
     renderLivret(offline ? 'offline' : (cachedLivret ? 'refreshing' : 'loading'));
     if (!offline) loadLivret();
+    // déclarations de FMPA saisies hors ligne : envoi dès que possible
+    if (window.SMPM_FMPA) { window.SMPM_FMPA.renderPending(); if (!offline) window.SMPM_FMPA.flush(); }
   }
 
   // ---------- livret individuel : compteurs d'heures et formations ----------
@@ -596,7 +604,12 @@
     renderLivretYear();
   });
 
-  $('#btn-logout').addEventListener('click', logout);
+  $('#btn-logout').addEventListener('click', () => {
+    const n = window.SMPM_FMPA ? window.SMPM_FMPA.pending() : 0;
+    if (n && !confirm(`${n} déclaration${n > 1 ? 's' : ''} de FMPA ${n > 1 ? 'ne sont' : 'n’est'} pas encore envoyée${n > 1 ? 's' : ''}. ` +
+      'Se déconnecter les supprimera de cet appareil. Continuer ?')) return;
+    logout(true);
+  });
   $('#btn-menu').addEventListener('click', openMenu);
   $('#btn-intervention').addEventListener('click', toggleMode);
   document.addEventListener('click', e => {
@@ -704,7 +717,7 @@
     } finally { setBusy(f, false); }
   });
 
-  window.addEventListener('online', () => { if (store.get(KEY_TOKEN)) init(); });
+  window.addEventListener('online', () => { if (store.get(KEY_TOKEN)) { state.keepPage = true; init(); } });
   window.addEventListener('offline', () => { if (!$('#view-app').hidden) { setOffline(true); lockForm($('#form-profil'), true); } });
 
   // Accès partagé pour les rubriques chargées à part (fmpa.js)

@@ -228,10 +228,14 @@ function fmpaSubmit_(token, answers, submissionId) {
   if (!answers || typeof answers !== 'object') throw new Error('Déclaration vide');
 
   const cache = CacheService.getScriptCache();
-  const key = submissionId ? 'fmpa_sid_' + String(submissionId).replace(/[^\w-]/g, '').slice(0, 60) : '';
+  const sid = submissionId ? String(submissionId).replace(/[^\w-]/g, '').slice(0, 60) : '';
+  const key = sid ? 'fmpa_sid_' + sid : '';
   if (key) {
     const done = cache.get(key);
     if (done) return JSON.parse(done);    // renvoi après coupure réseau : déjà soumis
+    // Déclaration faite hors ligne et renvoyée tard (au-delà du cache) : on cherche son identifiant dans le Journal
+    const deja = sidDansJournal_(sid);
+    if (deja) return { ok: true, response_id: deja, deja: true, at: new Date().toISOString() };
   }
 
   const form = FormApp.openById(FMPA.FORM_ID);
@@ -250,11 +254,26 @@ function fmpaSubmit_(token, answers, submissionId) {
   if (!n) throw new Error('Déclaration vide');
 
   const sent = resp.submit();
-  try { journalSheet_().appendRow([new Date(), a.id, 'declaration_fmpa', '', sent.getId()]); } catch (e) {}
+  try { journalSheet_().appendRow([new Date(), a.id, 'declaration_fmpa', sid, sent.getId()]); } catch (e) {}
 
   const out = { ok: true, response_id: sent.getId(), at: new Date().toISOString() };
   if (key) cache.put(key, JSON.stringify(out), FMPA.DEDUP_SEC);
   return out;
+}
+
+/** Identifiant de réponse si cette déclaration (submission_id) a déjà été soumise ; parcourt les 2000 dernières lignes du Journal. */
+function sidDansJournal_(sid) {
+  try {
+    const sh = journalSheet_();
+    const n = sh.getLastRow();
+    if (n < 2) return '';
+    const from = Math.max(2, n - 1999);
+    const rows = sh.getRange(from, 3, n - from + 1, 3).getValues();     // colonnes champ, ancienne valeur, nouvelle valeur
+    for (let i = rows.length - 1; i >= 0; i--) {
+      if (rows[i][0] === 'declaration_fmpa' && String(rows[i][1]) === sid) return String(rows[i][2] || 'ok');
+    }
+  } catch (e) { /* Journal indisponible : on s'en remet au cache */ }
+  return '';
 }
 
 function vide_(v) {

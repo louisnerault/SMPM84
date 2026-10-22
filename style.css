@@ -619,3 +619,39 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
 .fmpa-ro .fmpa-choices .choice:not(:has(input:checked)) { opacity: .55; }
 .fmpa-ro .seg button:disabled { cursor: default; }
 .fmpa-ro input:disabled, .fmpa-ro select:disabled, .fmpa-ro textarea:disabled { color: var(--ink); opacity: 1; -webkit-text-fill-color: var(--ink); }
+
+/* ---------- déclarations en attente d'envoi (hors ligne) ---------- */
+.pending-dot {
+  width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; flex: none;
+  box-shadow: 0 0 0 2px var(--card);
+}
+.burger .pending-dot { position: absolute; bottom: 4px; right: 4px; box-shadow: 0 0 0 2px var(--primary); }
+.nav-group-btn .pending-dot { margin-left: 8px; }
+.outbox {
+  margin: 10px 0 4px; padding: 10px 12px; border-radius: 10px;
+  background: #fff3cd; color: #5c4400; font-size: .85rem;
+}
+.outbox-ok { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #e8f6ec; color: #145c2a; font-weight: 600; }
+.outbox-ok .link { color: inherit; text-decoration: none; font-size: 1.2rem; padding: 0 6px; }
+.outbox-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.outbox-head .pill { background: #fff; }
+.outbox-head .pill:disabled { opacity: .7; }
+.outbox-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.outbox-list li { display: flex; flex-direction: column; padding: 6px 8px; border-radius: 8px; background: rgba(255,255,255,.6); }
+.outbox-list li span { font-weight: 600; }
+.outbox-list li.is-error { background: #fdecee; color: #8a1023; }
+.outbox-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.outbox-actions .link { padding: 4px 6px; color: inherit; }
+.outbox-actions .danger { color: #c0182f; }
+.outbox p { margin: 6px 0 0; }
+@media (prefers-color-scheme: dark) {
+  .outbox { background: #3a3010; color: #fde68a; }
+  .outbox-ok { background: #12301f; color: #a7e3bd; }
+  .outbox-head .pill { background: var(--card); }
+  .outbox-list li { background: rgba(0,0,0,.2); }
+  .outbox-list li.is-error { background: #3a1720; color: #ffb3bd; }
+}
+.fmpa-done[data-state="queued"] .login-icon { background: #f59e0b; }
+.fmpa-done[data-state="queued"] .login-title { color: #b45309; }
+.fmpa-done[data-state="error"] .login-icon { background: var(--danger); }
+.fmpa-done[data-state="error"] .login-title { color: var(--danger); }

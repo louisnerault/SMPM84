@@ -16,6 +16,7 @@
   <button id="btn-menu" class="burger" aria-label="Ouvrir le menu" aria-controls="drawer" aria-expanded="false" hidden>
     <span></span><span></span><span></span>
     <span class="sync-dot" data-sync-dot hidden></span>
+    <span class="pending-dot" title="Déclaration de FMPA en attente d'envoi" hidden></span>
   </button>
   <img src="assets/ecusson.png" alt="" class="logo">
   <div class="brand"><strong id="top-title">SMPM 84</strong><span id="top-sub">Secours en milieu périlleux et montagne</span></div>
@@ -37,7 +38,7 @@
   <img src="assets/banniere.jpg" srcset="assets/banniere-1000.jpg 1000w, assets/banniere.jpg 2000w" sizes="100vw" alt="" decoding="async" fetchpriority="high">
 </div>
 
-<div id="offline-banner" class="banner" hidden>Mode hors ligne : données enregistrées sur cet appareil, modification impossible.</div>
+<div id="offline-banner" class="banner" hidden>Mode hors ligne : données enregistrées sur cet appareil. Les déclarations de FMPA partiront au retour du réseau.</div>
 
 <!-- Menu latéral -->
 <div id="scrim" class="scrim" hidden></div>
@@ -51,7 +52,7 @@
     <button data-page="accueil" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Accueil intervention</button>
     <button data-page="livret" aria-current="page"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3.5h11a3 3 0 0 1 3 3v14H8a3 3 0 0 1-3-3z"/><path d="M5 17.5a3 3 0 0 1 3-3h11"/><path d="M9 7.5h6M9 10.5h4"/></svg>Mon livret</button>
     <div id="nav-fmpa" class="nav-group" hidden>
-      <button type="button" class="nav-group-btn" aria-expanded="false" aria-controls="nav-fmpa-sub"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17.5" rx="2"/><path d="M9 3.5h6v3H9z"/><path d="M8.5 12.5l2.2 2.2 4.8-4.8"/><path d="M9 18h6"/></svg>FMPA<svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      <button type="button" class="nav-group-btn" aria-expanded="false" aria-controls="nav-fmpa-sub"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17.5" rx="2"/><path d="M9 3.5h6v3H9z"/><path d="M8.5 12.5l2.2 2.2 4.8-4.8"/><path d="M9 18h6"/></svg>FMPA<svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg><span class="pending-dot" title="Déclaration en attente d'envoi" hidden></span></button>
       <div id="nav-fmpa-sub" class="nav-sub" hidden>
         <button data-page="fmpa">Déclarer une FMPA</button>
         <button data-page="fmpa-mes">Mes FMPA encadrées</button>
@@ -187,6 +188,7 @@
     <!-- Déclaration de FMPA : chefs d'unité et au-delà, administrateurs -->
     <div id="tab-fmpa" hidden>
       <div id="fmpa-head"><h1>Déclarer une FMPA</h1></div>
+      <div data-fmpa-pending></div>
       <p id="fmpa-state" class="muted small" role="status"></p>
       <div id="fmpa-form" hidden></div>
 
@@ -202,10 +204,10 @@
       </div>
 
       <div id="fmpa-done" class="fmpa-done" hidden>
-        <div class="login-icon" aria-hidden="true">✓</div>
-        <p class="login-title">Déclaration envoyée</p>
+        <div class="login-icon" id="fmpa-done-icon" aria-hidden="true">✓</div>
+        <p class="login-title" id="fmpa-done-title">Déclaration envoyée</p>
         <p class="muted" id="fmpa-done-recap"></p>
-        <p class="muted small">Elle est enregistrée dans le sheet FMPA, comme une saisie du formulaire.</p>
+        <p class="muted small" id="fmpa-done-note"></p>
         <button type="button" class="primary" id="fmpa-again">Nouvelle déclaration</button>
       </div>
     </div>
@@ -215,6 +217,7 @@
       <h1 id="fmpal-title">Mes FMPA encadrées</h1>
       <p id="fmpal-intro" class="muted small"></p>
       <p id="fmpal-state" class="muted small" role="status"></p>
+      <div data-fmpa-pending></div>
       <div id="fmpal-tools" class="fmpal-tools" hidden>
         <input type="search" id="fmpal-search" placeholder="Rechercher un lieu, un CU…" aria-label="Rechercher">
         <div class="fmpal-filters">
