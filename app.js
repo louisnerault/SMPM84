@@ -6,6 +6,7 @@
   const KEY_CACHE = 'smpm_cache';
   const KEY_EMAIL = 'smpm_last_email';
   const KEY_LIVRET = 'smpm_livret';
+  const KEY_MODE = 'smpm_mode';
   const AUTH_ERRORS = ['Session invalide', 'Session expirée', 'Accès révoqué', 'Compte inactif'];
   // Fonction affichée sous le nom. Une personne qui cumule plusieurs casquettes
   // se voit attribuer la plus haute : c'est le rôle renvoyé par session.role.
@@ -73,6 +74,7 @@
     views.forEach(v => { $('#view-' + v).hidden = v !== name; });
     $('#btn-logout').hidden = name !== 'app';
     $('#btn-menu').hidden = name !== 'app';
+    $('#mode-bar').hidden = name !== 'app';
     if (name !== 'app') {
       closeMenu();
       setIdentity('SMPM 84', 'Secours en milieu périlleux et montagne');
@@ -102,6 +104,9 @@
     $('#tab-livret').hidden = name !== 'livret';
     $('#tab-profil').hidden = name !== 'infos';
     $('#tab-fiches').hidden = name !== 'fiches';
+    $('#tab-accueil').hidden = name !== 'accueil';
+    $('#tab-annuaire').hidden = name !== 'annuaire';
+    window.scrollTo(0, 0);
     if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
     closeMenu();
   }
@@ -114,11 +119,32 @@
 
   function showError(form, msg) { $('.error', form).textContent = msg; }
 
+  // ---------- mode intervention ----------
+  // Bascule toujours visible ; en intervention, les couleurs passent au rouge
+  // et l'accueil propose annuaire des spécialistes, listes des POI, fiches techniques.
+  const isIntervention = () => document.body.classList.contains('mode-intervention');
+  function applyMode(on) {
+    document.body.classList.toggle('mode-intervention', on);
+    store.set(KEY_MODE, on ? 'intervention' : 'normal');
+    $('#btn-intervention').setAttribute('aria-pressed', String(on));
+    $('#btn-intervention-label').textContent = on ? 'Mode intervention actif : quitter' : 'Passer en mode intervention';
+    $('#drawer [data-page="accueil"]').hidden = !on;
+    const meta = $('#meta-theme');
+    if (meta) meta.setAttribute('content', on ? '#b3132b' : '#1d4f91');
+  }
+  function toggleMode() {
+    const on = !isIntervention();
+    applyMode(on);
+    gotoPage(on ? 'accueil' : 'livret');
+  }
+
   // ---------- session ----------
   function logout() {
     store.del(KEY_TOKEN);
     store.del(KEY_CACHE);          // important sur un appareil partagé
     store.del(KEY_LIVRET);
+    store.del(KEY_MODE);
+    applyMode(false);
     state.data = null;
     state.livret = null;
     state.year = null;
@@ -163,7 +189,8 @@
     setOffline(offline);
     renderApp();
     show('app');
-    gotoPage('livret');
+    applyMode(store.get(KEY_MODE) === 'intervention');
+    gotoPage(isIntervention() ? 'accueil' : 'livret');
     // Livret : affichage immédiat depuis l'appareil, puis rafraîchissement si en ligne
     const cachedLivret = store.getJSON(KEY_LIVRET);
     if (cachedLivret) state.livret = cachedLivret;
@@ -509,6 +536,11 @@
 
   $('#btn-logout').addEventListener('click', logout);
   $('#btn-menu').addEventListener('click', openMenu);
+  $('#btn-intervention').addEventListener('click', toggleMode);
+  document.addEventListener('click', e => {
+    const go = e.target.closest('[data-go]');
+    if (go && !go.disabled) gotoPage(go.dataset.go);
+  });
   $('#btn-close').addEventListener('click', closeMenu);
   $('#scrim').addEventListener('click', closeMenu);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });

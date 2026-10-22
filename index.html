@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1d4f91">
+<meta name="theme-color" id="meta-theme" content="#1d4f91">
 <meta name="robots" content="noindex">
 <title>SMPM 84</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -48,6 +48,7 @@
     <button id="btn-close" class="close" aria-label="Fermer le menu">×</button>
   </div>
   <nav class="drawer-nav">
+    <button data-page="accueil" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Accueil intervention</button>
     <button data-page="livret" aria-current="page"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3.5h11a3 3 0 0 1 3 3v14H8a3 3 0 0 1-3-3z"/><path d="M5 17.5a3 3 0 0 1 3-3h11"/><path d="M9 7.5h6M9 10.5h4"/></svg>Mon livret</button>
     <button data-page="infos"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>Mes informations</button>
     <button data-page="fiches"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M2 5.5c3.2-1.2 6.4-1.2 10 1 3.6-2.2 6.8-2.2 10-1v13c-3.2-1.2-6.4-1.2-10 1-3.6-2.2-6.8-2.2-10-1z"/><path d="M12 6.5v13"/></svg>Fiches techniques</button>
@@ -58,6 +59,14 @@
 </aside>
 
 <main>
+  <!-- Bascule du mode intervention : toujours visible dans l'application -->
+  <div id="mode-bar" class="mode-bar" hidden>
+    <button type="button" id="btn-intervention" class="mode-btn" aria-pressed="false">
+      <span class="mode-dot" aria-hidden="true"></span>
+      <span id="btn-intervention-label">Passer en mode intervention</span>
+    </button>
+  </div>
+
   <!-- Chargement -->
   <section id="view-loading" class="view"><p class="muted center">Chargement…</p></section>
 
@@ -114,6 +123,31 @@
 
   <!-- Application -->
   <section id="view-app" class="view" hidden>
+    <!-- Accueil du mode intervention -->
+    <div id="tab-accueil" hidden>
+      <h1>Accueil intervention</h1>
+      <div class="home-grid">
+        <button type="button" class="home-btn" data-go="annuaire">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.4c1.9.8 3 2.8 3 5.6"/></svg>
+          <span>Annuaire des spécialistes</span>
+        </button>
+        <button type="button" class="home-btn" data-go="poi" disabled>
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>
+          <span>Listes des POI <span class="wip">En cours d'élaboration</span></span>
+        </button>
+        <button type="button" class="home-btn" data-go="fiches">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M2 5.5c3.2-1.2 6.4-1.2 10 1 3.6-2.2 6.8-2.2 10-1v13c-3.2-1.2-6.4-1.2-10 1-3.6-2.2-6.8-2.2-10-1z"/><path d="M12 6.5v13"/></svg>
+          <span>Fiches techniques</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="tab-annuaire" hidden>
+      <div class="sub-head"><button type="button" class="link" data-go="accueil">← Accueil intervention</button></div>
+      <h1>Annuaire des spécialistes</h1>
+      <p class="muted">Cette rubrique sera alimentée prochainement.</p>
+    </div>
+
     <div id="tab-livret">
       <div class="livret-head">
         <h1>Mon livret</h1>
