@@ -264,10 +264,22 @@ body.is-offline .status-net { color: #ffd66b; }
 .counter-value .unit { font-size: .95rem; color: var(--muted); font-weight: 600; }
 .bar { height: 8px; border-radius: 99px; background: color-mix(in srgb, var(--primary) 18%, transparent); overflow: hidden; }
 .bar span { display: block; height: 100%; border-radius: inherit; background: var(--primary); transition: width .4s ease; }
-.counter.reached .bar span { background: var(--ok); }
+/* Couleurs des quotas fixes (indépendantes du mode intervention, où tout passe au rouge) */
+.counter { --run: #1d4f91; --warn: #d97706; --full: #c0182f; }
+.counter .bar span { background: var(--run); }
+.counter.warn .bar span { background: var(--warn); }
+.counter.warn .counter-note { color: var(--warn); }
+.counter.full .bar span { background: var(--full); }
 .counter-note { margin: 0; font-size: .8rem; color: var(--muted); font-weight: 600; }
-.counter.reached .counter-note { color: var(--ok); }
-.counter.reached .counter-note::before { content: "✓ "; }
+.counter-alert {
+  margin: 2px 0 0; padding: 8px 10px; border-radius: 8px;
+  font-size: .8rem; font-weight: 600; line-height: 1.35;
+  color: var(--full); background: color-mix(in srgb, var(--full) 12%, transparent);
+  border-left: 3px solid var(--full);
+}
+@media (prefers-color-scheme: dark) {
+  .counter { --run: #3f7fcf; --warn: #f59e0b; --full: #ff6b7d; }
+}
 .counter.no-quota { opacity: .85; }
 @media (prefers-reduced-motion: reduce) { .bar span { transition: none; } }
 

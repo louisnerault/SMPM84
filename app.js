@@ -347,10 +347,11 @@
       const done = hours[c.key] || 0;
       const q = quotas[c.key] && (!quotas[c.key].depuis || quotas[c.key].depuis <= year) ? Number(quotas[c.key].quota) || 0 : 0;
       const pct = q ? Math.min(100, Math.round(done / q * 100)) : 0;
-      const reached = q > 0 && done >= q;
+      // Paliers : bleu < 80 %, orange à partir de 80 %, rouge une fois le quota atteint
+      const level = !q ? '' : done >= q ? ' full' : done >= q * 0.8 ? ' warn' : '';
 
       const card = document.createElement('article');
-      card.className = 'counter' + (reached ? ' reached' : '') + (q ? '' : ' no-quota');
+      card.className = 'counter' + level + (q ? '' : ' no-quota');
       const head = document.createElement('div');
       head.className = 'counter-head';
       const name = document.createElement('strong');
@@ -382,8 +383,14 @@
         fill.style.width = pct + '%';
         bar.append(fill);
         const note = document.createElement('p');
-        note.className = 'counter-note';
-        note.textContent = reached ? 'Quota atteint' : `Reste ${fmtH(q - done)}`;
+        if (done >= q) {
+          note.className = 'counter-alert';
+          note.setAttribute('role', 'note');
+          note.textContent = "Vous avez atteint votre quota d'heures de formation. Vous ne devez plus effectuer de FMPA cette année.";
+        } else {
+          note.className = 'counter-note';
+          note.textContent = `Reste ${fmtH(q - done)}`;
+        }
         card.append(bar, note);
       } else {
         const note = document.createElement('p');
