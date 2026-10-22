@@ -64,28 +64,35 @@ body {
 .burger:hover { background: rgba(255,255,255,.12); }
 .burger span { display: block; width: 24px; height: 2.5px; border-radius: 2px; background: #fff; }
 
-/* ---------- paysage : silhouette du mont Ventoux ---------- */
+/* ---------- bannière : photo du mont Ventoux ---------- */
 .landscape {
-  position: relative; height: 150px; overflow: hidden;
-  background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bottom) 100%);
+  position: relative; overflow: hidden;
+  height: clamp(150px, 32vw, 440px);
+  background: var(--sky-top);
 }
-.landscape svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.landscape .far { fill: #2f6aa8; }
-.landscape .near { fill: #0f2c52; }
-.landscape .mast { fill: #e9f0f8; }
-.landscape .mast-tip { fill: #d62828; }
-.landscape .cable { stroke: #e9f0f8; stroke-width: 1.2; stroke-dasharray: none; opacity: .85; }
-.landscape .hanger { stroke: #e9f0f8; stroke-width: 1; }
-.landscape .pulley { fill: #e9f0f8; }
-.landscape .stretcher { fill: #f5c518; stroke: #d62828; stroke-width: 1.5; }
-.landscape .heli { fill: #f5c518; stroke: none; }
-.landscape .heli .stripe { fill: #d62828; }
-.landscape .heli .skid, .landscape .heli .hook { stroke: #f5c518; stroke-width: 1.5; }
-.landscape .heli .rotor { stroke: #e9f0f8; stroke-width: 1.5; }
-.landscape .heli rect { fill: #e9f0f8; }
-@media (prefers-color-scheme: dark) {
-  .landscape .far { fill: #1f4f83; }
-  .landscape .near { fill: #061b35; }
+.landscape img {
+  display: block; width: 100%; height: 100%;
+  object-fit: cover; object-position: 65% 10%;
+}
+/* léger voile en haut pour garder le texte lisible sur le ciel */
+.landscape::after {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 90px;
+  background: linear-gradient(180deg, rgba(6,26,51,.45), rgba(6,26,51,0));
+  pointer-events: none;
+}
+/* téléphone : image entière (rien de coupé), sous une bande de ciel qui porte logo et texte */
+@media (max-width: 600px) {
+  .landscape {
+    height: auto;
+    padding-top: calc(58px + env(safe-area-inset-top));
+    background: linear-gradient(180deg, #08386d 0%, #0c5099 100%);
+  }
+  .landscape img {
+    height: auto;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 14%);
+            mask-image: linear-gradient(180deg, transparent 0, #000 14%);
+  }
+  .landscape::after { display: none; }
 }
 
 .banner { background: #fff3cd; color: #5c4400; padding: 8px 16px; font-size: .85rem; text-align: center; }
