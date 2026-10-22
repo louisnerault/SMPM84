@@ -50,6 +50,7 @@
   <nav class="drawer-nav">
     <button data-page="accueil" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Accueil intervention</button>
     <button data-page="livret" aria-current="page"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3.5h11a3 3 0 0 1 3 3v14H8a3 3 0 0 1-3-3z"/><path d="M5 17.5a3 3 0 0 1 3-3h11"/><path d="M9 7.5h6M9 10.5h4"/></svg>Mon livret</button>
+    <button data-page="fmpa" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17.5" rx="2"/><path d="M9 3.5h6v3H9z"/><path d="M8.5 12.5l2.2 2.2 4.8-4.8"/><path d="M9 18h6"/></svg>Déclarer une FMPA</button>
     <button data-page="infos"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>Mes informations</button>
     <button data-page="fiches"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M2 5.5c3.2-1.2 6.4-1.2 10 1 3.6-2.2 6.8-2.2 10-1v13c-3.2-1.2-6.4-1.2-10 1-3.6-2.2-6.8-2.2-10-1z"/><path d="M12 6.5v13"/></svg>Fiches techniques</button>
   </nav>
@@ -175,6 +176,32 @@
       <p id="livret-empty" class="muted center small" hidden></p>
     </div>
 
+    <!-- Déclaration de FMPA : chefs d'unité et au-delà, administrateurs -->
+    <div id="tab-fmpa" hidden>
+      <h1>Déclarer une FMPA</h1>
+      <p id="fmpa-state" class="muted small" role="status"></p>
+      <div id="fmpa-form" hidden></div>
+
+      <p id="fmpa-msg" class="fmpa-msg" role="alert"></p>
+
+      <!-- Barre collée en bas : compteur de présence en direct + envoi -->
+      <div id="fmpa-bar" class="fmpa-bar" hidden>
+        <div id="fmpa-count" class="fmpa-count" aria-live="polite" hidden>
+          <strong id="fmpa-count-n">0</strong>
+          <span><span id="fmpa-count-label">personne cochée</span><small id="fmpa-count-detail"></small></span>
+        </div>
+        <button type="button" id="fmpa-send" class="primary">Envoyer</button>
+      </div>
+
+      <div id="fmpa-done" class="fmpa-done" hidden>
+        <div class="login-icon" aria-hidden="true">✓</div>
+        <p class="login-title">Déclaration envoyée</p>
+        <p class="muted" id="fmpa-done-recap"></p>
+        <p class="muted small">Elle est enregistrée dans le sheet FMPA, comme une saisie du formulaire.</p>
+        <button type="button" class="primary" id="fmpa-again">Nouvelle déclaration</button>
+      </div>
+    </div>
+
     <div id="tab-profil" hidden>
       <form id="form-profil">
         <label>Grade
@@ -214,6 +241,7 @@
 
 <script src="config.js"></script>
 <script src="fiches.js"></script>
+<script src="fmpa.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

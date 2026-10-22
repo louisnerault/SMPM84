@@ -17,6 +17,9 @@
     ctd: 'Conseiller technique et personnel de santé',
   };
   const SECTIONS = { NORD: 'Nord', SUD: 'Sud', CENTRE: 'Centre', NEIGE: 'Neige', ISS: 'ISS' };
+  // Déclaration de FMPA : chef d'unité ou supérieur, et administrateurs
+  const FMPA_ROLES = ['chef_unite', 'chef_section', 'ctd', 'admin'];
+  const canDeclare = session => !!session && (session.is_admin === true || FMPA_ROLES.includes(session.role));
 
   function roleLabel(session, me, qualifications) {
     const base = ROLES[session.role] || session.role || '';
@@ -119,6 +122,7 @@
     $('#btn-menu').setAttribute('aria-expanded', 'false');
   }
   function gotoPage(name) {
+    if (name === 'fmpa' && !(state.data && canDeclare(state.data.session))) name = 'livret';
     $$('.drawer-nav button').forEach(b => {
       if (b.dataset.page === name) b.setAttribute('aria-current', 'page');
       else b.removeAttribute('aria-current');
@@ -128,8 +132,10 @@
     $('#tab-fiches').hidden = name !== 'fiches';
     $('#tab-accueil').hidden = name !== 'accueil';
     $('#tab-annuaire').hidden = name !== 'annuaire';
+    $('#tab-fmpa').hidden = name !== 'fmpa';
     window.scrollTo(0, 0);
     if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
+    if (name === 'fmpa' && window.SMPM_FMPA) window.SMPM_FMPA.open();
     closeMenu();
   }
 
@@ -166,6 +172,7 @@
     store.del(KEY_CACHE);          // important sur un appareil partagé
     store.del(KEY_LIVRET);
     store.del(KEY_MODE);
+    if (window.SMPM_FMPA) window.SMPM_FMPA.reset();
     applyMode(false);
     state.data = null;
     state.livret = null;
@@ -490,6 +497,7 @@
     const { me, session, qualifications } = state.data;
     setIdentity(`${me.prenom} ${me.nom}`, roleLabel(session, me, qualifications));
     $('#info-secteur').textContent = me.secteur || '—';
+    $('#drawer [data-page="fmpa"]').hidden = !canDeclare(session);
 
     const form = $('#form-profil');
     const sel = form.elements.grade;
@@ -670,6 +678,9 @@
 
   window.addEventListener('online', () => { if (store.get(KEY_TOKEN)) init(); });
   window.addEventListener('offline', () => { if (!$('#view-app').hidden) { setOffline(true); lockForm($('#form-profil'), true); } });
+
+  // Accès partagé pour les rubriques chargées à part (fmpa.js)
+  window.SMPM_APP = { api, token: () => store.get(KEY_TOKEN), NetworkError, AUTH_ERRORS, logout };
 
   // ---------- démarrage ----------
   if ('serviceWorker' in navigator) {
