@@ -10,6 +10,7 @@
 
   const KEY_FORM = 'smpm_fmpa_form';
   const KEY_DRAFT = 'smpm_fmpa_draft';
+  const KEY_OUTBOX = 'smpm_fmpa_outbox';
 
   const $ = (sel, root = document) => root.querySelector(sel);
   const store = {
@@ -69,7 +70,9 @@
       const cached = store.getJSON(KEY_FORM);
       if (cached && cached.form) apply(cached);
     }
-    if (S.done) { render(); return; }
+    renderPending();
+    flush();
+    if (S.done) { showDone(); return; }
     if (!S.loaded && !S.loading) load();
     else render();
   }
@@ -654,6 +657,124 @@
     });
   }
 
+  // ---------- file d'attente des déclarations (hors ligne) ----------
+  // Chaque déclaration est d'abord écrite sur l'appareil, puis envoyée dès que le réseau le permet.
+  // L'identifiant d'envoi (sid) garantit côté serveur qu'une déclaration n'est jamais enregistrée deux fois.
+  const outbox = () => store.getJSON(KEY_OUTBOX) || [];
+  function saveOutbox(list) {
+    if (list.length) store.set(KEY_OUTBOX, JSON.stringify(list));
+    else store.del(KEY_OUTBOX);
+    renderPending();
+  }
+  function queue(entry) { saveOutbox(outbox().filter(e => e.sid !== entry.sid).concat(entry)); }
+  function patchEntry(sid, patch) { saveOutbox(outbox().map(e => (e.sid === sid ? Object.assign({}, e, patch) : e))); }
+  function removeEntry(sid) { saveOutbox(outbox().filter(e => e.sid !== sid)); }
+  // Une déclaration n'est envoyée qu'avec la session de la personne qui l'a faite
+  const mine = e => !e.owner || !S.moi.nom || e.owner === S.moi.nom;
+  const pendingList = () => outbox().filter(mine);
+
+  async function flush() {
+    if (S.flushing || !navigator.onLine || !app() || !app().token()) return;
+    if (!S.moi.nom) { const c = store.getJSON(KEY_FORM); if (c && c.moi) S.moi = c.moi; }
+    const todo = outbox().filter(e => e.status === 'pending' && mine(e));
+    if (!todo.length) return;
+    S.flushing = true;
+    S.flushNote = '';
+    renderPending();
+    if (S.done && !$('#fmpa-done').hidden) showDone();
+    let sent = 0;
+    try {
+      for (const e of todo) {
+        try {
+          await app().api('fmpa_submit', { token: app().token(), answers: e.answers, submission_id: e.sid });
+          removeEntry(e.sid);
+          sent++;
+        } catch (err) {
+          if (err instanceof app().NetworkError) break;                 // toujours pas de réseau : on réessaiera
+          if (app().AUTH_ERRORS.includes(err.message)) {                // session à renouveler : la déclaration reste en attente
+            S.flushNote = 'Reconnectez-vous pour envoyer les déclarations en attente.';
+            break;
+          }
+          patchEntry(e.sid, { status: 'error', error: err.message });   // refusée par le serveur : à reprendre
+        }
+      }
+    } finally {
+      S.flushing = false;
+    }
+    if (sent) {
+      S.lastSent = { n: sent, at: Date.now() };
+      if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.invalidate();
+    }
+    renderPending();
+    if (S.done && !$('#fmpa-done').hidden) showDone();
+  }
+
+  // Bandeau « en attente d'envoi » (page de déclaration et Mes FMPA encadrées) et pastille du menu
+  function renderPending() {
+    const list = pendingList();
+    const dot = document.querySelector('#nav-fmpa .pending-dot');
+    if (dot) dot.hidden = !list.length;
+    const burgerDot = document.querySelector('#btn-menu .pending-dot');
+    if (burgerDot) burgerDot.hidden = !list.length;
+    document.querySelectorAll('[data-fmpa-pending]').forEach(box => box.replaceChildren(...pendingNodes(list)));
+  }
+
+  function pendingNodes(list) {
+    const recent = S.lastSent && Date.now() - S.lastSent.at < 5 * 60e3;
+    if (!list.length) {
+      if (!recent) return [];
+      const n = S.lastSent.n;
+      return [el('div', { class: 'outbox outbox-ok', role: 'status' },
+        el('span', { text: `✓ ${n} déclaration${n > 1 ? 's' : ''} en attente ${n > 1 ? 'ont été envoyées' : 'a été envoyée'}.` }),
+        el('button', { type: 'button', class: 'link', 'aria-label': 'Masquer', text: '×', onclick: () => { S.lastSent = null; renderPending(); } }))];
+    }
+    const waiting = list.filter(e => e.status === 'pending');
+    const offline = !navigator.onLine;
+    const head = el('div', { class: 'outbox-head' },
+      el('strong', { text: `${list.length} déclaration${list.length > 1 ? 's' : ''} en attente d’envoi` }),
+      waiting.length ? el('button', {
+        type: 'button', class: 'pill', disabled: offline || S.flushing,
+        text: S.flushing ? 'Envoi…' : offline ? 'En attente du réseau' : 'Envoyer maintenant',
+        onclick: () => flush(),
+      }) : null);
+    const ul = el('ul', { class: 'outbox-list' }, ...list.map(e => {
+      const when = new Date(e.ts).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const li = el('li', { class: e.status === 'error' ? 'is-error' : '' },
+        el('span', { text: [e.recap || 'FMPA', e.total ? `${e.total} pers.` : ''].filter(Boolean).join(' · ') }),
+        el('small', { text: e.status === 'error' ? `Refusée : ${e.error}` : `Saisie le ${when}` }));
+      if (e.status === 'error') {
+        li.append(el('div', { class: 'outbox-actions' },
+          el('button', { type: 'button', class: 'link', text: 'Réessayer', onclick: () => { patchEntry(e.sid, { status: 'pending', error: '' }); flush(); } }),
+          el('button', { type: 'button', class: 'link', text: 'Reprendre', onclick: () => resume(e) }),
+          el('button', { type: 'button', class: 'link danger', text: 'Supprimer', onclick: () => { if (confirm('Supprimer définitivement cette déclaration non envoyée ?')) removeEntry(e.sid); } })));
+      }
+      return li;
+    }));
+    const nodes = [head, ul];
+    if (S.flushNote) nodes.push(el('p', { class: 'small', text: S.flushNote }));
+    else if (offline) nodes.push(el('p', { class: 'small', text: 'Envoi automatique dès le retour du réseau.' }));
+    return [el('div', { class: 'outbox', role: 'status' }, ...nodes)];
+  }
+
+  // Remet une déclaration refusée dans le formulaire pour la corriger
+  function resume(e) {
+    const current = S.mode === 'declare' ? S.answers : (S.decl && S.decl.answers);
+    if (current && Object.keys(current).length && store.get(KEY_DRAFT) &&
+        !confirm('Une déclaration est déjà en cours sur cet appareil. La remplacer par celle à reprendre ?')) return;
+    if (!S.def) { const c = store.getJSON(KEY_FORM); if (c && c.form) applyDef(c); }
+    removeEntry(e.sid);
+    store.set(KEY_DRAFT, JSON.stringify({ sig: S.sig, sid: e.sid, answers: e.answers, ts: e.ts }));
+    S.decl = null;
+    S.done = null;
+    S.mode = 'edit';            // force la reprise du brouillon à l'ouverture
+    app().goto('fmpa');
+  }
+
+  window.addEventListener('online', () => { renderPending(); flush(); });
+  window.addEventListener('offline', renderPending);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') flush(); });
+  setInterval(() => { if (navigator.onLine && outbox().some(e => e.status === 'pending')) flush(); }, 60e3);
+
   // ---------- validation et envoi ----------
   function clearInvalid(id) {
     const q = document.querySelector(`#fmpa-form .fmpa-q[data-q="${id}"]`);
@@ -704,10 +825,9 @@
       if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-    if (!navigator.onLine) {
-      msg.textContent = editing
-        ? 'Hors ligne : enregistrement impossible. Gardez cette page ouverte et réessayez dès que le réseau revient.'
-        : 'Hors ligne : la déclaration est enregistrée sur cet appareil. Envoyez-la dès que le réseau revient.';
+    const offline = !navigator.onLine;
+    if (offline && editing) {
+      msg.textContent = 'Hors ligne : enregistrement impossible. Gardez cette page ouverte et réessayez dès que le réseau revient.';
       msg.classList.add('error');
       return;
     }
@@ -728,7 +848,17 @@
       lines.push(`${total} personne${total > 1 ? 's' : ''} cochée${total > 1 ? 's' : ''}` +
         (Object.keys(per).length ? ' (' + Object.keys(per).map(c => `${per[c]} ${c.toLowerCase()}`).join(', ') + ')' : ''));
     }
+    if (offline) lines.push('', 'Pas de réseau : la déclaration sera gardée sur cet appareil et envoyée automatiquement dès le retour du réseau.');
     if (!confirm(lines.join('\n'))) return;
+
+    // Déclaration : passe toujours par la file d'attente de l'appareil, puis envoi immédiat si possible
+    if (!editing) {
+      const entry = { sid: S.sid, answers, recap, total, owner: S.moi.nom || '', ts: Date.now(), status: 'pending', error: '' };
+      queue(entry);
+      finishDeclaration(entry);
+      if (!offline) flush();
+      return;
+    }
 
     S.sending = true;
     const btn = $('#fmpa-send');
@@ -755,32 +885,12 @@
       }
       return;
     }
-    try {
-      const res = await app().api('fmpa_submit', { token: app().token(), answers, submission_id: S.sid });
-      S.done = { recap, total, at: res.at || new Date().toISOString() };
-      store.del(KEY_DRAFT);
-      S.answers = {};
-      S.sid = newSid();
-      S.draftAt = null;
-      if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.invalidate();
-      showDone();
-    } catch (err) {
-      if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
-      msg.textContent = err instanceof app().NetworkError
-        ? 'Réseau indisponible : la déclaration est conservée sur cet appareil, réessayez dans un instant.'
-        : err.message;
-      msg.classList.add('error');
-    } finally {
-      S.sending = false;
-      btn.disabled = false;
-      btn.textContent = 'Envoyer';
-    }
   }
 
   // Résumé lisible : date, secteur et lieu s'ils existent dans le formulaire
   function summary(answers) {
     const pick = re => {
-      const it = items().find(x => re.test(x.title) && answers[x.id] !== undefined && x.type !== 'grid');
+      const it = items().find(x => re.test(x.title) && answers[x.id] !== undefined && answers[x.id] !== null && x.type !== 'grid');
       return it ? answers[it.id] : '';
     };
     const d = pick(/^\W*date/i);
@@ -788,9 +898,26 @@
     return [date, pick(/secteur/i), pick(/^\W*lieu\b(?!.*fmpa)/i)].filter(Boolean).join(' · ');
   }
 
+  function finishDeclaration(entry) {
+    S.done = { recap: entry.recap, total: entry.total, sid: entry.sid };
+    store.del(KEY_DRAFT);
+    S.answers = {};
+    S.sid = newSid();
+    S.draftAt = null;
+    showDone();
+  }
+
   function showDone() {
     const d = S.done;
-    $('#fmpa-done-recap').textContent = [d.recap, S.grids.some(g => g.presence) ? `${d.total} personne${d.total > 1 ? 's' : ''} déclarée${d.total > 1 ? 's' : ''}` : '']
+    const waiting = outbox().some(e => e.sid === d.sid);
+    const err = outbox().find(e => e.sid === d.sid && e.status === 'error');
+    $('#fmpa-done').dataset.state = err ? 'error' : waiting ? 'queued' : 'sent';
+    $('#fmpa-done-icon').textContent = err ? '!' : waiting ? '⏳' : '✓';
+    $('#fmpa-done-title').textContent = err ? 'Déclaration non envoyée' : waiting ? (S.flushing ? 'Envoi en cours…' : 'Déclaration enregistrée sur l’appareil') : 'Déclaration envoyée';
+    $('#fmpa-done-note').textContent = err ? err.error.replace(/[.!]?\s*$/, '.') + ' Vous pouvez la reprendre ou la renvoyer depuis le bandeau ci-dessus.'
+      : waiting ? 'Pas de réseau pour l’instant : elle sera envoyée automatiquement dès son retour, même si vous fermez cette page. Rouvrez simplement l’application.'
+      : 'Elle est enregistrée dans le sheet FMPA, comme une saisie du formulaire.';
+    $('#fmpa-done-recap').textContent = [d.recap, S.grids.some(g => g.presence) ? `${d.total} personne${d.total > 1 ? 's' : ''} ${waiting || err ? 'cochée' : 'déclarée'}${d.total > 1 ? 's' : ''}` : '']
       .filter(Boolean).join(' — ');
     setState('');
     render();
@@ -804,14 +931,19 @@
     window.scrollTo(0, 0);
   }
 
-  function reset() {          // déconnexion : rien ne reste sur l'appareil
+  // Déconnexion. Volontaire : rien ne reste sur l'appareil. Session expirée : les déclarations
+  // non envoyées sont gardées et partiront après reconnexion de la même personne.
+  function reset(all) {
     store.del(KEY_FORM);
     store.del(KEY_DRAFT);
-    Object.assign(S, { def: null, sig: '', personnes: {}, moi: {}, answers: {}, sid: '', loaded: false, done: null, grids: [], mode: 'declare', rec: null, decl: null });
+    if (all === true) store.del(KEY_OUTBOX);
+    Object.assign(S, { def: null, sig: '', personnes: {}, moi: {}, answers: {}, sid: '', loaded: false, done: null, grids: [], mode: 'declare', rec: null, decl: null, lastSent: null, flushNote: '' });
+    renderPending();
   }
 
   $('#fmpa-send').addEventListener('click', submit);
   $('#fmpa-again').addEventListener('click', restart);
 
-  window.SMPM_FMPA = { open, openRecord, reset };
+  window.SMPM_FMPA = { open, openRecord, reset, flush, pending: () => pendingList().length, renderPending };
+  renderPending();
 })();
