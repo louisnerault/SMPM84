@@ -3,6 +3,7 @@
   "short_name": "SMPM 84",
   "description": "Secours en milieu périlleux et montagne – Sapeurs-pompiers de Vaucluse",
   "lang": "fr",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
