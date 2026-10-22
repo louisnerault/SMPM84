@@ -25,7 +25,7 @@
   const canSectorFmpa = session => !!session && session.role === 'chef_section';
   const FMPA_LISTS = ['fmpa-mes', 'fmpa-secteur', 'fmpa-toutes'];
   function allowedPage(name, session) {
-    if (name === 'fmpa' || name === 'fmpa-fiche' || name === 'fmpa-mes') return canDeclare(session);
+    if (name === 'fmpa' || name === 'fmpa-fiche' || name === 'fmpa-mes' || name === 'fmpa-valid') return canDeclare(session);
     if (name === 'fmpa-secteur') return canSectorFmpa(session);
     if (name === 'fmpa-toutes') return canAllFmpa(session);
     return true;
@@ -149,11 +149,13 @@
     $('#tab-annuaire').hidden = name !== 'annuaire';
     $('#tab-fmpa').hidden = !(name === 'fmpa' || name === 'fmpa-fiche');
     $('#tab-fmpa-list').hidden = !FMPA_LISTS.includes(name);
+    $('#tab-fmpa-valid').hidden = name !== 'fmpa-valid';
     if (name.startsWith('fmpa')) setFmpaGroup(true);
     window.scrollTo(0, 0);
     if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
     if (name === 'fmpa' && window.SMPM_FMPA) window.SMPM_FMPA.open();
     if (FMPA_LISTS.includes(name) && window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.open(name);
+    if (name === 'fmpa-valid' && window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.open();
     closeMenu();
   }
 
@@ -200,6 +202,7 @@
     store.del(KEY_MODE);
     if (window.SMPM_FMPA) window.SMPM_FMPA.reset(explicit === true);
     if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.reset();
+    if (window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.reset();
     applyMode(false);
     state.data = null;
     state.livret = null;
@@ -257,6 +260,8 @@
     if (!offline) loadLivret();
     // déclarations de FMPA saisies hors ligne : envoi dès que possible
     if (window.SMPM_FMPA) { window.SMPM_FMPA.renderPending(); if (!offline) window.SMPM_FMPA.flush(); }
+    // demandes de validation des thèmes en attente : compteur du menu
+    if (!offline && canDeclare(data.session) && window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.refresh();
   }
 
   // ---------- livret individuel : compteurs d'heures et formations ----------

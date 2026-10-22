@@ -486,6 +486,7 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
   display: block; width: 100%; margin-top: 6px; padding: 12px; font: inherit; color: var(--ink);
   background: var(--bg); border: 1px solid var(--line); border-radius: 8px; resize: vertical;
 }
+.cuv-motif[hidden] { display: none; }
 .fmpa-err { margin: 4px 0 0; font-size: .82rem; font-weight: 600; color: var(--danger); }
 .fmpa-err:empty { display: none; }
 .fmpa-q.invalid input, .fmpa-q.invalid select, .fmpa-q.invalid textarea, .fmpa-q.invalid .fmpa-choices { outline: 2px solid var(--danger); outline-offset: 2px; border-radius: 8px; }
@@ -664,3 +665,34 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
 .fmpa-done[data-state="queued"] .login-title { color: #b45309; }
 .fmpa-done[data-state="error"] .login-icon { background: var(--danger); }
 .fmpa-done[data-state="error"] .login-title { color: var(--danger); }
+
+/* ---------- validation des thèmes FMPA (chefs d'unité) ---------- */
+.nav-count {
+  margin-left: auto; min-width: 22px; padding: 1px 7px; border-radius: 99px;
+  background: var(--danger); color: #fff; font-size: .75rem; font-weight: 700; text-align: center; line-height: 1.5;
+}
+.nav-group-btn .nav-count { margin-left: 8px; }
+.cuv-filtres { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.cuv-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; }
+.cuv-item { padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.cuv-head { display: grid; grid-template-columns: 48px 1fr; gap: 12px; align-items: start; }
+.cuv-content { margin-top: 8px; }
+.cuv-titre { margin: 10px 0 0; font-size: .78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+.cuv-content .chips li { background: var(--primary-soft); border-color: transparent; color: var(--ink); }
+.cuv-infos { margin: 10px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: .82rem; }
+.cuv-infos dt { color: var(--muted); }
+.cuv-infos dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.cuv-motif {
+  display: block; width: 100%; margin-top: 10px; padding: 10px; font: inherit; color: var(--ink);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px; resize: vertical;
+}
+.cuv-motif[hidden] { display: none; }
+.cuv-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.cuv-actions .primary { width: auto; flex: 1; margin: 0; padding: 11px; }
+.cuv-actions .primary.cuv-danger { background: var(--danger); }
+.cuv-ko {
+  flex: 1; padding: 10px; border-radius: 8px; font-weight: 700;
+  background: transparent; color: var(--danger); border: 1.5px solid var(--danger);
+}
+.cuv-ko:disabled { opacity: .55; cursor: not-allowed; }
+.cuv-item .fmpa-msg { margin: 8px 0 0; font-size: .85rem; }

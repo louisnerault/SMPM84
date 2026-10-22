@@ -33,3 +33,17 @@ Fichiers à copier dans le projet Apps Script « Web App SMPM84 », à côté de
   - chef d'unité (IMP3 responsable) : ses FMPA pendant 24 h après la déclaration, ensuite lecture seule et renvoi vers le N+1 (colonne « CHEFS DE SECTION » de la liste du personnel).
 
   La modification réécrit seulement les cellules changées, sans renvoyer le formulaire (les traitements déclenchés à l'envoi ne sont pas relancés). Chaque modification est tracée dans l'onglet Journal.
+
+- `Validation.gs` : validation des thèmes FMPA par les chefs d'unité (rubrique FMPA > Demandes à valider).
+  1. Dans `doPost()` de `Code.gs`, ajouter :
+     ```js
+     case 'cu_list':   result = cuList_(b.token); break;
+     case 'cu_decide': result = cuDecide_(b.token, b.id, b.decision, b.motif); break;
+     ```
+  2. Exécuter une fois `testValidation()` dans l'éditeur (autorisations Sheets et envoi de mails ; le journal liste les colonnes du fichier CORE reconnues et les demandes en attente, sans rien modifier).
+  3. Redéployer en « Nouvelle version ».
+
+  L'application lit le fichier CORE (onglet « formulaire thèmes ») et applique le même traitement que le script « SMPM : validation thèmes FMPA et CORE » : validation = ligne copiée en tête de l'onglet LOGS du livret de l'agent + année en colonne D + statut « validé » ; rejet = statut « rejeté » ; dans les deux cas mail à l'agent, ligne copiée dans ARCHIVES puis retirée du CORE. Les feuilles « validation CU » de chaque chef d'unité continuent de fonctionner en parallèle.
+
+  Droits : chef d'unité = demandes qui lui sont adressées ; chef de section = + agents de son secteur ; conseiller technique et administrateur = toutes.
+
