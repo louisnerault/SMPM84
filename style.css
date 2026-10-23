@@ -1047,3 +1047,28 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
 .ann-btn { display: flex; align-items: center; justify-content: center; min-height: 44px; background: none; border: 0; color: var(--muted); text-decoration: none; }
 .ann-btn:hover, .ann-btn:active { color: var(--ink); }
 .ann-btn.is-off { opacity: .3; cursor: not-allowed; }
+
+/* ---------- Interrupteur (notifications SMS) ---------- */
+.switch-row { margin-top: 14px; }
+.switch {
+  position: relative; display: flex; align-items: center; gap: 12px;
+  margin: 0; font-weight: 600; cursor: pointer;
+}
+.switch input {
+  position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; padding: 0; border: 0;
+}
+.switch-track {
+  flex: none; position: relative; width: 48px; height: 28px; border-radius: 99px;
+  background: var(--line); transition: background .15s;
+}
+.switch-track::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px;
+  border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); transition: transform .15s;
+}
+.switch input:checked + .switch-track { background: var(--ok); }
+.switch input:checked + .switch-track::after { transform: translateX(20px); }
+.switch input:focus-visible + .switch-track { outline: 3px solid color-mix(in srgb, var(--primary) 45%, transparent); outline-offset: 2px; }
+.switch input:disabled + .switch-track { opacity: .5; }
+.switch input:disabled ~ .switch-text { opacity: .6; }
+.switch-row .muted { margin: 6px 0 0 60px; }
+@media (prefers-reduced-motion: reduce) { .switch-track, .switch-track::after { transition: none; } }
