@@ -20,13 +20,13 @@
   // Déclaration de FMPA : chef d'unité ou supérieur, et administrateurs
   const FMPA_ROLES = ['chef_unite', 'chef_section', 'ctd', 'admin'];
   const canDeclare = session => !!session && (session.is_admin === true || FMPA_ROLES.includes(session.role));
-  // Toutes les FMPA : administrateurs et conseillers techniques ; FMPA du secteur : chefs de section
-  const canAllFmpa = session => !!session && (session.is_admin === true || ['ctd', 'admin'].includes(session.role));
-  const canSectorFmpa = session => !!session && session.role === 'chef_section';
-  const FMPA_LISTS = ['fmpa-mes', 'fmpa-secteur', 'fmpa-toutes'];
+  // Toutes les FMPA : administrateurs, conseillers techniques (modification) et chefs de section
+  // (consultation, modification de leur secteur)
+  const canAllFmpa = session => !!session && (session.is_admin === true || ['ctd', 'admin', 'chef_section'].includes(session.role));
+  const canEditAllFmpa = session => !!session && (session.is_admin === true || ['ctd', 'admin'].includes(session.role));
+  const FMPA_LISTS = ['fmpa-mes', 'fmpa-toutes'];
   function allowedPage(name, session) {
     if (name === 'fmpa' || name === 'fmpa-fiche' || name === 'fmpa-mes' || name === 'fmpa-valid') return canDeclare(session);
-    if (name === 'fmpa-secteur') return canSectorFmpa(session);
     if (name === 'fmpa-toutes') return canAllFmpa(session);
     return true;
   }
@@ -535,10 +535,7 @@
     setIdentity(`${me.prenom} ${me.nom}`, roleLabel(session, me, qualifications));
     $('#info-secteur').textContent = me.secteur || '—';
     $('#nav-fmpa').hidden = !canDeclare(session);
-    $('#drawer [data-page="fmpa-secteur"]').hidden = !canSectorFmpa(session);
-    $('#drawer [data-page="fmpa-toutes"]').hidden = !canAllFmpa(session);
-    const sect = String(session.section || me.secteur || '');
-    $('#drawer [data-page="fmpa-secteur"]').textContent = sect ? `FMPA du secteur ${SECTIONS[sect.toUpperCase()] || sect}` : 'FMPA du secteur';
+    $('#nav-fmpa-all').hidden = !canAllFmpa(session);
 
     const form = $('#form-profil');
     const sel = form.elements.grade;
@@ -734,6 +731,7 @@
     api, token: () => store.get(KEY_TOKEN), NetworkError, AUTH_ERRORS, logout,
     goto: name => gotoPage(name),
     section: () => (state.data ? String(state.data.session.section || state.data.me.secteur || '') : ''),
+    canEditAll: () => !!state.data && canEditAllFmpa(state.data.session),
   };
 
   // ---------- démarrage ----------
