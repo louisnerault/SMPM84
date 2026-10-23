@@ -113,8 +113,9 @@
     d.themes.forEach(t => body.append(
       el('p', { class: 'cuv-titre', text: t.titre }),
       el('ul', { class: 'chips' }, t.items.map(x => el('li', { text: x })))));
-    if (d.infos.length) body.append(el('dl', { class: 'cuv-infos' },
-      d.infos.flatMap(x => [el('dt', { text: x.titre }), el('dd', { text: x.valeur })])));
+    const infos = d.infos.filter(x => !MASQUES.some(r => r.test(cle(x.titre))));
+    if (infos.length) body.append(el('dl', { class: 'cuv-infos' },
+      infos.flatMap(x => [el('dt', { text: libelle(x.titre) }), el('dd', null, valeurInfo(x))])));
 
     const msg = el('p', { class: 'fmpa-msg', role: 'alert' });
     const motif = el('textarea', { class: 'cuv-motif', rows: '2', maxlength: '500', placeholder: 'Motif du rejet (facultatif, transmis à l’agent)', hidden: true });
@@ -144,6 +145,37 @@
 
     li.append(head, body, motif, el('div', { class: 'cuv-actions' }, bRejeter, bAnnuler, bValider), msg);
     return li;
+  }
+
+  // Questions du formulaire « thèmes » non affichées au chef d'unité
+  const MASQUES = [/QUEL EST VOTRE NIVEAU/, /SPECIALITE CONCERNEE/, /APPRECIATION/];
+  const cle = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+
+  /** Libellés courts pour les questions les plus longues. */
+  function libelle(titre) {
+    const t = cle(titre);
+    if (/AISANCE/.test(t)) return 'Aisance';
+    if (/CORDE PARCOURUE/.test(t)) return 'Corde parcourue';
+    return titre;
+  }
+
+  /** Aisance : échelle visuelle de 1 à 5 ; corde parcourue : en mètres ; sinon texte brut. */
+  function valeurInfo(x) {
+    const t = cle(x.titre), v = String(x.valeur).trim();
+    if (/AISANCE/.test(t)) {
+      const m = /[1-5]/.exec(v);
+      if (m) {
+        const n = Number(m[0]);
+        return el('span', { class: 'cuv-scale', role: 'img', 'aria-label': `${n} sur 5` },
+          [1, 2, 3, 4, 5].map(i => el('span', { class: 'cuv-step' + (i <= n ? ' on' : ''), text: String(i) })),
+          el('span', { class: 'cuv-scale-n', text: `${n}/5` }));
+      }
+    }
+    if (/CORDE PARCOURUE/.test(t)) {
+      const n = Number(v.replace(',', '.').replace(/\s*m(etres?|ètres?)?$/i, ''));
+      if (!isNaN(n)) return document.createTextNode(new Intl.NumberFormat('fr-FR').format(n) + ' m');
+    }
+    return document.createTextNode(v);
   }
 
   const fr = iso => (iso ? iso.split('-').reverse().join('/') : '');
