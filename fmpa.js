@@ -235,6 +235,7 @@
       if (it.choices && it.choices.some(c => c.go !== null)) updateSections();
       clearInvalid(it.id);
       updateCounter();
+      updateNav();
     }
 
     // ---------- sections visibles (navigation du formulaire) ----------
@@ -263,6 +264,221 @@
         sec.hidden = !visible.includes(Number(sec.dataset.sec));
       });
       updateCounter();
+      updateNav(visible);
+    }
+
+    // ---------- liens rapides vers les rubriques (en tête du formulaire) ----------
+    // Une pastille par rubrique visible ; elle passe au vert quand la rubrique est complète
+    // (toutes les questions obligatoires remplies, ou au moins une réponse s'il n'y en a pas).
+    let spy = null;
+    const answerable = it => it.type !== 'header';
+    function filled(it) {
+      if (it.type === 'grid' || it.type === 'checkgrid') {
+        const g = gridValue(it);
+        return it.required ? !g.some(isEmpty) : g.some(x => !isEmpty(x));
+      }
+      const v = S.answers[it.id];
+      if (isEmpty(v)) return false;
+      if (C.gps && isGpsItem(it)) return !!parseLatLng(v);
+      if (it.type === 'duration') return /^\d{1,2}:\d{2}$/.test(String(v).trim());
+      return true;
+    }
+    function secStatus(i) {
+      const its = S.def.sections[i].items.filter(answerable);
+      if (!its.length) return null;
+      const req = its.filter(it => it.required);
+      const any = its.some(filled);
+      if (req.length ? req.every(filled) : any) return 'done';
+      return any ? 'partial' : 'empty';
+    }
+    const secLabel = (sec, i) => (sec.title || '').trim() || `Rubrique ${i + 1}`;
+
+    function renderNav() {
+      const nav = el('nav', { class: 'secnav', 'aria-label': 'Rubriques du formulaire' });
+      const ul = el('ul', { class: 'secnav-list' });
+      S.def.sections.forEach((sec, i) => {
+        if (!sec.items.some(answerable)) return;
+        const label = secLabel(sec, i);
+        ul.append(el('li', { 'data-nav': String(i) }, el('a', {
+          href: '#' + C.p + '-sec-' + i, title: label,
+          onclick: e => {
+            e.preventDefault();
+            const target = byId('sec-' + i);
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          },
+        }, el('span', { class: 'secnav-n', 'aria-hidden': 'true' }), el('span', { class: 'secnav-t', text: label }),
+          el('span', { class: 'sr-only secnav-s' }))));
+      });
+      nav.append(ul);
+      return ul.children.length > 1 ? nav : null;
+    }
+
+    function updateNav(visible) {
+      const nav = document.querySelector(FORM_SEL + ' .secnav');
+      if (!nav || !S.def) return;
+      visible = visible || path();
+      let n = 0;
+      nav.querySelectorAll('li[data-nav]').forEach(li => {
+        const i = Number(li.dataset.nav);
+        li.hidden = !visible.includes(i);
+        if (li.hidden) return;
+        n += 1;
+        const st = secStatus(i);
+        const bad = !!document.querySelector(`${FORM_SEL} .fmpa-sec[data-sec="${i}"] .fmpa-q.invalid`);
+        li.dataset.state = bad ? 'bad' : st || 'empty';
+        li.querySelector('.secnav-n').textContent = st === 'done' && !bad ? '✓' : String(n);
+        li.querySelector('.secnav-s').textContent = bad ? ' (à corriger)' : st === 'done' ? ' (complète)' : st === 'partial' ? ' (en cours)' : '';
+      });
+    }
+
+    // Rubrique affichée à l'écran : pastille soulignée et ramenée dans la barre
+    function watchSections() {
+      if (spy) { spy.disconnect(); spy = null; }
+      const nav = document.querySelector(FORM_SEL + ' .secnav');
+      if (!nav || !('IntersectionObserver' in window)) return;
+      const seen = new Map();
+      spy = new IntersectionObserver(entries => {
+        entries.forEach(e => seen.set(e.target, e.isIntersecting ? e.boundingClientRect.top : null));
+        let best = null, top = Infinity;
+        seen.forEach((t, sec) => { if (t !== null && !sec.hidden && t < top) { top = t; best = sec; } });
+        if (!best) return;
+        nav.querySelectorAll('li[data-nav]').forEach(li => {
+          const on = li.dataset.nav === best.dataset.sec;
+          const a = li.querySelector('a');
+          if (on) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
+          if (on) {
+            const list = nav.querySelector('.secnav-list');
+            const l = li.offsetLeft - list.offsetLeft, r = l + li.offsetWidth;
+            if (l < list.scrollLeft || r > list.scrollLeft + list.clientWidth) list.scrollTo({ left: l - 16, behavior: 'smooth' });
+          }
+        });
+      }, { rootMargin: '-70px 0px -55% 0px' });
+      document.querySelectorAll(FORM_SEL + ' .fmpa-sec').forEach(sec => spy.observe(sec));
+    }
+
+    // ---------- indice de risque (FMPA) ----------
+    // Même calcul que l'onglet FMPA_test du sheet FMPA (colonne SCORE, cellule I17) :
+    //   - météo, lieu, caractéristiques : chiffre en tête de la réponse (0 à 4, sinon 5) ;
+    //   - effectif : 0 si « ≤ 7 spécialistes », sinon 1 ; communication CODIS : nombre en tête ;
+    //   - reconnaissance, SOIEC CNF, équipements, communication sur site : 1 si NON ;
+    //   - danger particulier : 1 sauf NON ; autorisation du site : 0 si OUI, sinon 1 ;
+    //   - temps de marche d'approche : chiffre en tête / 5.
+    // Niveau : ≤ 5 vert (jaune si manœuvre de nuit), ≤ 10 jaune, ≤ 15 orange, au-delà rouge.
+    const lead = v => { const c = String(v || '').trim().charAt(0); return /[0-4]/.test(c) ? Number(c) : 5; };
+    const leadNum = v => { const n = parseFloat(String(v || '').split(' - ')[0].replace(',', '.')); return isNaN(n) ? 0 : n; };
+    const isNon = v => fold(v) === 'non';
+    const RISK_RULES = [
+      { k: 'meteo', re: /meteo/, pts: lead },
+      { k: 'lieu', re: /lieu de la fmpa/, pts: lead },
+      { k: 'carac', re: /caracteristique/, pts: lead },
+      { k: 'effectif', re: /effectif/, pts: v => (/(≤|<=)\s*7/.test(String(v || '')) ? 0 : 1) },
+      { k: 'codis', re: /codis/, pts: leadNum },
+      { k: 'reco', re: /reconnaissance/, pts: v => (isNon(v) ? 1 : 0) },
+      { k: 'danger', re: /danger/, pts: v => (isNon(v) ? 0 : 1) },
+      { k: 'soiec', re: /soiec.*cnf|cnf.*soiec/, pts: v => (isNon(v) ? 1 : 0) },
+      { k: 'equip', re: /equipement/, pts: v => (isNon(v) ? 1 : 0) },
+      { k: 'comsite', re: /communication sur site/, pts: v => (isNon(v) ? 1 : 0) },
+      { k: 'autor', re: /autorisation/, pts: v => (fold(v) === 'oui' ? 0 : 1) },
+      { k: 'marche', re: /marche d.?approche|temps de marche/, pts: v => lead(v) / 5 },
+    ];
+    const RISK_LEVELS = [
+      null,
+      { color: 'VERT', label: 'Risque faible', msg: 'Bonne manœuvre.' },
+      { color: 'JAUNE', label: 'Risque modéré', msg: 'Restez vigilants sur les points relevés.' },
+      { color: 'ORANGE', label: 'Risque élevé', msg: 'Renforcez la sécurité avant de débuter.' },
+      { color: 'ROUGE', label: 'Risque très élevé', msg: 'NE DÉBUTEZ PAS LA MANŒUVRE, contactez votre chef de secteur.' },
+    ];
+
+    function riskOf(visibleItems) {
+      const pool = visibleItems.filter(it => it.type !== 'header' && it.type !== 'grid' && it.type !== 'checkgrid');
+      const used = new Set();
+      const find = re => pool.find(it => !used.has(it.id) && re.test(fold(it.title)));
+      const lines = [];
+      RISK_RULES.forEach(r => {
+        const it = find(r.re);
+        if (!it) return;
+        used.add(it.id);
+        const v = S.answers[it.id];
+        lines.push({ title: it.title, answer: Array.isArray(v) ? v.join(', ') : String(v || '—'), pts: r.pts(v) });
+      });
+      if (lines.length < 4) return null;                    // analyse de risque absente ou sautée
+      const indice = Math.round(lines.reduce((s, l) => s + l.pts, 0) * 10) / 10;
+      const nuitIt = find(/nuit/);
+      const nuit = nuitIt && fold(S.answers[nuitIt.id]) === 'oui';
+      const reposIt = find(/repos de securite/);
+      const reposV = reposIt ? fold(S.answers[reposIt.id]) : '';
+      let level = indice <= 5 ? 1 : indice <= 10 ? 2 : indice <= 15 ? 3 : 4;
+      const night = level === 1 && nuit;
+      if (night) level = 2;
+      return {
+        indice, level, lines, night,
+        repos: reposIt && reposV && reposV !== 'ok' && reposV !== 'oui',
+      };
+    }
+
+    const fmtPts = n => n.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+    function riskNode(r) {
+      if (!r) return el('p', { class: 'risk-none muted small', text: 'Analyse de risque non renseignée : indice non calculé.' });
+      const L = RISK_LEVELS[r.level];
+      const scale = el('ol', { class: 'risk-scale', 'aria-hidden': 'true' },
+        ...['0–5', '6–10', '11–15', '> 15'].map((t, n) => el('li', { class: 'lv' + (n + 1) + (n + 1 === r.level ? ' on' : ''), text: t })));
+      const notes = [];
+      if (r.night) notes.push('Manœuvre de nuit : niveau relevé d’un cran.');
+      if (r.repos) notes.push('Des spécialistes sont peut-être en repos de sécurité.');
+      const table = el('table', { class: 'risk-table' },
+        el('tbody', {}, ...r.lines.map(l => el('tr', { class: l.pts ? 'pos' : '' },
+          el('th', { scope: 'row', text: l.title }), el('td', { text: l.answer }), el('td', { class: 'pts', text: fmtPts(l.pts) })))),
+        el('tfoot', {}, el('tr', {}, el('th', { scope: 'row', colspan: '2', text: 'Indice' }), el('td', { class: 'pts', text: fmtPts(r.indice) }))));
+      return el('div', { class: 'risk lv' + r.level, role: 'group', 'aria-label': `Indice de risque : ${L.color}` },
+        el('div', { class: 'risk-head' },
+          el('span', { class: 'risk-badge', text: L.color }),
+          el('div', { class: 'risk-title' },
+            el('strong', { text: L.label }),
+            el('span', { text: `Indice de risque : ${fmtPts(r.indice)}` }))),
+        scale,
+        el('p', { class: 'risk-msg', text: L.msg }),
+        ...notes.map(t => el('p', { class: 'risk-note', text: '⚠ ' + t })),
+        el('details', { class: 'risk-detail' }, el('summary', { text: 'Détail du calcul' }), table));
+    }
+
+    // ---------- fenêtre de confirmation dans la page ----------
+    function askConfirm({ title, nodes, ok, okDanger }) {
+      return new Promise(resolve => {
+        const prev = document.activeElement;
+        const titleId = C.p + '-mdl-title';
+        const btnNo = el('button', { type: 'button', class: 'mdl-cancel', text: 'Revenir au formulaire' });
+        const btnOk = el('button', { type: 'button', class: 'primary mdl-ok' + (okDanger ? ' danger' : ''), text: ok });
+        const box = el('div', { class: 'mdl', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId, tabindex: '-1' },
+          el('h2', { id: titleId, class: 'mdl-title', text: title }),
+          el('div', { class: 'mdl-body' }, ...nodes),
+          el('div', { class: 'mdl-actions' }, btnNo, btnOk));
+        const scrim = el('div', { class: 'mdl-scrim' }, box);
+        const overflow = document.body.style.overflow;
+        function close(v) {
+          document.removeEventListener('keydown', onKey, true);
+          scrim.remove();
+          document.body.style.overflow = overflow;
+          if (prev && prev.focus) prev.focus({ preventScroll: true });
+          resolve(v);
+        }
+        function onKey(e) {
+          if (e.key === 'Escape') { e.preventDefault(); close(false); }
+          else if (e.key === 'Tab') {
+            const f = Array.from(box.querySelectorAll('button, summary, [href]')).filter(n => !n.disabled && n.offsetParent);
+            if (!f.length) return;
+            const first = f[0], last = f[f.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+          }
+        }
+        btnNo.addEventListener('click', () => close(false));
+        btnOk.addEventListener('click', () => close(true));
+        scrim.addEventListener('click', e => { if (e.target === scrim) close(false); });
+        document.addEventListener('keydown', onKey, true);
+        document.body.append(scrim);
+        document.body.style.overflow = 'hidden';
+        box.focus();
+      });
     }
 
     // ---------- rendu ----------
@@ -343,13 +559,14 @@
       if (S.mode === 'declare' && S.def.description) head.push(el('p', { class: 'muted small fmpa-desc', text: S.def.description }));
 
       const secs = S.def.sections.map((sec, i) => {
-        const box = el('section', { class: 'fmpa-sec', 'data-sec': String(i) });
+        const box = el('section', { class: 'fmpa-sec', 'data-sec': String(i), id: C.p + '-sec-' + i });
         if (sec.title) box.append(el('h2', { class: 'section-title', text: sec.title }));
         if (sec.help) box.append(el('p', { class: 'muted small', text: sec.help }));
         sec.items.forEach(it => box.append(renderItem(it)));
         return box;
       });
-      root.replaceChildren(...head, ...secs);
+      const nav = renderNav();
+      root.replaceChildren(...(nav ? [nav] : []), ...head, ...secs);
 
       // Lecture seule : réponses figées, seules la recherche et les filtres de la grille restent actifs
       if (S.mode === 'view') {
@@ -362,6 +579,7 @@
       send.textContent = S.mode === 'edit' ? 'Enregistrer' : 'Envoyer';
       byId('bar').hidden = false;
       updateSections();
+      watchSections();
     }
 
     function field(it, ...body) {
@@ -1047,11 +1265,12 @@
         const q = document.querySelector(`${FORM_SEL} .fmpa-q[data-q="${it.id}"]`);
         if (q) { q.classList.add('invalid'); $('.fmpa-err', q).textContent = msg; }
       });
+      updateNav();
       return errors;
     }
 
     async function submit() {
-      if (S.sending || !S.def || S.mode === 'view') return;
+      if (S.sending || S.asking || !S.def || S.mode === 'view') return;
       const editing = S.mode === 'edit';
       const msg = byId('msg');
       msg.textContent = '';
@@ -1085,7 +1304,7 @@
 
       const { total, per } = counts();
       const recap = summary(answers);
-      const lines = [editing ? C.rec.confirm : C.txt.confirm, ''];
+      const lines = [];
       if (recap) lines.push(recap);
       const gpsIt = C.gps ? items().find(isGpsItem) : null;
       if (gpsIt && answers[gpsIt.id]) lines.push('GPS : ' + answers[gpsIt.id]);
@@ -1093,8 +1312,21 @@
         lines.push(`${total} personne${total > 1 ? 's' : ''} cochée${total > 1 ? 's' : ''}` +
           (Object.keys(per).length ? ' (' + Object.keys(per).map(c => `${per[c]} ${c.toLowerCase()}`).join(', ') + ')' : ''));
       }
-      if (offline) lines.push('', 'Pas de réseau : la déclaration sera gardée sur cet appareil et envoyée automatiquement dès le retour du réseau.');
-      if (!confirm(lines.join('\n'))) return;
+      // Fenêtre de validation : indice de risque (FMPA), récapitulatif, puis envoi
+      const risk = C.risk ? riskOf(visibleItems) : null;
+      const nodes = [];
+      if (C.risk) nodes.push(riskNode(risk));
+      if (lines.length) nodes.push(el('ul', { class: 'mdl-recap' }, ...lines.map(t => el('li', { text: t }))));
+      if (offline) nodes.push(el('p', { class: 'mdl-offline', text: 'Pas de réseau : la déclaration sera gardée sur cet appareil et envoyée automatiquement dès le retour du réseau.' }));
+      const red = risk && risk.level === 4;
+      S.asking = true;
+      const ok = await askConfirm({
+        title: editing ? C.rec.confirm : C.txt.confirm,
+        nodes,
+        ok: editing ? 'Enregistrer' : red ? 'Envoyer malgré tout' : 'Envoyer',
+        okDanger: red,
+      }).finally(() => { S.asking = false; });
+      if (!ok) return;
 
       // Déclaration : passe toujours par la file d'attente de l'appareil, puis envoi immédiat si possible
       if (!editing) {
@@ -1250,7 +1482,7 @@
   }
 
   window.SMPM_FMPA = createDeclarer({
-    p: 'fmpa', page: 'fmpa', navDot: '#nav-fmpa .pending-dot',
+    p: 'fmpa', page: 'fmpa', navDot: '#nav-fmpa .pending-dot', risk: true,
     keys: { form: 'smpm_fmpa_form', draft: 'smpm_fmpa_draft', outbox: 'smpm_fmpa_outbox' },
     api: { form: 'fmpa_form', submit: 'fmpa_submit', get: 'fmpa_get', update: 'fmpa_update' },
     rec: {
