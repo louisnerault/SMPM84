@@ -87,6 +87,7 @@
     views.forEach(v => { $('#view-' + v).hidden = v !== name; });
     $('#btn-logout').hidden = name !== 'app';
     $('#btn-menu').hidden = name !== 'app';
+    $('#btn-sync').hidden = name !== 'app';
     // Le nom ne mène à « Mes informations » qu'une fois connecté
     $('#btn-identity').disabled = name !== 'app';
     $('#btn-identity').title = name === 'app' ? 'Mes informations' : '';
@@ -618,6 +619,7 @@
   $('#btn-menu').addEventListener('click', openMenu);
   $('#btn-identity').addEventListener('click', () => gotoPage('infos'));
   $('#btn-intervention').addEventListener('click', toggleMode);
+  $('#btn-sync').addEventListener('click', syncAll);
   document.addEventListener('click', e => {
     const go = e.target.closest('[data-go]');
     if (go && !go.disabled) gotoPage(go.dataset.go);
@@ -733,6 +735,29 @@
     section: () => (state.data ? String(state.data.session.section || state.data.me.secteur || '') : ''),
     canEditAll: () => !!state.data && canEditAllFmpa(state.data.session),
   };
+
+  // ---------- synchronisation manuelle (icône du bandeau) ----------
+  // Envoie les FMPA en attente, recharge le livret et met à jour les fiches techniques.
+  let syncBusy = false;
+  function setSyncBusy(on) {
+    syncBusy = on;
+    document.body.classList.toggle('fiches-syncing', on);
+    $('#btn-sync').disabled = on || !navigator.onLine;
+  }
+  async function syncAll() {
+    if (syncBusy || !navigator.onLine || !store.get(KEY_TOKEN)) return;
+    setSyncBusy(true);
+    try {
+      if (window.SMPM_FMPA) await window.SMPM_FMPA.flush();
+      await loadLivret();
+      if (window.SMPM_FICHES) await window.SMPM_FICHES.sync();
+    } finally {
+      setSyncBusy(false);
+      if (window.SMPM_FICHES) window.SMPM_FICHES.render();
+    }
+  }
+  window.addEventListener('online', () => setSyncBusy(syncBusy));
+  window.addEventListener('offline', () => setSyncBusy(syncBusy));
 
   // ---------- démarrage ----------
   if ('serviceWorker' in navigator) {

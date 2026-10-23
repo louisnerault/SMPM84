@@ -220,6 +220,9 @@ footer img { height: 54px; width: auto; max-width: 70%; object-fit: contain; bor
 }
 .status-net, .status-sync { display: flex; align-items: center; gap: 5px; max-width: 100%; white-space: nowrap; }
 .status-sync span { overflow: hidden; text-overflow: ellipsis; }
+#btn-sync { background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; }
+#btn-sync:disabled { opacity: .5; cursor: default; }
+#btn-sync[hidden] { display: none; }
 .status svg { flex: none; }
 .ico-offline { display: none; }
 body.is-offline .ico-online { display: none; }
