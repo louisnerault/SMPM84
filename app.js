@@ -63,20 +63,32 @@
   // ---------- API ----------
   class NetworkError extends Error {}
 
+  // Délai maximal d'une requête : sur un réseau très lent, on bascule sur les données
+  // de l'appareil au lieu d'attendre indéfiniment. Les envois (déclarations, décisions)
+  // ont un délai plus long : ils portent un identifiant qui évite les doublons au renvoi.
+  const API_TIMEOUT = 20000;
+  const API_TIMEOUT_LONG = 60000;
+  const LONG_ACTIONS = /(_submit|_update|_decide|^update_me$|^login$|^verify_code$|^request_code$)/;
+
   async function api(action, payload = {}) {
     let res;
+    const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), LONG_ACTIONS.test(action) ? API_TIMEOUT_LONG : API_TIMEOUT) : null;
     try {
       // text/plain : évite la requête préliminaire CORS, non gérée par Apps Script
       res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action, ...payload }),
+        signal: ctrl ? ctrl.signal : undefined,
       });
     } catch (e) {
-      throw new NetworkError('Réseau indisponible');
+      clearTimeout(timer);
+      throw new NetworkError(e && e.name === 'AbortError' ? 'Réseau trop lent' : 'Réseau indisponible');
     }
     let data;
     try { data = await res.json(); } catch (e) { throw new NetworkError('Réponse inattendue du serveur'); }
+    finally { clearTimeout(timer); }
     if (!data.ok) throw new Error(data.error || 'Erreur');
     return data;
   }
@@ -282,18 +294,50 @@
       if (cached) return enterApp(cached.data, cached.options, true);
       return show('login');
     }
+    // Démarrage immédiat sur les données de l'appareil : le profil est rafraîchi en arrière-plan
+    if (cached && cached.data) {
+      enterApp(cached.data, cached.options, false);
+      return refreshProfile(token, cached);
+    }
     try {
-      const data = await api('me', { token });
-      let options = (cached && cached.options) || null;
-      try { options = (await api('options', { token })); } catch (e) { /* on garde l'ancien */ }
+      const [data, options] = await fetchProfile(token, null);
       store.set(KEY_CACHE, JSON.stringify({ data, options }));
       enterApp(data, options, false);
     } catch (e) {
-      if (e instanceof NetworkError && cached) return enterApp(cached.data, cached.options, true);
       if (e instanceof NetworkError) { prefillEmail(); return show('login'); }
       if (AUTH_ERRORS.includes(e.message)) { logout(); return; }
       prefillEmail();
       show('login');
+    }
+  }
+
+  // Profil et listes de choix demandés en parallèle (et non plus l'un après l'autre)
+  async function fetchProfile(token, oldOptions) {
+    const pOptions = api('options', { token }).catch(() => oldOptions);
+    const data = await api('me', { token });
+    return [data, await pOptions];
+  }
+
+  // Rafraîchissement silencieux après un démarrage sur le cache
+  async function refreshProfile(token, cached) {
+    document.body.classList.add('profile-syncing');
+    try {
+      const [data, options] = await fetchProfile(token, cached.options || null);
+      if (store.get(KEY_TOKEN) !== token) return;           // déconnecté entre-temps
+      store.set(KEY_CACHE, JSON.stringify({ data, options }));
+      state.data = data;
+      state.options = options;
+      setOffline(false);
+      const form = $('#form-profil');
+      // ne pas écraser une saisie en cours dans « Mes informations »
+      if (!(form && form.contains(document.activeElement))) renderApp();
+      if (window.SMPM_CARTE) window.SMPM_CARTE.setAllowed(canDeclare(data.session));
+      if (state.page && !allowedPage(state.page, data.session)) gotoPage(isIntervention() ? 'accueil' : 'livret');
+    } catch (e) {
+      if (AUTH_ERRORS.includes(e.message)) { logout(); return; }
+      if (e instanceof NetworkError) setOffline(true);
+    } finally {
+      document.body.classList.remove('profile-syncing');
     }
   }
 
