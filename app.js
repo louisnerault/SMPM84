@@ -19,14 +19,18 @@
   const SECTIONS = { NORD: 'Nord', SUD: 'Sud', CENTRE: 'Centre', NEIGE: 'Neige', ISS: 'ISS', SSSM: 'SSSM' };
 
   // Liste complète des grades proposés dans « Mes informations » (ordre hiérarchique).
-  // Les grades du service de santé et « Exp » sont gardés tels que dans la liste du personnel.
+  // « Exp » est gardé tel que dans la liste du personnel (sans intitulé).
   const GRADES_ALL = [
     ['Sap', 'Sapeur'], ['Cpl', 'Caporal'], ['Cch', 'Caporal-chef'],
     ['Sgt', 'Sergent'], ['Sch', 'Sergent-chef'],
     ['Adj', 'Adjudant'], ['Adc', 'Adjudant-chef'],
     ['Ltn', 'Lieutenant'], ['Cne', 'Capitaine'], ['Cdt', 'Commandant'],
     ['Lcl', 'Lieutenant-colonel'], ['Col', 'Colonel'],
-    ['ISL', ''], ['ILT', ''], ['MCN', ''], ['Exp', ''],
+    // Service de santé (SSSM)
+    ['ISL', 'Infirmier'], ['ILT', 'Infirmier principal'], ['ICN', 'Infirmier chef'],
+    ['MCN', 'Médecin capitaine'], ['MCDT', 'Médecin commandant'],
+    ['MLCL', 'Médecin lieutenant-colonel'], ['MCOL', 'Médecin colonel'],
+    ['Exp', ''],
   ];
   // Fusionne la liste complète, celle du serveur et le grade actuel (aucun grade n'est perdu).
   function gradeChoices(serverGrades, current) {
