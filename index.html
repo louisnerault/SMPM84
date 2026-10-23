@@ -368,6 +368,17 @@
       <h2 class="section-title">Qualifications</h2>
       <ul id="list-qualifs" class="qualifs"></ul>
       <p class="muted small">Ces informations sont validées par les responsables de la spécialité. En cas d'erreur, contactez votre chef de section.</p>
+      <section id="carte-card" class="carte-card" hidden>
+        <h2 class="section-title">Carte hors ligne</h2>
+        <p class="muted small">Photo aérienne IGN des zones de relief du Vaucluse (Ventoux et Dentelles, Monts de Vaucluse, Luberon), zoom 15. Une fois téléchargée, la carte de « Pointer sur la carte » reste utilisable sans réseau.</p>
+        <p id="carte-status" class="small" role="status"></p>
+        <p id="carte-note" class="error small" role="alert"></p>
+        <div class="carte-actions">
+          <button type="button" id="btn-carte" class="primary">Télécharger la carte</button>
+          <button type="button" id="btn-carte-stop" hidden>Arrêter</button>
+          <button type="button" id="btn-carte-del" hidden>Supprimer de l'appareil</button>
+        </div>
+      </section>
     </div>
 
     <div id="tab-fiches" hidden>
@@ -389,6 +400,7 @@
 <script src="intervention-list.js"></script>
 <script src="fmpa-valid.js"></script>
 <script src="livret-remplir.js"></script>
+<script src="carte-hors-ligne.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
