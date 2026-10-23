@@ -157,6 +157,7 @@
     if (name.startsWith('livret')) setLivretGroup(true);
     window.scrollTo(0, 0);
     if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
+    if (name === 'livret-remplir' && window.SMPM_THEMES) window.SMPM_THEMES.open();
     if (name === 'fmpa' && window.SMPM_FMPA) window.SMPM_FMPA.open();
     if (FMPA_LISTS.includes(name) && window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.open(name);
     if (name === 'fmpa-valid' && window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.open();
@@ -213,6 +214,7 @@
     if (window.SMPM_FMPA) window.SMPM_FMPA.reset(explicit === true);
     if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.reset();
     if (window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.reset();
+    if (window.SMPM_THEMES) window.SMPM_THEMES.reset(explicit === true);
     applyMode(false);
     state.data = null;
     state.livret = null;
@@ -270,6 +272,8 @@
     if (!offline) loadLivret();
     // déclarations de FMPA saisies hors ligne : envoi dès que possible
     if (window.SMPM_FMPA) { window.SMPM_FMPA.renderPending(); if (!offline) window.SMPM_FMPA.flush(); }
+    // thèmes saisis hors ligne (Remplir mon livret) : envoi dès que possible
+    if (!offline && window.SMPM_THEMES) window.SMPM_THEMES.flush();
     // demandes de validation des thèmes en attente : compteur du menu
     if (!offline && canDeclare(data.session) && window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.refresh();
   }
@@ -761,6 +765,7 @@
     setSyncBusy(true);
     try {
       if (window.SMPM_FMPA) await window.SMPM_FMPA.flush();
+      if (window.SMPM_THEMES) await window.SMPM_THEMES.flush();
       await loadLivret();
       if (window.SMPM_FICHES) await window.SMPM_FICHES.sync();
     } finally {
