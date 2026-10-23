@@ -709,3 +709,32 @@ function testFmpaForm() {
   });
   Logger.log(lignes.join('\n'));
 }
+
+// ============================ Correction de l'indice de risque ============================
+
+/**
+ * À exécuter UNE FOIS depuis l'éditeur Apps Script (aucun redéploiement nécessaire).
+ * Corrige l'onglet « FMPA_test » du sheet FMPA, qui calcule l'indice de risque du compte rendu
+ * PDF et du SMS envoyé au chef d'unité, pour qu'il soit identique à celui affiché dans l'application :
+ *   - H11 (SOIEC CNF réalisé ?) lisait la colonne 16 (Reconnaissance du site) au lieu de la 18 ;
+ *   - I17 (somme des points) s'arrêtait à I15 et oubliait « Autres difficultés » (I16).
+ * Sans effet si les formules sont déjà corrigées ; le journal indique ce qui a été modifié.
+ */
+function corrigerIndiceRisque() {
+  const sh = SpreadsheetApp.openById(FMPA.SHEET_ID).getSheetByName('FMPA_test');
+  if (!sh) throw new Error('Onglet « FMPA_test » introuvable dans le sheet FMPA');
+  const lignes = [];
+  const corriger = (cell, attendue, ancienne) => {
+    const r = sh.getRange(cell);
+    const f = r.getFormula().replace(/\s/g, '').toUpperCase();
+    if (f === attendue.replace(/\s/g, '').toUpperCase()) { lignes.push(cell + ' déjà correcte : ' + attendue); return; }
+    if (!ancienne.test(f)) { lignes.push(cell + ' NON MODIFIÉE (formule inattendue : ' + r.getFormula() + ')'); return; }
+    const avant = r.getFormula();
+    r.setFormula(attendue);
+    lignes.push(cell + ' corrigée : ' + attendue + ' (avant : ' + avant + ')');
+  };
+  corriger('H11', '=VLOOKUP($A$1,test_fmpa!$1:$1298,18,FALSE)', /^=VLOOKUP\(\$A\$1,TEST_FMPA!\$1:\$\d+,16,FALSE\)$/);
+  corriger('I17', '=SUM(I4:I16)', /^=SUM\(I4:I15\)$/);
+  SpreadsheetApp.flush();
+  Logger.log(lignes.join('\n'));
+}

@@ -27,6 +27,8 @@ Fichiers à copier dans le projet Apps Script « Web App SMPM84 », à côté de
 
   Déclaration : la réponse est soumise au Google Form « Formulaire FMPA », qui alimente le sheet FMPA comme une saisie classique.
 
+  Indice de risque : l'application l'affiche dans la fenêtre de validation, avec le même calcul que l'onglet `FMPA_test` du sheet FMPA (compte rendu PDF, SMS au chef d'unité). Exécuter une fois `corrigerIndiceRisque()` dans l'éditeur pour corriger deux formules de cet onglet : `H11` (SOIEC CNF) lisait la colonne Reconnaissance du site, et `I17` ne comptait pas « Autres difficultés » (`SUM(I4:I15)` → `SUM(I4:I16)`).
+
   Droits de modification d'une FMPA enregistrée (ligne de l'onglet `test_fmpa`) :
   - administrateur et conseiller technique : toutes les FMPA (menu « Toutes les FMPA ») ;
   - chef de section : les FMPA de son secteur (menu « Toutes les FMPA », où il consulte aussi les autres secteurs en lecture seule) ;
