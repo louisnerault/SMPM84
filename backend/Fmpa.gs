@@ -110,8 +110,9 @@ function personnesFmpa_(pt) {
  * { title, description, sections: [ { title, help, next, items: [ ... ] } ] }
  * next (fin de section) : 'next' | 'submit' | index de section.
  */
-function lireFormulaireFmpa_() {
-  const form = FormApp.openById(FMPA.FORM_ID);
+function lireFormulaireFmpa_(formulaire) {
+  // Sans argument : le « Formulaire FMPA ». Intervention.gs passe le formulaire des interventions.
+  const form = formulaire || FormApp.openById(FMPA.FORM_ID);
   const T = FormApp.ItemType;
   const items = form.getItems();
 
