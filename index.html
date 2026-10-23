@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="progress" class="progress" role="progressbar" aria-label="Chargement des données" aria-hidden="true"><div class="progress-fill"></div></div>
 <header class="topbar">
   <button id="btn-menu" class="burger" aria-label="Ouvrir le menu" aria-controls="drawer" aria-expanded="false" hidden>
     <span></span><span></span><span></span>
@@ -110,7 +111,13 @@
   </div>
 
   <!-- Chargement -->
-  <section id="view-loading" class="view"><p class="muted center">Chargement…</p></section>
+  <section id="view-loading" class="view">
+    <div class="boot">
+      <img src="assets/ecusson.png" alt="" class="boot-logo">
+      <div class="boot-track" aria-hidden="true"><div class="boot-fill"></div></div>
+      <p class="muted center" role="status">Chargement des données…</p>
+    </div>
+  </section>
 
   <!-- Connexion -->
   <section id="view-login" class="view" hidden>
