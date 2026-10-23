@@ -56,6 +56,15 @@
     setState(S.data[scope] ? 'Mise à jour…' : 'Chargement…');
     try {
       const res = await app().api('itv_list', { token: app().token(), scope });
+      // Serveur pas à jour : il renvoie « Mes interventions » au lieu de la liste demandée
+      if (res.scope !== scope && scope !== 'mine') {
+        S.data[scope] = null;
+        $('#itvl-list').replaceChildren();
+        $('#itvl-empty').hidden = true;
+        $('#itvl-tools').hidden = true;
+        setState('Le serveur ne transmet pas encore « Toutes les interventions » : dans Code.gs, la ligne itv_list de doPost() doit être « case \'itv_list\': result = itvList_(b.token, b.scope); break; », avec la dernière version d’Intervention.gs, puis redéployer.', true);
+        return;
+      }
       S.data[scope] = { interventions: res.interventions || [], maj: res.maj };
       S.stale[scope] = false;
       S.fresh[scope] = true;
