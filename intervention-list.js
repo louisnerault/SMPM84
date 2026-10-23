@@ -1,10 +1,16 @@
-// Mes interventions (action itv_list) : comptes rendus dont l'utilisateur est le chef d'unité.
+// Listes des interventions (action itv_list) :
+//   interv-mes    : comptes rendus dont l'utilisateur est le chef d'unité ;
+//   interv-toutes : toutes les interventions (conseillers techniques et administrateurs, modification sans délai).
 // Un appui ouvre l'intervention dans le formulaire (fmpa.js, instance SMPM_ITV), modifiable pendant
 // 24 h après l'envoi, ensuite en lecture seule. Dernière liste gardée sur l'appareil (consultation hors ligne).
 (() => {
   'use strict';
 
-  const KEY = 'smpm_itv_list';
+  const PAGES = {
+    'interv-mes': { scope: 'mine', title: 'Mes interventions', intro: 'Interventions dont vous êtes le chef d’unité. Modifiables pendant 24 h après l’envoi.' },
+    'interv-toutes': { scope: 'toutes', title: 'Toutes les interventions', intro: 'Toutes les interventions enregistrées. Vous pouvez les consulter et les modifier sans limite de délai.' },
+  };
+  const KEY = scope => 'smpm_itv_list_' + scope;
   const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
   const $ = (sel, root = document) => root.querySelector(sel);
@@ -16,7 +22,8 @@
   const app = () => window.SMPM_APP;
   const fold = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-  const S = { data: null, stale: false, fresh: false, q: '' };
+  const S = { page: 'interv-mes', data: {}, stale: {}, fresh: {}, q: '' };
+  const conf = () => PAGES[S.page];
 
   function el(tag, attrs, ...children) {
     const n = document.createElement(tag);
@@ -32,29 +39,38 @@
     return n;
   }
 
-  function open() {
-    if (!S.data) S.data = store.getJSON(KEY);
-    if (S.data) render();
-    else { $('#itvl-list').replaceChildren(); $('#itvl-tools').hidden = true; $('#itvl-empty').hidden = true; }
-    if (!S.data || S.stale || !S.fresh) load();
+  function open(page) {
+    if (PAGES[page] && page !== S.page) { S.page = page; S.q = ''; $('#itvl-search').value = ''; }
+    const { scope, title, intro } = conf();
+    $('#itvl-title').textContent = title;
+    $('#itvl-intro').textContent = intro;
+    $('#itvl-pending').hidden = scope !== 'mine';
+    setState('');
+    if (!S.data[scope]) S.data[scope] = store.getJSON(KEY(scope));
+    if (S.data[scope]) render();
+    else { $('#itvl-list').replaceChildren(); $('#itvl-tools').hidden = true; $('#itvl-empty').hidden = true; $('#itvl-count').textContent = ''; }
+    if (!S.data[scope] || S.stale[scope] || !S.fresh[scope]) load(scope);
   }
 
-  async function load() {
-    setState(S.data ? 'Mise à jour…' : 'Chargement…');
+  async function load(scope) {
+    setState(S.data[scope] ? 'Mise à jour…' : 'Chargement…');
     try {
-      const res = await app().api('itv_list', { token: app().token() });
-      S.data = { interventions: res.interventions || [], maj: res.maj };
-      S.stale = false;
-      S.fresh = true;
-      store.set(KEY, JSON.stringify(S.data));
+      const res = await app().api('itv_list', { token: app().token(), scope });
+      S.data[scope] = { interventions: res.interventions || [], maj: res.maj };
+      S.stale[scope] = false;
+      S.fresh[scope] = true;
+      store.set(KEY(scope), JSON.stringify(S.data[scope]));
+      if (conf().scope !== scope) return;
       setState('');
       render();
     } catch (err) {
       if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
-      const maj = S.data && S.data.maj ? new Date(S.data.maj).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+      if (conf().scope !== scope) return;
+      const d = S.data[scope];
+      const maj = d && d.maj ? new Date(d.maj).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '';
       setState(err instanceof app().NetworkError
-        ? (S.data ? `Hors ligne : liste du ${maj}.` : 'Hors ligne : liste indisponible sur cet appareil.')
-        : err.message === 'Action inconnue' ? 'La liste des interventions n’est pas encore activée sur le serveur.' : err.message, !S.data);
+        ? (d ? `Hors ligne : liste du ${maj}.` : 'Hors ligne : liste indisponible sur cet appareil.')
+        : err.message === 'Action inconnue' ? 'La liste des interventions n’est pas encore activée sur le serveur.' : err.message, !d);
     }
   }
 
@@ -65,25 +81,27 @@
   }
 
   function render() {
-    const all = (S.data && S.data.interventions) || [];
+    const { scope } = conf();
+    const d = S.data[scope];
+    const all = (d && d.interventions) || [];
     $('#itvl-tools').hidden = all.length < 6;
     const q = fold(S.q).trim();
-    const list = all.filter(f => !q || fold([f.commune, f.departement, f.date.split('-').reverse().join('/')].join(' ')).includes(q));
+    const list = all.filter(f => !q || fold([f.commune, f.departement, f.cu, f.date.split('-').reverse().join('/')].join(' ')).includes(q));
     $('#itvl-count').textContent = all.length ? `${list.length} intervention${list.length > 1 ? 's' : ''}` : '';
     const empty = $('#itvl-empty');
     empty.hidden = list.length > 0;
-    empty.textContent = all.length ? 'Aucune intervention ne correspond.' : 'Aucune intervention enregistrée à votre nom.';
-    $('#itvl-list').replaceChildren(...list.map(card));
+    empty.textContent = all.length ? 'Aucune intervention ne correspond.' : scope === 'mine' ? 'Aucune intervention enregistrée à votre nom.' : 'Aucune intervention enregistrée.';
+    $('#itvl-list').replaceChildren(...list.map(f => card(f, scope)));
   }
 
-  function card(f) {
+  function card(f, scope) {
     const [y, m, d] = (f.date || '').split('-').map(Number);
     const btn = el('button', { type: 'button', class: 'fmpal-item', onclick: () => openOne(f) },
       el('time', { class: 'fmpa-date', datetime: f.date },
         el('strong', { text: d ? String(d) : '–' }), el('span', { text: d ? `${MOIS[(m || 1) - 1]} ${String(y).slice(2)}` : '' })),
       el('div', { class: 'fmpa-body' },
         el('p', { class: 'fmpa-lieu', text: f.commune || 'Commune non renseignée' }),
-        el('p', { class: 'fmpa-meta', text: [f.debut ? `Début ${f.debut}` : '', f.departement].filter(Boolean).join(' · ') }),
+        el('p', { class: 'fmpa-meta', text: [scope !== 'mine' && f.cu ? `CU ${f.cu}` : '', f.debut ? `Début ${f.debut}` : '', f.departement].filter(Boolean).join(' · ') }),
         status(f.droits || {})));
     return el('li', null, btn);
   }
@@ -100,13 +118,19 @@
 
   function openOne(f) {
     app().goto('interv-fiche');
-    window.SMPM_ITV.openRecord(f.id, 'interv-mes');
+    window.SMPM_ITV.openRecord(f.id, S.page);
   }
 
-  function invalidate() { S.stale = true; }
-  function reset() { store.del(KEY); Object.assign(S, { data: null, stale: false, fresh: false, q: '' }); $('#itvl-search').value = ''; }
+  function label(page) { return (PAGES[page] && PAGES[page].title) || 'Retour'; }
+  function invalidate() { Object.keys(PAGES).forEach(p => { S.stale[PAGES[p].scope] = true; }); }
+  function reset() {
+    Object.keys(PAGES).forEach(p => store.del(KEY(PAGES[p].scope)));
+    store.del('smpm_itv_list');      // ancienne clé
+    Object.assign(S, { page: 'interv-mes', data: {}, stale: {}, fresh: {}, q: '' });
+    $('#itvl-search').value = '';
+  }
 
   $('#itvl-search').addEventListener('input', e => { S.q = e.target.value; render(); });
 
-  window.SMPM_ITV_LIST = { open, invalidate, reset };
+  window.SMPM_ITV_LIST = { open, invalidate, reset, label };
 })();

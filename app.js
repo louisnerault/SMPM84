@@ -25,11 +25,14 @@
   const canAllFmpa = session => !!session && (session.is_admin === true || ['ctd', 'admin', 'chef_section'].includes(session.role));
   const canEditAllFmpa = session => !!session && (session.is_admin === true || ['ctd', 'admin'].includes(session.role));
   // Intervention : chefs d'unité, chefs de section, conseillers techniques et administrateurs
+  // Toutes les interventions : conseillers techniques et administrateurs
+  const canAllInterv = session => !!session && (session.is_admin === true || ['ctd', 'admin'].includes(session.role));
   const canIntervene = session => !!session && (session.is_admin === true || ['chef_unite', 'chef_section', 'ctd', 'admin'].includes(session.role));
   const FMPA_LISTS = ['fmpa-mes', 'fmpa-toutes'];
   function allowedPage(name, session) {
     if (name === 'fmpa' || name === 'fmpa-fiche' || name === 'fmpa-mes' || name === 'fmpa-valid') return canDeclare(session);
     if (name === 'fmpa-toutes') return canAllFmpa(session);
+    if (name === 'interv-toutes') return canAllInterv(session);
     if (name.startsWith('interv-')) return canIntervene(session);
     return true;
   }
@@ -186,7 +189,7 @@
     $('#tab-fmpa-list').hidden = !FMPA_LISTS.includes(name);
     $('#tab-fmpa-valid').hidden = name !== 'fmpa-valid';
     $('#tab-interv-new').hidden = !(name === 'interv-new' || name === 'interv-fiche');
-    $('#tab-interv-mes').hidden = name !== 'interv-mes';
+    $('#tab-interv-mes').hidden = !(name === 'interv-mes' || name === 'interv-toutes');
     if (name.startsWith('fmpa')) setFmpaGroup(true);
     if (name.startsWith('interv-')) setIntervGroup(true);
     if (name.startsWith('livret')) setLivretGroup(true);
@@ -196,7 +199,7 @@
     if (name === 'fmpa' && window.SMPM_FMPA) window.SMPM_FMPA.open();
     if (name === 'interv-new' && window.SMPM_ITV) window.SMPM_ITV.open();
     if (name === 'interv-mes' && window.SMPM_ITV) window.SMPM_ITV.renderPending();
-    if (name === 'interv-mes' && window.SMPM_ITV_LIST) window.SMPM_ITV_LIST.open();
+    if ((name === 'interv-mes' || name === 'interv-toutes') && window.SMPM_ITV_LIST) window.SMPM_ITV_LIST.open(name);
     if (FMPA_LISTS.includes(name) && window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.open(name);
     if (name === 'fmpa-valid' && window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.open();
     closeMenu();
@@ -604,6 +607,7 @@
     $('#nav-fmpa').hidden = !canDeclare(session);
     $('#nav-fmpa-all').hidden = !canAllFmpa(session);
     $('#nav-interv').hidden = !canIntervene(session);
+    $('#nav-interv-all').hidden = !canAllInterv(session);
     $('#home-interv-new').hidden = !canIntervene(session);
 
     const form = $('#form-profil');
