@@ -100,6 +100,42 @@
   })();
   window.SMPM_PROGRESS = progress;
 
+  // Liens rapides des formulaires (rubriques qui passent au vert) : flottants en haut
+  // de l'écran dès qu'on fait défiler le formulaire, pour rester accessibles sur téléphone.
+  (() => {
+    let raf = 0;
+    function place() {
+      raf = 0;
+      const mb = document.getElementById('mode-bar');
+      const top = mb && !mb.hidden ? Math.max(0, mb.getBoundingClientRect().bottom) : 0;
+      document.querySelectorAll('.secnav').forEach(nav => {
+        let ph = nav.previousElementSibling;
+        if (!ph || !ph.classList.contains('secnav-ph')) {
+          ph = document.createElement('div');
+          ph.className = 'secnav-ph';
+          nav.before(ph);
+        }
+        const form = nav.parentElement;
+        if (!nav.offsetParent && !nav.classList.contains('floating')) return;
+        if (!form || form.offsetParent === null) { nav.classList.remove('floating'); ph.style.height = ''; return; }
+        const phTop = ph.getBoundingClientRect().top;
+        const formBottom = form.getBoundingClientRect().bottom;
+        const h = nav.offsetHeight;
+        const float = phTop < top && formBottom > top + h + 40;
+        if (float) {
+          if (!nav.classList.contains('floating')) { ph.style.height = h + 'px'; nav.classList.add('floating'); }
+          nav.style.top = top + 'px';
+        } else if (nav.classList.contains('floating')) {
+          nav.classList.remove('floating'); nav.style.top = ''; ph.style.height = '';
+        }
+      });
+    }
+    const schedule = () => { if (!raf) raf = requestAnimationFrame(place); };
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    if (typeof MutationObserver === 'function') new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+  })();
+
   // Barre animée sous chaque message « Chargement… » / « Mise à jour… » affiché dans
   // une rubrique (listes, livret, formulaires, carte) : repérée automatiquement.
   (() => {

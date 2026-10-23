@@ -165,6 +165,10 @@
       S.moi = res.moi || S.moi || {};
       S.sig = sig;
       store.set(KEY_FORM, JSON.stringify({ form: S.def, personnes: S.personnes, moi: S.moi }));
+      // Personnel inactif retiré des listes de choix (une réponse déjà enregistrée reste affichée)
+      (S.def.sections || []).forEach(sec => sec.items.forEach(it => {
+        if (it.choices) it.choices = it.choices.filter(c => !isInactiveName(c.v));
+      }));
       return changed;
     }
 
@@ -956,6 +960,19 @@
       return words.length > 1 ? words.map(w => w[0].toUpperCase()).join('') : c;
     }
     function personOf(row) { return S.personnes[norm(row)] || null; }
+    // Nom d'une personne inactive : « NOM », « NOM Prénom » ou « Prénom NOM »
+    function isInactiveName(v) {
+      const k = norm(v).replace(/\s+/g, ' ');
+      if (!k) return false;
+      const p = S.personnes[k];
+      if (p) return p.actif === false;
+      return Object.keys(S.personnes).some(nom => {
+        const q = S.personnes[nom];
+        if (!q || q.actif !== false || !q.prenom) return false;
+        const pr = norm(q.prenom);
+        return k === nom + ' ' + pr || k === pr + ' ' + nom;
+      });
+    }
 
     function gridValue(it) {
       const v = S.answers[it.id];
@@ -1003,16 +1020,12 @@
         return li;
       };
 
-      const active = rows.filter(r => r.actif);
-      const inactive = rows.filter(r => !r.actif);
-      const list = el('ul', { class: 'grid-list' }, ...active.map(mkRow));
+      // Personnel inactif retiré de la liste, sauf s'il est déjà coché (FMPA enregistrée)
+      const initial = gridValue(it);
+      const shown = rows.filter(r => r.actif || initial[r.i]);
+      const list = el('ul', { class: 'grid-list' }, ...shown.map(mkRow));
       wrap.append(list);
-      let inactList = null;
-      if (inactive.length) {
-        inactList = el('ul', { class: 'grid-list' }, ...inactive.map(mkRow));
-        wrap.append(el('details', { class: 'grid-inactive' },
-          el('summary', { text: `Personnel inactif (${inactive.length})` }), inactList));
-      }
+      const inactList = null;
       const empty = el('p', { class: 'muted small center', hidden: true, text: S.mode === 'view' ? 'Personne de cochée.' : 'Aucun nom ne correspond.' });
       wrap.append(empty);
 
@@ -1336,8 +1349,11 @@
         const entry = { sid: S.sid, answers, recap, total, owner: S.moi.nom || '', ts: Date.now(), status: 'pending', error: '' };
         queue(entry);
         if (C.returnHome) return sendAndReturn(entry, offline);
+        if (!offline) {
+          const hide = savingOverlay('Enregistrement de la ' + C.txt.short + '…');
+          try { await flush(); } finally { await hide(); }
+        }
         finishDeclaration(entry);
-        if (!offline) flush();
         return;
       }
 
@@ -1346,6 +1362,7 @@
       btn.disabled = true;
       btn.textContent = editing ? 'Enregistrement…' : 'Envoi en cours…';
       if (editing) {
+        const hide = savingOverlay('Enregistrement des modifications…');
         try {
           const res = await app().api(C.api.update, { token: app().token(), id: S.rec.id, answers, version: S.rec.version });
           const f = Object.assign({}, res[C.rec.key], { answers: S.answers });
@@ -1360,12 +1377,26 @@
           msg.textContent = err instanceof app().NetworkError ? 'Réseau indisponible : réessayez dans un instant.' : err.message;
           msg.classList.add('error');
         } finally {
+          await hide();
           S.sending = false;
           btn.disabled = false;
           btn.textContent = S.mode === 'edit' ? 'Enregistrer' : 'Envoyer';
         }
         return;
       }
+    }
+
+    // Voile d'enregistrement : animation plein écran pendant l'envoi au serveur
+    function savingOverlay(text) {
+      const box = el('div', { class: 'saving', role: 'status', 'aria-live': 'polite' },
+        el('div', { class: 'saving-card' },
+          el('div', { class: 'saving-spin', 'aria-hidden': 'true' }),
+          el('p', { class: 'saving-txt', text }),
+          el('div', { class: 'saving-track', 'aria-hidden': 'true' }, el('div', { class: 'saving-fill' }))));
+      document.body.append(box);
+      const shownAt = Date.now();
+      // reste affiché au moins 0,6 s pour ne pas clignoter
+      return () => new Promise(r => setTimeout(() => { box.remove(); r(); }, Math.max(0, 600 - (Date.now() - shownAt))));
     }
 
     // Résumé lisible : date, secteur et lieu s'ils existent dans le formulaire
@@ -1391,7 +1422,9 @@
         S.sending = true;
         btn.disabled = true;
         btn.textContent = 'Envoi en cours…';
+        const hide = savingOverlay('Enregistrement de l’' + C.txt.short.toLowerCase() + '…');
         try { await flush(); } finally {
+          await hide();
           S.sending = false;
           btn.disabled = false;
           btn.textContent = 'Envoyer';
