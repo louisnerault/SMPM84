@@ -778,6 +778,7 @@
     form.elements.affectation.value = me.affectation || '';
     form.elements.email.value = me.email || '';
     form.elements.telephone.value = me.telephone || '';
+    form.elements.consent_sms.checked = !!me.consent_sms;
     lockForm(form, !navigator.onLine || $('#offline-banner').hidden === false);
 
     renderQualifs(qualifications);
@@ -941,6 +942,8 @@
       const v = f.elements[k].value.trim();
       if (v !== String(me[k] || '')) changes[k] = v;
     });
+    const optin = f.elements.consent_sms.checked;
+    if (optin !== !!me.consent_sms) changes.consent_sms = optin;
     if (!Object.keys(changes).length) { $('.ok', f).textContent = 'Aucune modification.'; return; }
 
     setBusy(f, true);
