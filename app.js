@@ -17,6 +17,24 @@
     ctd: 'Conseiller technique départemental',
   };
   const SECTIONS = { NORD: 'Nord', SUD: 'Sud', CENTRE: 'Centre', NEIGE: 'Neige', ISS: 'ISS', SSSM: 'SSSM' };
+
+  // Liste complète des grades proposés dans « Mes informations » (ordre hiérarchique).
+  // Les grades du service de santé et « Exp » sont gardés tels que dans la liste du personnel.
+  const GRADES_ALL = [
+    ['Sap', 'Sapeur'], ['Cpl', 'Caporal'], ['Cch', 'Caporal-chef'],
+    ['Sgt', 'Sergent'], ['Sch', 'Sergent-chef'],
+    ['Adj', 'Adjudant'], ['Adc', 'Adjudant-chef'],
+    ['Ltn', 'Lieutenant'], ['Cne', 'Capitaine'], ['Cdt', 'Commandant'],
+    ['Lcl', 'Lieutenant-colonel'], ['Col', 'Colonel'],
+    ['ISL', ''], ['ILT', ''], ['MCN', ''], ['Exp', ''],
+  ];
+  // Fusionne la liste complète, celle du serveur et le grade actuel (aucun grade n'est perdu).
+  function gradeChoices(serverGrades, current) {
+    const known = new Map(GRADES_ALL);
+    const codes = GRADES_ALL.map(g => g[0]);
+    [...(serverGrades || []), current].forEach(g => { if (g && !codes.includes(g)) codes.push(g); });
+    return codes.map(c => ({ code: c, label: known.get(c) ? `${c} — ${known.get(c)}` : c }));
+  }
   // Déclaration de FMPA : chef d'unité ou supérieur, et administrateurs
   const FMPA_ROLES = ['chef_unite', 'chef_section', 'ctd', 'admin'];
   const canDeclare = session => !!session && (session.is_admin === true || FMPA_ROLES.includes(session.role));
@@ -767,9 +785,8 @@
 
     const form = $('#form-profil');
     const sel = form.elements.grade;
-    const grades = (state.options && state.options.grades) || [me.grade];
-    sel.replaceChildren(...grades.map(g => new Option(g, g)));
-    if (!grades.includes(me.grade) && me.grade) sel.add(new Option(me.grade, me.grade));
+    const choices = gradeChoices(state.options && state.options.grades, me.grade);
+    sel.replaceChildren(...choices.map(c => new Option(c.label, c.code)));
     sel.value = me.grade;
 
     const dl = $('#list-affectations');
