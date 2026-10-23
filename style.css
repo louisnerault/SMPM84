@@ -468,6 +468,10 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
 .home-btn:hover { background: var(--primary-soft); }
 .home-btn:disabled { border-style: dashed; border-color: var(--line); color: var(--muted); background: var(--bg); cursor: not-allowed; }
 .home-btn:disabled svg { color: var(--muted); }
+/* pavé « Nouvelle intervention » : rouge plein, en tête de l'accueil */
+.home-btn-alert { color: #fff; background: #c8102e; border-color: #c8102e; }
+.home-btn-alert svg { color: #fff; }
+.home-btn-alert:hover { background: #a00d25; border-color: #a00d25; }
 .wip {
   display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 99px;
   font-size: .72rem; font-weight: 700; background: var(--line); color: var(--muted);

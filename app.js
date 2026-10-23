@@ -24,10 +24,13 @@
   // (consultation, modification de leur secteur)
   const canAllFmpa = session => !!session && (session.is_admin === true || ['ctd', 'admin', 'chef_section'].includes(session.role));
   const canEditAllFmpa = session => !!session && (session.is_admin === true || ['ctd', 'admin'].includes(session.role));
+  // Intervention : chefs d'unité, chefs de section et administrateurs
+  const canIntervene = session => !!session && (session.is_admin === true || ['chef_unite', 'chef_section', 'admin'].includes(session.role));
   const FMPA_LISTS = ['fmpa-mes', 'fmpa-toutes'];
   function allowedPage(name, session) {
     if (name === 'fmpa' || name === 'fmpa-fiche' || name === 'fmpa-mes' || name === 'fmpa-valid') return canDeclare(session);
     if (name === 'fmpa-toutes') return canAllFmpa(session);
+    if (name.startsWith('interv-')) return canIntervene(session);
     return true;
   }
 
@@ -153,7 +156,10 @@
     $('#tab-fmpa').hidden = !(name === 'fmpa' || name === 'fmpa-fiche');
     $('#tab-fmpa-list').hidden = !FMPA_LISTS.includes(name);
     $('#tab-fmpa-valid').hidden = name !== 'fmpa-valid';
+    $('#tab-interv-new').hidden = name !== 'interv-new';
+    $('#tab-interv-mes').hidden = name !== 'interv-mes';
     if (name.startsWith('fmpa')) setFmpaGroup(true);
+    if (name.startsWith('interv-')) setIntervGroup(true);
     if (name.startsWith('livret')) setLivretGroup(true);
     window.scrollTo(0, 0);
     if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
@@ -168,6 +174,12 @@
   function setFmpaGroup(open) {
     $('#nav-fmpa .nav-group-btn').setAttribute('aria-expanded', String(open));
     $('#nav-fmpa-sub').hidden = !open;
+  }
+
+  // Sous-menu Intervention (repliable)
+  function setIntervGroup(open) {
+    $('#nav-interv .nav-group-btn').setAttribute('aria-expanded', String(open));
+    $('#nav-interv-sub').hidden = !open;
   }
 
   // Sous-menu Mon livret (repliable, ouvert par défaut)
@@ -550,6 +562,8 @@
     $('#info-secteur').textContent = me.secteur || '—';
     $('#nav-fmpa').hidden = !canDeclare(session);
     $('#nav-fmpa-all').hidden = !canAllFmpa(session);
+    $('#nav-interv').hidden = !canIntervene(session);
+    $('#home-interv-new').hidden = !canIntervene(session);
 
     const form = $('#form-profil');
     const sel = form.elements.grade;
@@ -643,6 +657,9 @@
   $$('.drawer-nav button[data-page]').forEach(btn => btn.addEventListener('click', () => gotoPage(btn.dataset.page)));
   $('#nav-fmpa .nav-group-btn').addEventListener('click', e => {
     setFmpaGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
+  });
+  $('#nav-interv .nav-group-btn').addEventListener('click', e => {
+    setIntervGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
   });
   $('#nav-livret .nav-group-btn').addEventListener('click', e => {
     setLivretGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
