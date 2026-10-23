@@ -168,6 +168,8 @@
 
   <!-- Application -->
   <section id="view-app" class="view" hidden>
+    <!-- Message après une action (ex. intervention envoyée), affiché sur la page d'arrivée -->
+    <div id="flash" class="flash" role="status" aria-live="polite" hidden></div>
     <!-- Accueil du mode intervention -->
     <div id="tab-accueil" hidden>
       <h1>Accueil intervention</h1>
@@ -224,8 +226,15 @@
     </div>
     <div id="tab-interv-mes" hidden>
       <h1>Mes interventions</h1>
+      <p class="muted small">Interventions dont vous êtes le chef d'unité. Modifiables pendant 24 h après l'envoi.</p>
       <div data-itv-pending></div>
-      <p class="muted">La liste de vos interventions sera disponible prochainement.</p>
+      <p id="itvl-state" class="muted small" role="status"></p>
+      <div id="itvl-tools" class="fmpal-tools" hidden>
+        <input type="search" id="itvl-search" placeholder="Rechercher une commune, une date…" aria-label="Rechercher">
+        <span id="itvl-count" class="muted small"></span>
+      </div>
+      <ol id="itvl-list" class="fmpa-list fmpal-list"></ol>
+      <p id="itvl-empty" class="muted center small" hidden></p>
     </div>
 
     <!-- Mon livret › Remplir mon livret : saisie des thèmes vus en FMPA (remplace le formulaire Google « thèmes FMPA ») -->
@@ -377,6 +386,7 @@
 <script src="fiches.js"></script>
 <script src="fmpa.js"></script>
 <script src="fmpa-list.js"></script>
+<script src="intervention-list.js"></script>
 <script src="fmpa-valid.js"></script>
 <script src="livret-remplir.js"></script>
 <script src="app.js"></script>

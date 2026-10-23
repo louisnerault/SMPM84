@@ -103,17 +103,17 @@
       byId('form').hidden = true;
       byId('bar').hidden = true;
       renderHead();
-      setState('Chargement de la FMPA…');
+      setState(C.rec.loading);
       try {
-        const res = await app().api('fmpa_get', { token: app().token(), id });
+        const res = await app().api(C.api.get, { token: app().token(), id });
         if (!S.rec || S.rec.id !== id) return;              // l'utilisateur est parti entre-temps
         applyDef(res);
-        setRecord(res.fmpa);
+        setRecord(res[C.rec.key]);
         setState('');
       } catch (err) {
         if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
-        setState(err instanceof app().NetworkError ? 'Réseau indisponible : impossible d’ouvrir cette FMPA hors ligne.'
-          : err.message === 'Action inconnue' ? 'La consultation des FMPA n’est pas encore activée sur le serveur.' : err.message, true);
+        setState(err instanceof app().NetworkError ? C.rec.offline
+          : err.message === 'Action inconnue' ? C.rec.notActive : err.message, true);
       }
     }
 
@@ -284,13 +284,13 @@
       const nodes = [];
       if (r.origin) {
         nodes.push(el('div', { class: 'sub-head' }, el('button', {
-          type: 'button', class: 'link', text: '← ' + (window.SMPM_FMPA_LIST ? window.SMPM_FMPA_LIST.label(r.origin) : 'Retour'),
+          type: 'button', class: 'link', text: '← ' + C.rec.back(r.origin),
           onclick: () => app().goto(r.origin),
         })));
       }
-      nodes.push(el('h1', { text: m.date ? `FMPA du ${fmtDate(m.date)}` : 'FMPA' }));
+      nodes.push(el('h1', { text: C.rec.title(m, fmtDate) }));
       if (m.id) {
-        const bits = [m.numero ? `N° ${m.numero}` : '', m.cu ? `CU ${m.cu}` : '', m.horodateur ? `déclarée le ${fmtDateTime(m.horodateur)}` : ''].filter(Boolean);
+        const bits = C.rec.bits(m, fmtDateTime).filter(Boolean);
         nodes.push(el('p', { class: 'muted small fmpa-meta-line', text: bits.join(' · ') }));
         nodes.push(droitsBox(r.droits || {}, m));
       }
@@ -298,6 +298,7 @@
     }
 
     function droitsBox(d, m) {
+      if (C.rec.droits) return el('p', { class: 'fmpa-rights ' + (d.modifier ? 'ok-box' : 'ro-box'), text: C.rec.droits(d, m, fmtDateTime) });
       if (d.modifier) {
         const t = d.par === 'cu' && d.jusqua
           ? `Modifiable jusqu’au ${fmtDateTime(d.jusqua)} (24 h après la déclaration). Ensuite, les modifications passeront par votre chef de section.`
@@ -410,7 +411,12 @@
             'aria-labelledby': lab, value: v || '', oninput: e => setAnswer(it, e.target.value),
           }));
 
-        case 'list': {
+        case 'list':
+        case 'radio':
+          if (it.choices.length > LONG_LIST) return field(it, renderSearch(it));
+          if (it.type === 'radio') return field(it, renderChoices(it, false));
+        // falls through
+        case 'list-select': {
           const sel = el('select', { 'aria-labelledby': lab, onchange: e => setAnswer(it, e.target.value) },
             el('option', { value: '', text: 'Choisir…' }),
             ...it.choices.map(c => el('option', { value: c.v, text: c.v })),
@@ -420,8 +426,6 @@
           return field(it, sel);
         }
 
-        case 'radio':
-          return field(it, renderChoices(it, false));
         case 'checkbox':
           return field(it, renderChoices(it, true));
 
@@ -449,6 +453,94 @@
     function rerenderItem(it) {
       const old = document.querySelector(`${FORM_SEL} .fmpa-q[data-q="${it.id}"]`);
       if (old) old.replaceWith(renderItem(it));
+    }
+
+    // Liste très longue (communes…) : champ de recherche avec suggestions, sans défilement
+    const LONG_LIST = 40;
+    const fold = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[-'’\s]+/g, ' ').trim();
+    function renderSearch(it) {
+      const v = S.answers[it.id] || '';
+      const known = it.choices.map(c => c.v);
+      const keys = known.map(fold);
+      const box = el('div', { class: 'qsearch' });
+      const listId = 'qs-' + C.p + '-' + it.id;
+      const what = /commune/i.test(it.title) ? 'une commune' : /d[ée]partement/i.test(it.title) ? 'un département' : 'dans la liste';
+      const input = el('input', {
+        type: 'search', role: 'combobox', 'aria-autocomplete': 'list', 'aria-expanded': 'false', 'aria-controls': listId,
+        'aria-labelledby': 'q-' + it.id, placeholder: `Rechercher ${what}…`, value: v, autocomplete: 'off', enterkeyhint: 'done',
+      });
+      const ul = el('ul', { class: 'qsearch-list', id: listId, role: 'listbox', hidden: true });
+      const hint = el('p', { class: 'muted small qsearch-hint' });
+      let shown = [];
+      let active = -1;
+
+      function pick(val) {
+        input.value = val;
+        setAnswer(it, val);
+        close();
+        paint();
+      }
+      function close() { ul.hidden = true; input.setAttribute('aria-expanded', 'false'); active = -1; }
+      function paint() {
+        const cur = S.answers[it.id] || '';
+        box.classList.toggle('picked', !!cur && known.includes(cur));
+        hint.textContent = cur && !known.includes(cur) && !it.other ? 'Choisissez une valeur dans les suggestions.' : '';
+      }
+      function suggest() {
+        const q = fold(input.value);
+        if (!q) { close(); return; }
+        const starts = [], inside = [];
+        keys.forEach((k, i) => {
+          if (k.startsWith(q)) starts.push(i);
+          else if (k.includes(q)) inside.push(i);
+        });
+        shown = starts.concat(inside).slice(0, 8);
+        const items = shown.map((i, n) => el('li', {
+          role: 'option', id: listId + '-' + n, 'aria-selected': 'false', text: known[i],
+          onpointerdown: e => { e.preventDefault(); pick(known[i]); },
+        }));
+        if (!shown.length) {
+          items.push(it.other && input.value.trim()
+            ? el('li', { role: 'option', class: 'qsearch-other', text: `Utiliser « ${input.value.trim()} »`, onpointerdown: e => { e.preventDefault(); pick(input.value.trim()); } })
+            : el('li', { class: 'qsearch-none', text: 'Aucun résultat' }));
+        }
+        ul.replaceChildren(...items);
+        ul.hidden = false;
+        input.setAttribute('aria-expanded', 'true');
+        active = -1;
+      }
+      function move(d) {
+        const opts = ul.querySelectorAll('[role="option"]');
+        if (!opts.length) return;
+        active = (active + d + opts.length) % opts.length;
+        opts.forEach((o, n) => o.setAttribute('aria-selected', String(n === active)));
+        input.setAttribute('aria-activedescendant', opts[active].id || '');
+      }
+
+      input.addEventListener('input', () => {
+        const exact = known.find(k => fold(k) === fold(input.value));
+        setAnswer(it, exact || (it.other ? input.value.trim() : ''));
+        if (!exact && !it.other && input.value.trim()) S.answers[it.id] = '';
+        suggest();
+        paint();
+      });
+      input.addEventListener('focus', () => { if (input.value && !known.includes(input.value)) suggest(); });
+      input.addEventListener('blur', () => setTimeout(close, 120));
+      input.addEventListener('keydown', e => {
+        if (e.key === 'ArrowDown') { e.preventDefault(); if (ul.hidden) suggest(); move(1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1); }
+        else if (e.key === 'Escape') close();
+        else if (e.key === 'Enter') {
+          e.preventDefault();
+          const opts = ul.querySelectorAll('[role="option"]');
+          const o = opts[active >= 0 ? active : 0];
+          if (o && !ul.hidden) o.dispatchEvent(new Event('pointerdown'));
+          else input.blur();
+        }
+      });
+      box.append(input, ul, hint);
+      paint();
+      return box;
     }
 
     // Choix unique (radio) ou multiple (cases) : grandes zones tactiles
@@ -816,8 +908,13 @@
     const mine = e => !e.owner || !S.moi.nom || e.owner === S.moi.nom;
     const pendingList = () => outbox().filter(mine);
 
-    async function flush() {
-      if (S.flushing || !navigator.onLine || !app() || !app().token()) return;
+    function flush() {
+      if (S.flushing) return S.flushP;
+      S.flushP = flushRun();
+      return S.flushP;
+    }
+    async function flushRun() {
+      if (!navigator.onLine || !app() || !app().token()) return;
       if (!S.moi.nom) { const c = store.getJSON(KEY_FORM); if (c && c.moi) S.moi = c.moi; }
       const todo = outbox().filter(e => e.status === 'pending' && mine(e));
       if (!todo.length) return;
@@ -988,7 +1085,7 @@
 
       const { total, per } = counts();
       const recap = summary(answers);
-      const lines = [editing ? 'Enregistrer les modifications de cette FMPA ?' : C.txt.confirm, ''];
+      const lines = [editing ? C.rec.confirm : C.txt.confirm, ''];
       if (recap) lines.push(recap);
       const gpsIt = C.gps ? items().find(isGpsItem) : null;
       if (gpsIt && answers[gpsIt.id]) lines.push('GPS : ' + answers[gpsIt.id]);
@@ -1003,6 +1100,7 @@
       if (!editing) {
         const entry = { sid: S.sid, answers, recap, total, owner: S.moi.nom || '', ts: Date.now(), status: 'pending', error: '' };
         queue(entry);
+        if (C.returnHome) return sendAndReturn(entry, offline);
         finishDeclaration(entry);
         if (!offline) flush();
         return;
@@ -1014,12 +1112,12 @@
       btn.textContent = editing ? 'Enregistrement…' : 'Envoi en cours…';
       if (editing) {
         try {
-          const res = await app().api('fmpa_update', { token: app().token(), id: S.rec.id, answers, version: S.rec.version });
-          const f = Object.assign({}, res.fmpa, { answers: S.answers });
+          const res = await app().api(C.api.update, { token: app().token(), id: S.rec.id, answers, version: S.rec.version });
+          const f = Object.assign({}, res[C.rec.key], { answers: S.answers });
           const origin = S.rec.origin;
           S.rec = { id: f.id, origin };
           setRecord(f);
-          if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.invalidate();
+          if (C.onSent) C.onSent();
           msg.textContent = res.changed ? `Modifications enregistrées (${res.changed} champ${res.changed > 1 ? 's' : ''}).` : 'Aucune modification à enregistrer.';
           msg.classList.add('ok');
         } catch (err) {
@@ -1044,6 +1142,31 @@
       const d = pick(/^\W*date/i);
       const date = /^\d{4}-\d{2}-\d{2}/.test(d) ? d.slice(0, 10).split('-').reverse().join('/') : d;
       return [date, pick(/secteur/i), pick(/^\W*lieu\b(?!.*fmpa)/i)].filter(Boolean).join(' · ');
+    }
+
+    // Envoi puis retour à l'accueil avec un message (intervention) : envoyée, ou gardée sur l'appareil
+    async function sendAndReturn(entry, offline) {
+      store.del(KEY_DRAFT);
+      S.answers = {};
+      S.sid = newSid();
+      S.draftAt = null;
+      S.mapOpen = false;
+      const btn = byId('send');
+      if (!offline) {
+        S.sending = true;
+        btn.disabled = true;
+        btn.textContent = 'Envoi en cours…';
+        try { await flush(); } finally {
+          S.sending = false;
+          btn.disabled = false;
+          btn.textContent = 'Envoyer';
+        }
+      }
+      const left = outbox().find(e => e.sid === entry.sid);
+      const status = !left ? 'sent' : left.status === 'error' ? 'error' : 'queued';
+      defaults();
+      render();
+      C.returnHome(status, left);
     }
 
     function finishDeclaration(entry) {
@@ -1129,7 +1252,15 @@
   window.SMPM_FMPA = createDeclarer({
     p: 'fmpa', page: 'fmpa', navDot: '#nav-fmpa .pending-dot',
     keys: { form: 'smpm_fmpa_form', draft: 'smpm_fmpa_draft', outbox: 'smpm_fmpa_outbox' },
-    api: { form: 'fmpa_form', submit: 'fmpa_submit' },
+    api: { form: 'fmpa_form', submit: 'fmpa_submit', get: 'fmpa_get', update: 'fmpa_update' },
+    rec: {
+      key: 'fmpa', loading: 'Chargement de la FMPA…', confirm: 'Enregistrer les modifications de cette FMPA ?',
+      offline: 'Réseau indisponible : impossible d’ouvrir cette FMPA hors ligne.',
+      notActive: 'La consultation des FMPA n’est pas encore activée sur le serveur.',
+      back: origin => (window.SMPM_FMPA_LIST ? window.SMPM_FMPA_LIST.label(origin) : 'Retour'),
+      title: (m, fd) => (m.date ? `FMPA du ${fd(m.date)}` : 'FMPA'),
+      bits: (m, fdt) => [m.numero ? `N° ${m.numero}` : '', m.cu ? `CU ${m.cu}` : '', m.horodateur ? `déclarée le ${fdt(m.horodateur)}` : ''],
+    },
     txt: {
       title: 'Nouvelle FMPA', short: 'FMPA', confirm: 'Envoyer la déclaration de FMPA ?',
       notActive: 'La déclaration de FMPA n’est pas encore activée sur le serveur.',
@@ -1141,7 +1272,30 @@
   window.SMPM_ITV = createDeclarer({
     p: 'itv', page: 'interv-new', navDot: '#nav-interv .pending-dot', gps: true,
     keys: { form: 'smpm_itv_form', draft: 'smpm_itv_draft', outbox: 'smpm_itv_outbox' },
-    api: { form: 'itv_form', submit: 'itv_submit' },
+    api: { form: 'itv_form', submit: 'itv_submit', get: 'itv_get', update: 'itv_update' },
+    rec: {
+      key: 'intervention', loading: 'Chargement de l’intervention…', confirm: 'Enregistrer les modifications de cette intervention ?',
+      offline: 'Réseau indisponible : impossible d’ouvrir cette intervention hors ligne.',
+      notActive: 'La consultation des interventions n’est pas encore activée sur le serveur.',
+      back: () => 'Mes interventions',
+      title: (m, fd) => (m.date ? `Intervention du ${fd(m.date)}` : 'Intervention'),
+      bits: (m, fdt) => [m.commune, m.debut ? `début ${m.debut}` : '', m.horodateur ? `envoyée le ${fdt(m.horodateur)}` : ''],
+      droits: (d, m, fdt) => (d.modifier
+        ? (d.par === 'cu' && d.jusqua ? `Modifiable jusqu’au ${fdt(d.jusqua)} (24 h après l’envoi).` : 'Modifiable en tant qu’administrateur.')
+        : d.motif === 'delai' ? 'Lecture seule : le délai de modification de 24 h est dépassé.' : 'Lecture seule.'),
+    },
+    returnHome: (status, entry) => {
+      const a = window.SMPM_APP;
+      if (status === 'sent') {
+        a.flash({ kind: 'ok', text: 'Intervention envoyée. Vous pouvez la modifier pendant 24 h depuis', link: { label: 'Mes interventions', page: 'interv-mes' } });
+      } else if (status === 'queued') {
+        a.flash({ kind: 'info', text: 'Données enregistrées, elles seront envoyées lorsque le réseau sera disponible.' });
+      } else {
+        a.flash({ kind: 'error', text: `Intervention non envoyée : ${String((entry && entry.error) || 'refusée par le serveur').replace(/[.!]?\s*$/, '.')} Vous pouvez la reprendre depuis`, link: { label: 'Mes interventions', page: 'interv-mes' } });
+      }
+      a.goto(a.home());
+    },
+    onSent: () => { if (window.SMPM_ITV_LIST) window.SMPM_ITV_LIST.invalidate(); },
     txt: {
       title: 'Nouvelle intervention', short: 'Intervention', confirm: 'Envoyer le compte rendu d’intervention ?',
       notActive: 'La saisie des interventions n’est pas encore activée sur le serveur.',
