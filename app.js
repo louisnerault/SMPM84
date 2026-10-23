@@ -139,8 +139,37 @@
     $('#scrim').hidden = true;
     $('#btn-menu').setAttribute('aria-expanded', 'false');
   }
+  // Message affiché en tête de la page d'arrivée ; il disparaît au changement de page suivant
+  let pendingFlash = null;
+  function flash(opts) { pendingFlash = opts; }
+  function showFlash(opts) {
+    const box = $('#flash');
+    if (!opts) { box.hidden = true; box.replaceChildren(); return; }
+    box.className = 'flash flash-' + (opts.kind || 'info');
+    const txt = document.createElement('span');
+    txt.textContent = opts.text + (opts.link ? ' ' : '');
+    if (opts.link) {
+      const a = document.createElement('button');
+      a.type = 'button';
+      a.className = 'link';
+      a.textContent = opts.link.label;
+      a.addEventListener('click', () => gotoPage(opts.link.page));
+      txt.append(a, document.createTextNode('.'));
+    }
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'flash-close';
+    x.setAttribute('aria-label', 'Fermer le message');
+    x.textContent = '×';
+    x.addEventListener('click', () => showFlash(null));
+    box.replaceChildren(txt, x);
+    box.hidden = false;
+  }
+
   function gotoPage(name) {
     if (!allowedPage(name, state.data && state.data.session)) name = 'livret';
+    showFlash(pendingFlash);
+    pendingFlash = null;
     state.page = name;
     $$('.drawer-nav button[data-page]').forEach(b => {
       if (b.dataset.page === name) b.setAttribute('aria-current', 'page');
@@ -156,7 +185,7 @@
     $('#tab-fmpa').hidden = !(name === 'fmpa' || name === 'fmpa-fiche');
     $('#tab-fmpa-list').hidden = !FMPA_LISTS.includes(name);
     $('#tab-fmpa-valid').hidden = name !== 'fmpa-valid';
-    $('#tab-interv-new').hidden = name !== 'interv-new';
+    $('#tab-interv-new').hidden = !(name === 'interv-new' || name === 'interv-fiche');
     $('#tab-interv-mes').hidden = name !== 'interv-mes';
     if (name.startsWith('fmpa')) setFmpaGroup(true);
     if (name.startsWith('interv-')) setIntervGroup(true);
@@ -167,6 +196,7 @@
     if (name === 'fmpa' && window.SMPM_FMPA) window.SMPM_FMPA.open();
     if (name === 'interv-new' && window.SMPM_ITV) window.SMPM_ITV.open();
     if (name === 'interv-mes' && window.SMPM_ITV) window.SMPM_ITV.renderPending();
+    if (name === 'interv-mes' && window.SMPM_ITV_LIST) window.SMPM_ITV_LIST.open();
     if (FMPA_LISTS.includes(name) && window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.open(name);
     if (name === 'fmpa-valid' && window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.open();
     closeMenu();
@@ -227,6 +257,7 @@
     store.del(KEY_MODE);
     if (window.SMPM_FMPA) window.SMPM_FMPA.reset(explicit === true);
     if (window.SMPM_ITV) window.SMPM_ITV.reset(explicit === true);
+    if (window.SMPM_ITV_LIST) window.SMPM_ITV_LIST.reset();
     if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.reset();
     if (window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.reset();
     if (window.SMPM_THEMES) window.SMPM_THEMES.reset(explicit === true);
@@ -774,6 +805,8 @@
   window.SMPM_APP = {
     api, token: () => store.get(KEY_TOKEN), NetworkError, AUTH_ERRORS, logout,
     goto: name => gotoPage(name),
+    home: () => (isIntervention() ? 'accueil' : 'livret'),
+    flash,
     section: () => (state.data ? String(state.data.session.section || state.data.me.secteur || '') : ''),
     canEditAll: () => !!state.data && canEditAllFmpa(state.data.session),
   };

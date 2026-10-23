@@ -775,3 +775,34 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
 .lr-mes ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .lr-mes li { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: .85rem; }
 .lr-mes li span { color: var(--muted); }
+
+/* ---------- Message après une action (ex. intervention envoyée) ---------- */
+.flash {
+  display: flex; align-items: flex-start; gap: 10px; margin: 0 0 14px; padding: 12px 14px;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--card); font-weight: 600; line-height: 1.4;
+}
+.flash > span { flex: 1; }
+.flash .link { font: inherit; padding: 0; text-decoration: underline; }
+.flash-ok { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, var(--card)); }
+.flash-info { border-color: var(--primary); background: var(--primary-soft); }
+.flash-error { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, var(--card)); }
+.flash-close {
+  flex: none; width: 28px; height: 28px; margin: -4px -4px 0 0; border: 0; border-radius: 50%;
+  background: transparent; color: inherit; font-size: 1.3rem; line-height: 1; cursor: pointer;
+}
+
+/* ---------- Longue liste (communes…) : recherche avec suggestions ---------- */
+.qsearch { position: relative; }
+.qsearch input { width: 100%; }
+.qsearch.picked input { border-color: var(--ok); }
+.qsearch-list {
+  position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 4px; list-style: none;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, .15);
+  max-height: 320px; overflow-y: auto;
+}
+.qsearch-list li { padding: 11px 12px; border-radius: 8px; cursor: pointer; }
+.qsearch-list li[aria-selected="true"], .qsearch-list li[role="option"]:hover { background: var(--primary-soft); }
+.qsearch-list .qsearch-none { color: var(--muted); cursor: default; }
+.qsearch-list .qsearch-other { font-style: italic; }
+.qsearch-hint { margin: 4px 0 0; }
+.qsearch-hint:empty { display: none; }
