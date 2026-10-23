@@ -100,6 +100,27 @@
   })();
   window.SMPM_PROGRESS = progress;
 
+  // Barre animée sous chaque message « Chargement… » / « Mise à jour… » affiché dans
+  // une rubrique (listes, livret, formulaires, carte) : repérée automatiquement.
+  (() => {
+    const RE = /^\s*(Chargement|Mise à jour)[^\n]*…\s*$/;
+    const check = el => {
+      if (!el || el.nodeType !== 1 || el.children.length || el.closest('#view-loading')) return;
+      el.classList.toggle('is-loading', RE.test(el.textContent || ''));
+    };
+    const scan = root => {
+      check(root);
+      if (root.querySelectorAll) root.querySelectorAll('p, span, div').forEach(check);
+    };
+    if (typeof MutationObserver !== 'function') return;
+    new MutationObserver(list => list.forEach(m => {
+      const t = m.target.nodeType === 3 ? m.target.parentElement : m.target;
+      check(t);
+      m.addedNodes.forEach(n => { if (n.nodeType === 1) scan(n); });
+    })).observe(document.body, { childList: true, characterData: true, subtree: true });
+    scan(document.body);
+  })();
+
   async function api(action, payload = {}) {
     progress.start();
     try { return await apiCall(action, payload); }
