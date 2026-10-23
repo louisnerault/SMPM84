@@ -806,3 +806,7 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
 .qsearch-list .qsearch-other { font-style: italic; }
 .qsearch-hint { margin: 4px 0 0; }
 .qsearch-hint:empty { display: none; }
+
+/* ---------- carte hors ligne (Mes informations) ---------- */
+.carte-card { margin-top: 20px; }
+.carte-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
