@@ -132,6 +132,7 @@
         const res = await app().api(C.api.form, { token: app().token() });
         store.set(KEY_FORM, JSON.stringify({ form: res.form, personnes: res.personnes, moi: res.moi }));
         S.loaded = true;
+        S.loadedAt = Date.now();
         apply(res);
         setState('');
       } catch (err) {
@@ -1092,8 +1093,17 @@
     byId('send').addEventListener('click', submit);
     byId('again').addEventListener('click', restart);
 
+    // Préchargement discret (ouverture de l'application en ligne) : le formulaire est alors gardé
+    // sur l'appareil et la saisie reste possible plus tard sans réseau, même sans avoir ouvert la page.
+    function prefetch() {
+      if (S.loading || !navigator.onLine || !app() || !app().token()) return;
+      if (!S.def) { const c = store.getJSON(KEY_FORM); if (c && c.form) applyDef(c); }
+      if (S.loaded && S.loadedAt && Date.now() - S.loadedAt < 10 * 60e3) return;
+      load();
+    }
+
     renderPending();
-    return { open, openRecord, reset, flush, pending: () => pendingList().length, renderPending };
+    return { open, openRecord, reset, flush, prefetch, pending: () => pendingList().length, renderPending };
   }
 
   // Leaflet (carte) : chargé à la première ouverture de la carte seulement
