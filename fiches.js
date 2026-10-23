@@ -6,6 +6,7 @@
   const CACHE = 'smpm84-fiches';   // cache dédié, lu par sw.js
   const KEY = 'smpm_fiches_manifest';
   const KEY_SYNCED = 'smpm_fiches_synced_at';
+  const KEY_FAVS = 'smpm_fiches_favs';
 
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -133,35 +134,58 @@
     const items = (m && m.items) || [];
     $('#fiches-empty').hidden = items.length > 0;
 
+    // Favoris (propres à cet appareil) : groupe « Mes favoris » en tête, puis les catégories
+    const favs = readFavs();
     const byCat = new Map();
+    const favItems = [];
     items.forEach(i => {
+      if (favs.has(i.id)) { favItems.push(i); return; }
       const c = i.category || 'Divers';
       if (!byCat.has(c)) byCat.set(c, []);
       byCat.get(c).push(i);
     });
 
     const frag = document.createDocumentFragment();
-    [...byCat.keys()].sort((a, b) => a.localeCompare(b, 'fr')).forEach(cat => {
+    const addGroup = (title, list, isFav) => {
       const h = document.createElement('h2');
-      h.className = 'fiches-cat';
-      h.textContent = cat;
+      h.className = 'fiches-cat' + (isFav ? ' fiches-cat-fav' : '');
+      h.textContent = title;
       const ul = document.createElement('ul');
       ul.className = 'fiches-list';
-      byCat.get(cat)
-        .sort((a, b) => a.title.localeCompare(b.title, 'fr'))
-        .forEach(i => {
-          const li = document.createElement('li');
-          const a = document.createElement('a');
-          a.href = i.url;
-          a.target = '_blank';
-          a.rel = 'noopener';
-          a.textContent = i.title;
-          li.append(a);
-          ul.append(li);
-        });
+      list.sort((a, b) => a.title.localeCompare(b.title, 'fr')).forEach(i => ul.append(row(i, favs.has(i.id))));
       frag.append(h, ul);
-    });
+    };
+    if (favItems.length) addGroup('★ Mes favoris', favItems, true);
+    [...byCat.keys()].sort((a, b) => a.localeCompare(b, 'fr')).forEach(cat => addGroup(cat, byCat.get(cat), false));
     groups.replaceChildren(frag);
+  }
+
+  function row(i, isFav) {
+    const li = document.createElement('li');
+    const a = document.createElement('a');
+    a.href = i.url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = i.title;
+    const star = document.createElement('button');
+    star.type = 'button';
+    star.className = 'fav' + (isFav ? ' on' : '');
+    star.setAttribute('aria-pressed', String(isFav));
+    star.setAttribute('aria-label', (isFav ? 'Retirer des favoris : ' : 'Ajouter aux favoris : ') + i.title);
+    star.textContent = isFav ? '★' : '☆';
+    star.addEventListener('click', () => toggleFav(i.id));
+    li.append(a, star);
+    return li;
+  }
+
+  function readFavs() {
+    try { return new Set(JSON.parse(localStorage.getItem(KEY_FAVS) || '[]')); } catch (e) { return new Set(); }
+  }
+  function toggleFav(id) {
+    const favs = readFavs();
+    if (favs.has(id)) favs.delete(id); else favs.add(id);
+    try { localStorage.setItem(KEY_FAVS, JSON.stringify([...favs])); } catch (e) {}
+    render();
   }
 
   // Appelé à l'ouverture de la page Fiches techniques

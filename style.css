@@ -264,6 +264,13 @@ body.is-offline .status-net { color: #ffd66b; }
   background: var(--bg); color: var(--ink); text-decoration: none; font-size: .95rem;
 }
 .fiches-list a:hover { border-color: var(--primary); }
+.fiches-list li { display: flex; gap: 8px; align-items: stretch; }
+.fiches-list li a { flex: 1; min-width: 0; }
+.fiches-list .fav {
+  flex: none; width: 48px; font-size: 1.4rem; line-height: 1; color: var(--muted);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+}
+.fiches-list .fav.on { color: #e0a800; border-color: #e0a800; }
 
 /* ---------- livret individuel ---------- */
 .livret-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
