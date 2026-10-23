@@ -1277,7 +1277,7 @@
       key: 'intervention', loading: 'Chargement de l’intervention…', confirm: 'Enregistrer les modifications de cette intervention ?',
       offline: 'Réseau indisponible : impossible d’ouvrir cette intervention hors ligne.',
       notActive: 'La consultation des interventions n’est pas encore activée sur le serveur.',
-      back: () => 'Mes interventions',
+      back: origin => (window.SMPM_ITV_LIST ? window.SMPM_ITV_LIST.label(origin) : 'Mes interventions'),
       title: (m, fd) => (m.date ? `Intervention du ${fd(m.date)}` : 'Intervention'),
       bits: (m, fdt) => [m.commune, m.debut ? `début ${m.debut}` : '', m.horodateur ? `envoyée le ${fdt(m.horodateur)}` : ''],
       droits: (d, m, fdt) => (d.modifier

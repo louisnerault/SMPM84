@@ -63,6 +63,7 @@
       <div id="nav-interv-sub" class="nav-sub" hidden>
         <button data-page="interv-new"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></svg>Nouvelle intervention</button>
         <button data-page="interv-mes"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3.5 4v4.5H8"/><path d="M12 7.5V12l3 2"/></svg>Mes interventions</button>
+        <button data-page="interv-toutes" id="nav-interv-all" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>Toutes les interventions</button>
       </div>
     </div>
     <div id="nav-fmpa" class="nav-group" hidden>
@@ -225,12 +226,12 @@
       </div>
     </div>
     <div id="tab-interv-mes" hidden>
-      <h1>Mes interventions</h1>
-      <p class="muted small">Interventions dont vous êtes le chef d'unité. Modifiables pendant 24 h après l'envoi.</p>
-      <div data-itv-pending></div>
+      <h1 id="itvl-title">Mes interventions</h1>
+      <p class="muted small" id="itvl-intro">Interventions dont vous êtes le chef d'unité. Modifiables pendant 24 h après l'envoi.</p>
+      <div data-itv-pending id="itvl-pending"></div>
       <p id="itvl-state" class="muted small" role="status"></p>
       <div id="itvl-tools" class="fmpal-tools" hidden>
-        <input type="search" id="itvl-search" placeholder="Rechercher une commune, une date…" aria-label="Rechercher">
+        <input type="search" id="itvl-search" placeholder="Rechercher une commune, un CU, une date…" aria-label="Rechercher">
         <span id="itvl-count" class="muted small"></span>
       </div>
       <ol id="itvl-list" class="fmpa-list fmpal-list"></ol>

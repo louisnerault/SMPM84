@@ -52,7 +52,7 @@ Fichiers à copier dans le projet Apps Script « Web App SMPM84 », à côté de
      ```js
      case 'itv_form':   result = itvForm_(b.token); break;
      case 'itv_submit': result = itvSubmit_(b.token, b.answers, b.submission_id); break;
-     case 'itv_list':   result = itvList_(b.token); break;
+     case 'itv_list':   result = itvList_(b.token, b.scope); break;
      case 'itv_get':    result = itvGet_(b.token, b.id); break;
      case 'itv_update': result = itvUpdate_(b.token, b.id, b.answers, b.version); break;
      ```
@@ -61,6 +61,6 @@ Fichiers à copier dans le projet Apps Script « Web App SMPM84 », à côté de
 
   La saisie est soumise au formulaire lui-même (retrouvé automatiquement : celui relié au sheet « Interventions SMPM »), qui alimente l'onglet des réponses comme une saisie classique. Le chef d'unité peut pointer l'intervention sur une carte (Plan IGN, photo aérienne, OpenStreetMap) ou relever sa position : les coordonnées (« 44.174130, 5.278690 ») remplissent la question réponse courte « Coordonnées GPS » du formulaire.
 
-  Mes interventions : interventions dont l'utilisateur est le « Chef d'unité SMPM », modifiables pendant 24 h après l'envoi (conseiller technique et administrateur : sans limite). La modification réécrit seulement les cellules changées de la ligne, sans renvoyer le formulaire ; elle est tracée dans l'onglet Journal.
+  Mes interventions : interventions dont l'utilisateur est le « Chef d'unité SMPM », modifiables pendant 24 h après l'envoi. Toutes les interventions (conseiller technique et administrateur) : consultation et modification de toutes les interventions, sans limite de délai. La modification réécrit seulement les cellules changées de la ligne, sans renvoyer le formulaire ; elle est tracée dans l'onglet Journal.
 
   Droits : chef d'unité, chef de section, conseiller technique, administrateur.
