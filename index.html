@@ -208,7 +208,27 @@
     <div id="tab-annuaire" hidden>
       <div class="sub-head"><button type="button" class="link" data-go="accueil">← Accueil intervention</button></div>
       <h1>Annuaire des spécialistes</h1>
-      <p class="muted">Cette rubrique sera alimentée prochainement.</p>
+      <p id="ann-state" class="muted small" role="status"></p>
+      <div class="ann-tools">
+        <input type="search" id="ann-search" placeholder="Nom, prénom, centre, grade…" autocomplete="off" aria-label="Rechercher dans l'annuaire">
+        <div class="ann-filters">
+          <select id="ann-secteur" aria-label="Secteur"><option value="">Tous les secteurs</option></select>
+          <select id="ann-centre" aria-label="Centre d'affectation"><option value="">Tous les centres</option></select>
+          <select id="ann-tri" aria-label="Tri">
+            <option value="nom">Tri : nom</option>
+            <option value="centre">Tri : centre</option>
+            <option value="secteur">Tri : secteur</option>
+          </select>
+        </div>
+        <div class="ann-qualifs" id="ann-qualifs" role="group" aria-label="Qualifications requises"></div>
+        <div class="ann-foot">
+          <label class="ann-check"><input type="checkbox" id="ann-tel"> Avec téléphone uniquement</label>
+          <button type="button" class="link" id="ann-reset" hidden>Effacer les filtres</button>
+          <span id="ann-count"></span>
+        </div>
+      </div>
+      <p id="ann-empty" class="muted center" hidden></p>
+      <ul id="ann-list" class="ann-list"></ul>
     </div>
 
     <!-- Intervention : chefs d'unité, chefs de section, conseillers techniques, administrateurs -->
@@ -410,6 +430,7 @@
 <script src="fmpa.js"></script>
 <script src="fmpa-list.js"></script>
 <script src="intervention-list.js"></script>
+<script src="annuaire.js"></script>
 <script src="fmpa-valid.js"></script>
 <script src="livret-remplir.js"></script>
 <script src="carte-hors-ligne.js"></script>
