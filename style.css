@@ -941,7 +941,7 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
 [id$="-form"]:has(.secnav) .grid-tools { top: 53px; }
 
 /* ---------- barre de progression des chargements ---------- */
-.progress { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 1000; pointer-events: none; opacity: 0; transition: opacity .3s; }
+.progress { position: fixed; top: 0; left: 0; right: 0; height: 6px; z-index: 1000; pointer-events: none; opacity: 0; transition: opacity .3s; }
 .progress.on { opacity: 1; }
 .progress.done { transition-delay: .2s; opacity: 0; }
 .progress-fill { height: 100%; background: linear-gradient(90deg, #e3a21a, #d62828); transform-origin: left; transform: scaleX(0); transition: transform .25s ease-out; box-shadow: 0 0 6px rgba(214,40,40,.6); }
@@ -950,7 +950,7 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
 /* écran de démarrage */
 .boot { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 48px 16px; }
 .boot-logo { width: 96px; height: 96px; animation: boot-pulse 1.6s ease-in-out infinite; }
-.boot-track { width: min(240px, 70vw); height: 6px; border-radius: 3px; background: var(--primary-soft); overflow: hidden; }
+.boot-track { width: min(260px, 70vw); height: 8px; border-radius: 4px; background: var(--primary-soft); overflow: hidden; }
 .boot-fill { width: 40%; height: 100%; border-radius: 3px; background: var(--primary); animation: boot-slide 1.2s ease-in-out infinite; }
 @keyframes boot-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
 @keyframes boot-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
@@ -958,3 +958,14 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
   .boot-logo, .boot-fill { animation: none; }
   .boot-fill { width: 100%; opacity: .5; }
 }
+
+/* barre animée sous les messages de chargement d'une rubrique */
+.is-loading::after {
+  content: ""; display: block; margin-top: 8px; height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, transparent 0, var(--primary) 30%, var(--primary) 50%, transparent 80%) no-repeat, var(--primary-soft);
+  background-size: 40% 100%, 100% 100%;
+  animation: load-slide 1.2s ease-in-out infinite;
+}
+.is-loading.center::after { margin-left: auto; margin-right: auto; max-width: 320px; }
+@keyframes load-slide { 0% { background-position: -40% 0, 0 0; } 100% { background-position: 140% 0, 0 0; } }
+@media (prefers-reduced-motion: reduce) { .is-loading::after { animation: none; background: var(--primary-soft); } }
