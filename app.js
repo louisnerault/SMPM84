@@ -70,7 +70,43 @@
   const API_TIMEOUT_LONG = 60000;
   const LONG_ACTIONS = /(_submit|_update|_decide|^itv_list$|^itv_get$|^itv_form$|^update_me$|^login$|^verify_code$|^request_code$)/;
 
+  // ---------- barre de progression des requêtes ----------
+  // Apps Script ne renvoie pas d'avancement : la barre progresse vite puis ralentit
+  // vers 90 %, et se termine à 100 % quand toutes les requêtes en cours sont revenues.
+  const progress = (() => {
+    const el = document.getElementById('progress');
+    const fill = el && el.querySelector('.progress-fill');
+    let active = 0, value = 0, tick = null, hideT = null;
+    function set(v) { value = v; if (fill) fill.style.transform = 'scaleX(' + v + ')'; }
+    function start() {
+      if (!el) return;
+      active++;
+      if (active > 1) return;
+      clearTimeout(hideT);
+      el.classList.remove('done'); el.classList.add('on'); el.setAttribute('aria-hidden', 'false');
+      set(0.08);
+      clearInterval(tick);
+      tick = setInterval(() => set(value + (0.9 - value) * 0.08), 200);
+    }
+    function end() {
+      if (!el || active === 0) return;
+      active--;
+      if (active > 0) return;
+      clearInterval(tick);
+      set(1); el.classList.add('done');
+      hideT = setTimeout(() => { el.classList.remove('on', 'done'); el.setAttribute('aria-hidden', 'true'); set(0); }, 400);
+    }
+    return { start, end };
+  })();
+  window.SMPM_PROGRESS = progress;
+
   async function api(action, payload = {}) {
+    progress.start();
+    try { return await apiCall(action, payload); }
+    finally { progress.end(); }
+  }
+
+  async function apiCall(action, payload) {
     let res;
     const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
     const timer = ctrl ? setTimeout(() => ctrl.abort(), LONG_ACTIONS.test(action) ? API_TIMEOUT_LONG : API_TIMEOUT) : null;
