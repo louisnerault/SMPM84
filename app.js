@@ -144,6 +144,8 @@
       else b.removeAttribute('aria-current');
     });
     $('#tab-livret').hidden = name !== 'livret';
+    $('#tab-livret-remplir').hidden = name !== 'livret-remplir';
+    $('#tab-livret-themes').hidden = name !== 'livret-themes';
     $('#tab-profil').hidden = name !== 'infos';
     $('#tab-fiches').hidden = name !== 'fiches';
     $('#tab-accueil').hidden = name !== 'accueil';
@@ -152,6 +154,7 @@
     $('#tab-fmpa-list').hidden = !FMPA_LISTS.includes(name);
     $('#tab-fmpa-valid').hidden = name !== 'fmpa-valid';
     if (name.startsWith('fmpa')) setFmpaGroup(true);
+    if (name.startsWith('livret')) setLivretGroup(true);
     window.scrollTo(0, 0);
     if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
     if (name === 'fmpa' && window.SMPM_FMPA) window.SMPM_FMPA.open();
@@ -164,6 +167,12 @@
   function setFmpaGroup(open) {
     $('#nav-fmpa .nav-group-btn').setAttribute('aria-expanded', String(open));
     $('#nav-fmpa-sub').hidden = !open;
+  }
+
+  // Sous-menu Mon livret (repliable, ouvert par défaut)
+  function setLivretGroup(open) {
+    $('#nav-livret .nav-group-btn').setAttribute('aria-expanded', String(open));
+    $('#nav-livret-sub').hidden = !open;
   }
 
   function setOffline(flag) { $('#offline-banner').hidden = !flag; }
@@ -630,6 +639,9 @@
   $$('.drawer-nav button[data-page]').forEach(btn => btn.addEventListener('click', () => gotoPage(btn.dataset.page)));
   $('#nav-fmpa .nav-group-btn').addEventListener('click', e => {
     setFmpaGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
+  });
+  $('#nav-livret .nav-group-btn').addEventListener('click', e => {
+    setLivretGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
   });
 
   $('#form-login').addEventListener('submit', async e => {
