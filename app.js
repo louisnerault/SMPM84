@@ -887,7 +887,7 @@
 
   // ---------- démarrage ----------
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
     // version affichée = celle du service worker qui sert réellement la page
     const showVersion = () => {
       const sw = navigator.serviceWorker.controller, el = document.getElementById('app-version');
