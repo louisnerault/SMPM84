@@ -357,13 +357,15 @@
     }
 
     // ---------- indice de risque (FMPA) ----------
-    // Même calcul que l'onglet FMPA_test du sheet FMPA (colonne SCORE, cellule I17) :
+    // Même calcul que l'onglet FMPA_test du sheet FMPA (colonne SCORE, cellule I17 = SOMME(I4:I16),
+    // corrigée par corrigerIndiceRisque() de backend/Fmpa.gs) :
     //   - météo, lieu, caractéristiques : chiffre en tête de la réponse (0 à 4, sinon 5) ;
     //   - effectif : 0 si « ≤ 7 spécialistes », sinon 1 ; communication CODIS : nombre en tête ;
     //   - reconnaissance, SOIEC CNF, équipements, communication sur site : 1 si NON ;
     //   - danger particulier : 1 sauf NON ; autorisation du site : 0 si OUI, sinon 1 ;
-    //   - temps de marche d'approche : chiffre en tête / 5.
-    // Niveau : ≤ 5 vert (jaune si manœuvre de nuit), ≤ 10 jaune, ≤ 15 orange, au-delà rouge.
+    //   - temps de marche d'approche : chiffre en tête / 5 ; autres difficultés : 1 sauf NON.
+    // Niveau (couleurs du compte rendu PDF, TEMPLATE_FMPA) : ≤ 5 vert (jaune si manœuvre de nuit),
+    // ≤ 10 jaune, ≤ 15 orange, au-delà rouge.
     const lead = v => { const c = String(v || '').trim().charAt(0); return /[0-4]/.test(c) ? Number(c) : 5; };
     const leadNum = v => { const n = parseFloat(String(v || '').split(' - ')[0].replace(',', '.')); return isNaN(n) ? 0 : n; };
     const isNon = v => fold(v) === 'non';
@@ -380,6 +382,7 @@
       { k: 'comsite', re: /communication sur site/, pts: v => (isNon(v) ? 1 : 0) },
       { k: 'autor', re: /autorisation/, pts: v => (fold(v) === 'oui' ? 0 : 1) },
       { k: 'marche', re: /marche d.?approche|temps de marche/, pts: v => lead(v) / 5 },
+      { k: 'autres', re: /autres? difficult/, pts: v => (isNon(v) ? 0 : 1) },
     ];
     const RISK_LEVELS = [
       null,
