@@ -888,6 +888,16 @@
   // ---------- démarrage ----------
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
+    // version affichée = celle du service worker qui sert réellement la page
+    const showVersion = () => {
+      const sw = navigator.serviceWorker.controller, el = document.getElementById('app-version');
+      if (!sw || !el) return;
+      const ch = new MessageChannel();
+      ch.port1.onmessage = e => { if (e.data) { el.textContent = 'v' + e.data; el.hidden = false; } };
+      sw.postMessage('version', [ch.port2]);
+    };
+    showVersion();
+    navigator.serviceWorker.addEventListener('controllerchange', showVersion);
   }
   init();
 })();

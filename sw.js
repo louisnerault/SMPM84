@@ -5,7 +5,7 @@
 // - Fiches techniques : cache dédié (smpm84-fiches) rempli par fiches.js ; lecture hors ligne.
 // - Carte hors ligne : cache dédié (smpm84-carte) rempli par carte-hors-ligne.js à la demande ; jamais rempli ici.
 // Les données personnelles ne passent jamais par ce cache (elles sont dans localStorage).
-const CACHE = 'smpm84-shell-v36';
+const CACHE = 'smpm84-shell-v37';
 const FICHES_CACHE = 'smpm84-fiches';
 const CARTE_CACHE = 'smpm84-carte';
 const SHELL = [
@@ -15,6 +15,11 @@ const SHELL = [
   'assets/ecusson-132.png', 'assets/sdis84-210.png', 'assets/icon-192.png',
   'assets/banniere-700.jpg', 'assets/banniere-1000.jpg',
 ];
+
+// Numéro de version affiché dans le bandeau : demandé par la page au service worker qui la sert
+self.addEventListener('message', e => {
+  if (e.data === 'version' && e.ports[0]) e.ports[0].postMessage(CACHE.replace(/^.*-v/, ''));
+});
 
 self.addEventListener('install', e => {
   // cache: 'reload' : contourne le cache HTTP du navigateur pour récupérer la version déployée
