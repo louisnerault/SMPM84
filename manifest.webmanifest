@@ -4,7 +4,7 @@
   "description": "Secours en milieu périlleux et montagne – Sapeurs-pompiers de Vaucluse",
   "lang": "fr",
   "id": "smpm84-app",
-  "start_url": "./",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#1d4f91",
