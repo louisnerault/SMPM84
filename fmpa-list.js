@@ -1,15 +1,14 @@
 // Listes des FMPA enregistrées (action fmpa_list) :
 //   fmpa-mes     : FMPA encadrées par l'utilisateur (IMP3 responsable)
-//   fmpa-secteur : FMPA du secteur (chef de section)
-//   fmpa-toutes  : toutes les FMPA (administrateurs, conseillers techniques)
+//   fmpa-toutes  : toutes les FMPA (administrateurs et conseillers techniques : modification ;
+//                  chefs de section : consultation, modification de leur secteur)
 // Un appui sur une FMPA l'ouvre dans le formulaire (fmpa.js), en lecture seule ou modifiable.
 // Dernière liste gardée sur l'appareil pour une consultation hors ligne.
 (() => {
   'use strict';
 
   const SCOPES = {
-    'fmpa-mes': { scope: 'mine', title: 'Mes FMPA encadrées', back: 'Mes FMPA encadrées' },
-    'fmpa-secteur': { scope: 'secteur', title: 'FMPA du secteur', back: 'FMPA du secteur' },
+    'fmpa-mes': { scope: 'mine', title: 'Mes FMPA', back: 'Mes FMPA' },
     'fmpa-toutes': { scope: 'toutes', title: 'Toutes les FMPA', back: 'Toutes les FMPA' },
   };
   const KEY = s => 'smpm_fmpa_list_' + s;
@@ -47,14 +46,16 @@
   function open(page) {
     const conf = SCOPES[page];
     if (!conf) return;
-    if (S.page !== page) { S.q = ''; S.year = ''; S.secteur = ''; $('#fmpal-search').value = ''; }
+    const editAll = !app().canEditAll || app().canEditAll();
+    const sect = String((app().section && app().section()) || '').toUpperCase();
+    // Chef de section : liste ouverte sur son secteur (filtre modifiable)
+    if (S.page !== page) { S.q = ''; S.year = ''; S.secteur = page === 'fmpa-toutes' && !editAll ? sect : ''; $('#fmpal-search').value = ''; }
     S.page = page;
-    const sect = (app().section && app().section()) || '';
-    $('#fmpal-title').textContent = page === 'fmpa-secteur' && sect ? `FMPA du secteur ${cap(sect)}` : conf.title;
+    $('#fmpal-title').textContent = conf.title;
     $('#fmpal-intro').textContent =
       page === 'fmpa-mes' ? 'FMPA dont vous êtes l’IMP3 responsable. Modifiables pendant 24 h après la déclaration, ensuite par votre chef de section.'
-      : page === 'fmpa-secteur' ? 'Vous pouvez consulter et modifier toutes les FMPA de votre secteur.'
-      : 'Vous pouvez consulter et modifier toutes les FMPA.';
+      : editAll ? 'Vous pouvez consulter et modifier toutes les FMPA.'
+      : `Vous pouvez consulter toutes les FMPA et modifier celles de votre secteur${sect ? ' (' + cap(sect) + ')' : ''}.`;
     const cached = S.data[conf.scope] || store.getJSON(KEY(conf.scope));
     if (cached) { S.data[conf.scope] = cached; render(); }
     else { $('#fmpal-list').replaceChildren(); $('#fmpal-tools').hidden = true; }
@@ -157,7 +158,7 @@
       return el('span', { class: 'chip chip-edit', text: `Modifiable · ${t}` });
     }
     if (d.modifier) return el('span', { class: 'chip chip-edit', text: 'Modifiable' });
-    return el('span', { class: 'chip chip-ro', text: d.motif === 'delai' ? 'Lecture seule · délai de 24 h dépassé' : 'Lecture seule' });
+    return el('span', { class: 'chip chip-ro', text: d.motif === 'delai' ? 'Lecture seule · délai de 24 h dépassé' : d.motif === 'secteur' ? 'Lecture seule · autre secteur' : 'Lecture seule' });
   }
 
   function openOne(f) {

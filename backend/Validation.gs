@@ -25,8 +25,7 @@
  * du CORE est refusée proprement.
  *
  * Droits :
- *   - chef d'unité : les demandes qui lui sont adressées (colonne « Chef d'unité responsable ») ;
- *   - chef de section : en plus, les demandes des agents de son secteur (CU absent) ;
+ *   - chef d'unité et chef de section : les demandes qui leur sont adressées (colonne « Chef d'unité responsable ») ;
  *   - administrateur et conseiller technique : toutes les demandes.
  */
 
@@ -115,11 +114,10 @@ function personnelParNom_(pt) {
   return out;
 }
 
-/** Peut-on traiter cette demande ? 'cu' (adressée à l'utilisateur), 'section', 'admin' ou ''. */
+/** Peut-on traiter cette demande ? 'cu' (adressée à l'utilisateur), 'admin' (administrateur, CT) ou ''. */
 function droitDemande_(d, prof) {
   if (prof.nom && cle_(d.cu) === prof.nom) return 'cu';
   if (prof.admin || prof.ctd) return 'admin';
-  if (prof.chefSection && d.secteur && d.secteur === prof.section) return 'section';
   return '';
 }
 

@@ -29,12 +29,12 @@ Fichiers à copier dans le projet Apps Script « Web App SMPM84 », à côté de
 
   Droits de modification d'une FMPA enregistrée (ligne de l'onglet `test_fmpa`) :
   - administrateur et conseiller technique : toutes les FMPA (menu « Toutes les FMPA ») ;
-  - chef de section : les FMPA de son secteur (menu « FMPA du secteur ») ;
+  - chef de section : les FMPA de son secteur (menu « Toutes les FMPA », où il consulte aussi les autres secteurs en lecture seule) ;
   - chef d'unité (IMP3 responsable) : ses FMPA pendant 24 h après la déclaration, ensuite lecture seule et renvoi vers le N+1 (colonne « CHEFS DE SECTION » de la liste du personnel).
 
   La modification réécrit seulement les cellules changées, sans renvoyer le formulaire (les traitements déclenchés à l'envoi ne sont pas relancés). Chaque modification est tracée dans l'onglet Journal.
 
-- `Validation.gs` : validation des thèmes FMPA par les chefs d'unité (rubrique FMPA > Demandes à valider).
+- `Validation.gs` : validation des thèmes FMPA par les chefs d'unité (rubrique FMPA > Validation des livrets).
   1. Dans `doPost()` de `Code.gs`, ajouter :
      ```js
      case 'cu_list':   result = cuList_(b.token); break;
@@ -45,5 +45,5 @@ Fichiers à copier dans le projet Apps Script « Web App SMPM84 », à côté de
 
   L'application lit le fichier CORE (onglet « formulaire thèmes ») et applique le même traitement que le script « SMPM : validation thèmes FMPA et CORE » : validation = ligne copiée en tête de l'onglet LOGS du livret de l'agent + année en colonne D + statut « validé » ; rejet = statut « rejeté » ; dans les deux cas mail à l'agent, ligne copiée dans ARCHIVES puis retirée du CORE. Les feuilles « validation CU » de chaque chef d'unité continuent de fonctionner en parallèle.
 
-  Droits : chef d'unité = demandes qui lui sont adressées ; chef de section = + agents de son secteur ; conseiller technique et administrateur = toutes.
+  Droits : chef d'unité et chef de section = demandes qui leur sont adressées ; conseiller technique et administrateur = toutes.
 

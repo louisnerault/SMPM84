@@ -422,7 +422,8 @@ function metaFmpa_(t, i, r) {
 
 /**
  * Droits sur une FMPA :
- * admin / CT : tout ; chef de section : son secteur ; chef d'unité responsable : 24 h, puis lecture seule.
+ * admin / CT : tout ; chef de section : modification de son secteur, consultation des autres ;
+ * chef d'unité responsable : 24 h, puis lecture seule.
  */
 function droitsFmpa_(m, prof, chefs) {
   if (prof.admin || prof.ctd) return { voir: true, modifier: true, par: 'admin' };
@@ -432,6 +433,7 @@ function droitsFmpa_(m, prof, chefs) {
     if (Date.now() < fin) return { voir: true, modifier: true, par: 'cu', jusqua: new Date(fin).toISOString() };
     return { voir: true, modifier: false, motif: 'delai', n1: (chefs && chefs[m.secteur]) || [] };
   }
+  if (prof.chefSection) return { voir: true, modifier: false, motif: 'secteur' };
   return { voir: false, modifier: false, motif: 'droits' };
 }
 
@@ -448,13 +450,14 @@ function trouverFmpa_(t, id) {
 
 /**
  * Liste des FMPA.
- * scope : 'mine' (FMPA encadrées par l'utilisateur), 'secteur' (chef de section), 'toutes' (admin, CT).
+ * scope : 'mine' (FMPA encadrées par l'utilisateur), 'secteur' (chef de section, ancien menu),
+ *         'toutes' (admin, CT : modification ; chef de section : consultation, modification de son secteur).
  */
 function fmpaList_(token, scope) {
   const a = fmpaAuth_(token);
   const prof = profilFmpa_(a);
   scope = scope || 'mine';
-  if (scope === 'toutes' && !(prof.admin || prof.ctd)) throw new Error('Accès réservé aux administrateurs et conseillers techniques');
+  if (scope === 'toutes' && !(prof.admin || prof.ctd || prof.chefSection)) throw new Error('Accès réservé aux administrateurs, conseillers techniques et chefs de section');
   if (scope === 'secteur' && !prof.chefSection) throw new Error('Accès réservé aux chefs de section');
 
   const t = fmpaTable_();
