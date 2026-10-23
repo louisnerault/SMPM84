@@ -1276,6 +1276,22 @@
         if (!msg && it.type === 'duration' && !isEmpty(v) && !/^\d{1,2}:\d{2}$/.test(String(v).trim())) msg = 'Format attendu : hh:mm';
         if (msg) errors.push([it, msg]);
       });
+      // Le chef d'unité responsable doit figurer parmi les personnes cochées
+      const cuIt = visibleItems.find(it => (it.type === 'list' || it.type === 'radio') && /imp ?3|responsable|chef/i.test(it.title) && !isEmpty(S.answers[it.id]));
+      const pres = visibleItems.filter(it => (it.type === 'grid' || it.type === 'checkgrid') && isPresence(it));
+      if (cuIt && pres.length) {
+        const cu = norm(S.answers[cuIt.id]).replace(/\s+/g, ' ');
+        const same = row => {
+          const r = norm(row).replace(/\s+/g, ' ');
+          return r === cu || r.startsWith(cu + ' ') || r.endsWith(' ' + cu) || cu.startsWith(r + ' ') || cu.endsWith(' ' + r);
+        };
+        const coche = pres.some(it => gridValue(it).some((v, i) => [].concat(v || []).length && same(it.rows[i])));
+        if (!coche) {
+          const m = `Le chef d'unité responsable (${S.answers[cuIt.id]}) doit faire partie des personnes cochées.`;
+          errors.push([cuIt, m]);
+          pres.forEach(it => errors.push([it, m]));
+        }
+      }
       document.querySelectorAll(FORM_SEL + ' .fmpa-q.invalid').forEach(q => { q.classList.remove('invalid'); $('.fmpa-err', q).textContent = ''; });
       errors.forEach(([it, msg]) => {
         const q = document.querySelector(`${FORM_SEL} .fmpa-q[data-q="${it.id}"]`);
@@ -1295,7 +1311,8 @@
       const visibleItems = visible.flatMap(i => S.def.sections[i].items);
       const errors = validate(visibleItems);
       if (errors.length) {
-        msg.textContent = errors.length > 1 ? `${errors.length} réponses à compléter.` : 'Une réponse est à compléter.';
+        const cuErr = errors.find(([, m]) => /chef d'unité responsable/.test(m));
+        msg.textContent = cuErr ? cuErr[1] + ' Cochez-le avant d’envoyer.' : errors.length > 1 ? `${errors.length} réponses à compléter.` : 'Une réponse est à compléter.';
         msg.classList.add('error');
         const first = document.querySelector(FORM_SEL + ' .fmpa-q.invalid');
         if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
