@@ -1238,10 +1238,10 @@
     leafletP = new Promise((resolve, reject) => {
       const css = document.createElement('link');
       css.rel = 'stylesheet';
-      css.href = base + 'leaflet.min.css';
+      css.href = base + 'leaflet.css';
       document.head.append(css);
       const js = document.createElement('script');
-      js.src = base + 'leaflet.min.js';
+      js.src = base + 'leaflet.js';
       js.onload = () => (window.L ? resolve() : reject(new Error('Leaflet')));
       js.onerror = () => { leafletP = null; js.remove(); reject(new Error('Leaflet')); };
       document.head.append(js);
