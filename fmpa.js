@@ -261,7 +261,7 @@
   function renderHead() {
     const head = $('#fmpa-head');
     if (S.mode === 'declare') {
-      head.replaceChildren(el('h1', { text: 'Déclarer une FMPA' }));
+      head.replaceChildren(el('h1', { text: 'Nouvelle FMPA' }));
       return;
     }
     const r = S.rec || {};
@@ -293,6 +293,7 @@
     const n1 = (d.n1 || []).join(', ');
     const t = d.motif === 'delai'
       ? `Lecture seule : le délai de 24 h est dépassé. Pour toute modification, contactez votre N+1${n1 ? ' : ' + n1 + ' (chef de section ' + cap(m.secteur) + ')' : ' (chef de section)'}.`
+      : d.motif === 'secteur' ? `Lecture seule : cette FMPA relève du secteur ${cap(m.secteur)}. Vous modifiez les FMPA de votre secteur.`
       : 'Lecture seule.';
     return el('p', { class: 'fmpa-rights ro-box', text: t });
   }
@@ -709,7 +710,7 @@
     if (S.done && !$('#fmpa-done').hidden) showDone();
   }
 
-  // Bandeau « en attente d'envoi » (page de déclaration et Mes FMPA encadrées) et pastille du menu
+  // Bandeau « en attente d'envoi » (page de déclaration et Mes FMPA) et pastille du menu
   function renderPending() {
     const list = pendingList();
     const dot = document.querySelector('#nav-fmpa .pending-dot');
