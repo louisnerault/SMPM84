@@ -76,9 +76,16 @@ function itvFormulaire_() {
   return FormApp.openByUrl(url);
 }
 
-/** Onglet qui reçoit les réponses du formulaire. */
+/**
+ * Onglet qui reçoit les réponses du formulaire : celui relié au même formulaire que le classeur
+ * (ou à ITV.FORM_ID), sinon le premier onglet relié à un formulaire.
+ */
 function itvOnglet_(ss) {
-  return ss.getSheets().find(s => { try { return !!s.getFormUrl(); } catch (e) { return false; } }) || null;
+  const url = s => { try { return s.getFormUrl() || ''; } catch (e) { return ''; } };
+  const id = u => (/\/d\/(?:e\/)?([\w-]+)/.exec(u || '') || [])[1] || '';
+  const cible = ITV.FORM_ID || id(ss.getFormUrl());
+  const relies = ss.getSheets().filter(s => url(s));
+  return (cible && relies.find(s => id(url(s)) === cible)) || relies[0] || null;
 }
 
 function itvForm_(token) {
@@ -660,6 +667,19 @@ function itvUpdate_(token, id, answers, version) {
 }
 
 // ============================ Test (éditeur) ============================
+
+/** Vérifie la lecture de la base : onglet, colonnes résumées, nombre d'interventions, les 5 plus récentes. */
+function testInterventionsListe() {
+  const t = itvTable_();
+  const lignes = ['Onglet lu : « ' + t.sh.getName() + ' » (' + (t.values.length - 1) + ' lignes)'];
+  Object.keys(t.col).forEach(k => lignes.push('  colonne ' + k + ' : ' + (t.col[k] >= 0 ? '« ' + t.values[0][t.col[k]] + ' »' : 'INTROUVABLE')));
+  const toutes = [];
+  for (let i = 1; i < t.values.length; i++) { const m = itvMeta_(t, t.values[i]); if (m) toutes.push(m); }
+  toutes.sort((x, y) => (x.horodateur < y.horodateur ? 1 : -1));
+  lignes.push(toutes.length + ' interventions reconnues (ligne avec un horodateur en colonne A)');
+  toutes.slice(0, 5).forEach(m => lignes.push('  ' + m.date + ' · ' + m.commune + ' · CU ' + m.cu));
+  Logger.log(lignes.join('\n'));
+}
 
 function testIntervention() {
   const form = itvFormulaire_();
