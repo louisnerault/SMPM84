@@ -1037,8 +1037,6 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
 .ann-chips { margin-top: 6px; }
 .ann-num { margin: 6px 0 0; font-variant-numeric: tabular-nums; font-size: .9rem; }
 .ann-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-.ann-btn { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; border-radius: 10px; font-weight: 600; font-size: .9rem; text-decoration: none; color: #fff; }
-.ann-tel { background: var(--ok); }
-.ann-sms { background: var(--primary); }
-.ann-wa { background: #1fa855; }
-.ann-btn.is-off { background: var(--line); color: var(--muted); cursor: not-allowed; }
+.ann-btn { display: flex; align-items: center; justify-content: center; min-height: 44px; background: none; border: 0; color: var(--muted); text-decoration: none; }
+.ann-btn:hover, .ann-btn:active { color: var(--ink); }
+.ann-btn.is-off { opacity: .3; cursor: not-allowed; }
