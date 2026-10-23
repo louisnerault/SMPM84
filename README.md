@@ -47,3 +47,15 @@ Fichiers à copier dans le projet Apps Script « Web App SMPM84 », à côté de
 
   Droits : chef d'unité et chef de section = demandes qui leur sont adressées ; conseiller technique et administrateur = toutes.
 
+- `Intervention.gs` : compte rendu d'intervention (rubrique Intervention › Nouvelle intervention). Utilise les fonctions de `Fmpa.gs`.
+  1. Dans `doPost()` de `Code.gs`, ajouter :
+     ```js
+     case 'itv_form':   result = itvForm_(b.token); break;
+     case 'itv_submit': result = itvSubmit_(b.token, b.answers, b.submission_id, b.gps); break;
+     ```
+  2. Exécuter une fois `testIntervention()` dans l'éditeur (autorisations ; le journal liste les questions du formulaire « INTERVENTION - SMPM 84 » et l'emplacement prévu pour le GPS).
+  3. Redéployer en « Nouvelle version ».
+
+  La saisie est soumise au formulaire lui-même (retrouvé automatiquement : celui relié au sheet « Interventions SMPM »), qui alimente l'onglet des réponses comme une saisie classique. Le chef d'unité peut pointer l'intervention sur une carte (Plan IGN, photo aérienne, OpenStreetMap) ou relever sa position : les coordonnées (« 44.174130, 5.278690 ») vont dans la question du formulaire dont le titre contient « GPS » ou « coordonnées » si elle existe (conseillé), sinon dans une colonne « Coordonnées GPS » ajoutée à l'onglet des réponses. Elles sont aussi tracées dans l'onglet Journal.
+
+  Droits : chef d'unité, chef de section, conseiller technique, administrateur.

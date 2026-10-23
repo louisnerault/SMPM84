@@ -165,6 +165,8 @@
     if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
     if (name === 'livret-remplir' && window.SMPM_THEMES) window.SMPM_THEMES.open();
     if (name === 'fmpa' && window.SMPM_FMPA) window.SMPM_FMPA.open();
+    if (name === 'interv-new' && window.SMPM_ITV) window.SMPM_ITV.open();
+    if (name === 'interv-mes' && window.SMPM_ITV) window.SMPM_ITV.renderPending();
     if (FMPA_LISTS.includes(name) && window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.open(name);
     if (name === 'fmpa-valid' && window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.open();
     closeMenu();
@@ -224,6 +226,7 @@
     store.del(KEY_LIVRET);
     store.del(KEY_MODE);
     if (window.SMPM_FMPA) window.SMPM_FMPA.reset(explicit === true);
+    if (window.SMPM_ITV) window.SMPM_ITV.reset(explicit === true);
     if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.reset();
     if (window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.reset();
     if (window.SMPM_THEMES) window.SMPM_THEMES.reset(explicit === true);
@@ -284,6 +287,8 @@
     if (!offline) loadLivret();
     // déclarations de FMPA saisies hors ligne : envoi dès que possible
     if (window.SMPM_FMPA) { window.SMPM_FMPA.renderPending(); if (!offline) window.SMPM_FMPA.flush(); }
+    // interventions saisies hors ligne : idem
+    if (window.SMPM_ITV) { window.SMPM_ITV.renderPending(); if (!offline) window.SMPM_ITV.flush(); }
     // thèmes saisis hors ligne (Remplir mon livret) : envoi dès que possible
     if (!offline && window.SMPM_THEMES) window.SMPM_THEMES.flush();
     // demandes de validation des thèmes en attente : compteur du menu
@@ -638,8 +643,8 @@
   });
 
   $('#btn-logout').addEventListener('click', () => {
-    const n = window.SMPM_FMPA ? window.SMPM_FMPA.pending() : 0;
-    if (n && !confirm(`${n} déclaration${n > 1 ? 's' : ''} de FMPA ${n > 1 ? 'ne sont' : 'n’est'} pas encore envoyée${n > 1 ? 's' : ''}. ` +
+    const n = (window.SMPM_FMPA ? window.SMPM_FMPA.pending() : 0) + (window.SMPM_ITV ? window.SMPM_ITV.pending() : 0);
+    if (n && !confirm(`${n} déclaration${n > 1 ? 's' : ''} (FMPA ou intervention) ${n > 1 ? 'ne sont' : 'n’est'} pas encore envoyée${n > 1 ? 's' : ''}. ` +
       'Se déconnecter les supprimera de cet appareil. Continuer ?')) return;
     logout(true);
   });
@@ -782,6 +787,7 @@
     setSyncBusy(true);
     try {
       if (window.SMPM_FMPA) await window.SMPM_FMPA.flush();
+      if (window.SMPM_ITV) await window.SMPM_ITV.flush();
       if (window.SMPM_THEMES) await window.SMPM_THEMES.flush();
       await loadLivret();
       if (window.SMPM_FICHES) await window.SMPM_FICHES.sync();
