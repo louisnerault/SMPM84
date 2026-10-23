@@ -354,7 +354,7 @@
       it.title, it.required ? el('span', { class: 'req', 'aria-hidden': 'true', text: ' *' }) : null);
     wrap.append(label);
     if (it.help) wrap.append(el('p', { class: 'fmpa-help', text: it.help }));
-    wrap.append(...body);
+    wrap.append(...body.filter(b => b !== null && b !== undefined));
     wrap.append(el('p', { class: 'fmpa-err', role: 'alert' }));
     return wrap;
   }
