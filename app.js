@@ -306,6 +306,7 @@
     state.options = options;
     setOffline(offline);
     renderApp();
+    if (window.SMPM_CARTE) window.SMPM_CARTE.setAllowed(canDeclare(data.session));
     show('app');
     applyMode(store.get(KEY_MODE) === 'intervention');
     // Au retour du réseau, on rafraîchit sans quitter la page en cours (ex. déclaration de FMPA en cours de saisie)

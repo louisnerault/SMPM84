@@ -1229,12 +1229,12 @@
     return { open, openRecord, reset, flush, prefetch, pending: () => pendingList().length, renderPending };
   }
 
-  // Leaflet (carte) : chargé à la première ouverture de la carte seulement
+  // Leaflet (carte) : chargé à la première ouverture de la carte seulement, depuis le dépôt
   let leafletP = null;
   function loadLeaflet() {
     if (window.L) return Promise.resolve();
     if (leafletP) return leafletP;
-    const base = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
+    const base = './vendor/leaflet/';   // Leaflet 1.9.4 embarqué (fonctionne hors ligne)
     leafletP = new Promise((resolve, reject) => {
       const css = document.createElement('link');
       css.rel = 'stylesheet';
