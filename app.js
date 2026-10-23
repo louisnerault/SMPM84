@@ -24,8 +24,8 @@
   // (consultation, modification de leur secteur)
   const canAllFmpa = session => !!session && (session.is_admin === true || ['ctd', 'admin', 'chef_section'].includes(session.role));
   const canEditAllFmpa = session => !!session && (session.is_admin === true || ['ctd', 'admin'].includes(session.role));
-  // Intervention : chefs d'unité, chefs de section et administrateurs
-  const canIntervene = session => !!session && (session.is_admin === true || ['chef_unite', 'chef_section', 'admin'].includes(session.role));
+  // Intervention : chefs d'unité, chefs de section, conseillers techniques et administrateurs
+  const canIntervene = session => !!session && (session.is_admin === true || ['chef_unite', 'chef_section', 'ctd', 'admin'].includes(session.role));
   const FMPA_LISTS = ['fmpa-mes', 'fmpa-toutes'];
   function allowedPage(name, session) {
     if (name === 'fmpa' || name === 'fmpa-fiche' || name === 'fmpa-mes' || name === 'fmpa-valid') return canDeclare(session);
