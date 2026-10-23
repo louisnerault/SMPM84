@@ -236,7 +236,7 @@ body.is-offline .status-net { color: #ffd66b; }
 
 /* ---------- fiches techniques ---------- */
 .sync-icon { transform-origin: 50% 50%; }
-.fiches-syncing .sync-icon { animation: spin 1s linear infinite; }
+.fiches-syncing .sync-icon, .profile-syncing .sync-icon { animation: spin 1s linear infinite; }
 .sync-dot {
   position: absolute; top: 4px; right: 4px; width: 10px; height: 10px; border-radius: 50%;
   background: #f5c518; box-shadow: 0 0 0 2px var(--primary);
@@ -245,7 +245,7 @@ body.is-offline .status-net { color: #ffd66b; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 50% { transform: scale(1.5); opacity: .6; } }
 @media (prefers-reduced-motion: reduce) {
-  .fiches-syncing .sync-icon, .sync-dot { animation: none; }
+  .fiches-syncing .sync-icon, .profile-syncing .sync-icon, .sync-dot { animation: none; }
 }
 .fiches-cat { font-size: 1rem; margin: 18px 0 8px; color: var(--primary-dark); }
 @media (prefers-color-scheme: dark) { .fiches-cat { color: #cfe2fb; } }
