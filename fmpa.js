@@ -130,7 +130,7 @@
       setState(S.def ? 'Mise à jour du formulaire…' : 'Chargement du formulaire…');
       try {
         const res = await app().api(C.api.form, { token: app().token() });
-        store.set(KEY_FORM, JSON.stringify({ form: res.form, personnes: res.personnes, moi: res.moi, gps: res.gps }));
+        store.set(KEY_FORM, JSON.stringify({ form: res.form, personnes: res.personnes, moi: res.moi }));
         S.loaded = true;
         apply(res);
         setState('');
@@ -162,9 +162,8 @@
       S.def = res.form;
       S.personnes = res.personnes || S.personnes || {};
       S.moi = res.moi || S.moi || {};
-      S.gpsCol = res.gps ? !!res.gps.colonne : S.gpsCol;
       S.sig = sig;
-      store.set(KEY_FORM, JSON.stringify({ form: S.def, personnes: S.personnes, moi: S.moi, gps: { colonne: S.gpsCol } }));
+      store.set(KEY_FORM, JSON.stringify({ form: S.def, personnes: S.personnes, moi: S.moi }));
       return changed;
     }
 
@@ -345,7 +344,6 @@
         const box = el('section', { class: 'fmpa-sec', 'data-sec': String(i) });
         if (sec.title) box.append(el('h2', { class: 'section-title', text: sec.title }));
         if (sec.help) box.append(el('p', { class: 'muted small', text: sec.help }));
-        if (i === 0 && C.gps && !gpsItem()) box.append(gpsField());
         sec.items.forEach(it => box.append(renderItem(it)));
         return box;
       });
@@ -512,18 +510,11 @@
 
 
     // ---------- coordonnées GPS (intervention) ----------
-    // Une question texte du formulaire dont le titre parle de GPS / coordonnées reçoit le point ;
-    // sinon le point est envoyé à part et écrit par le serveur dans la colonne « Coordonnées GPS ».
-    const GPS_KEY = '__gps';
-    const GPS_RE = /gps|coordonn|latitude|longitude/i;
-    const isGpsItem = it => (it.type === 'text' || it.type === 'paragraph') && GPS_RE.test(it.title);
-    const gpsItem = () => items().find(isGpsItem) || null;
+    // La question réponse courte « Coordonnées GPS » du formulaire est remplie depuis la carte
+    // (ou la position du téléphone), au format « latitude, longitude » en degrés décimaux.
+    const GPS_RE = /gps|coordonn/i;
+    const isGpsItem = it => it.type === 'text' && (it.gps === true || GPS_RE.test(it.title));
     const VAUCLUSE = [44.0, 5.15];
-
-    function gpsField() {
-      const it = { id: GPS_KEY, title: 'Coordonnées GPS de l’intervention', help: 'Pointez le lieu sur la carte, ou utilisez votre position actuelle.' };
-      return field(it, gpsWidget(S.answers[GPS_KEY], val => { S.answers[GPS_KEY] = val; saveDraft(); }));
-    }
 
     // « 44.123456, 5.123456 » -> [lat, lng] ; accepte la virgule décimale et le point-virgule
     function parseLatLng(v) {
@@ -837,8 +828,7 @@
       try {
         for (const e of todo) {
           try {
-            const res = await app().api(C.api.submit, { token: app().token(), answers: e.answers, submission_id: e.sid, gps: e.gps || '' });
-            if (S.done && S.done.sid === e.sid) S.doneWarn = (res && res.avertissement) || '';
+            await app().api(C.api.submit, { token: app().token(), answers: e.answers, submission_id: e.sid });
             removeEntry(e.sid);
             sent++;
           } catch (err) {
@@ -999,17 +989,8 @@
       const recap = summary(answers);
       const lines = [editing ? 'Enregistrer les modifications de cette FMPA ?' : C.txt.confirm, ''];
       if (recap) lines.push(recap);
-      const gpsRaw = C.gps && !gpsItem() ? String(S.answers[GPS_KEY] || '').trim() : '';
-    const gpsLL = gpsRaw ? parseLatLng(gpsRaw) : null;
-    if (gpsRaw && !gpsLL) {
-      msg.textContent = 'Coordonnées GPS illisibles : pointez sur la carte ou saisissez « latitude, longitude ».';
-      msg.classList.add('error');
-      const q = document.querySelector(`${FORM_SEL} .fmpa-q[data-q="${GPS_KEY}"]`);
-      if (q) q.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
-    const gps = gpsLL ? fmtLatLng(gpsLL[0], gpsLL[1]) : '';
-      if (gps) lines.push('GPS : ' + gps);
+      const gpsIt = C.gps ? items().find(isGpsItem) : null;
+      if (gpsIt && answers[gpsIt.id]) lines.push('GPS : ' + answers[gpsIt.id]);
       if (S.grids.some(g => g.presence)) {
         lines.push(`${total} personne${total > 1 ? 's' : ''} cochée${total > 1 ? 's' : ''}` +
           (Object.keys(per).length ? ' (' + Object.keys(per).map(c => `${per[c]} ${c.toLowerCase()}`).join(', ') + ')' : ''));
@@ -1019,7 +1000,7 @@
 
       // Déclaration : passe toujours par la file d'attente de l'appareil, puis envoi immédiat si possible
       if (!editing) {
-        const entry = { sid: S.sid, answers, gps, recap, total, owner: S.moi.nom || '', ts: Date.now(), status: 'pending', error: '' };
+        const entry = { sid: S.sid, answers, recap, total, owner: S.moi.nom || '', ts: Date.now(), status: 'pending', error: '' };
         queue(entry);
         finishDeclaration(entry);
         if (!offline) flush();
@@ -1066,7 +1047,6 @@
 
     function finishDeclaration(entry) {
       S.done = { recap: entry.recap, total: entry.total, sid: entry.sid };
-      S.doneWarn = '';
       S.mapOpen = false;
       store.del(KEY_DRAFT);
       S.answers = {};
@@ -1084,7 +1064,7 @@
       byId('done-title').textContent = err ? 'Déclaration non envoyée' : waiting ? (S.flushing ? 'Envoi en cours…' : 'Déclaration enregistrée sur l’appareil') : 'Déclaration envoyée';
       byId('done-note').textContent = err ? err.error.replace(/[.!]?\s*$/, '.') + ' Vous pouvez la reprendre ou la renvoyer depuis le bandeau ci-dessus.'
         : waiting ? 'Pas de réseau pour l’instant : elle sera envoyée automatiquement dès son retour, même si vous fermez cette page. Rouvrez simplement l’application.'
-        : (S.doneWarn || C.txt.sentNote);
+        : C.txt.sentNote;
       byId('done-recap').textContent = [d.recap, S.grids.some(g => g.presence) ? `${d.total} personne${d.total > 1 ? 's' : ''} ${waiting || err ? 'cochée' : 'déclarée'}${d.total > 1 ? 's' : ''}` : '']
         .filter(Boolean).join(' — ');
       setState('');
@@ -1105,7 +1085,7 @@
       store.del(KEY_FORM);
       store.del(KEY_DRAFT);
       if (all === true) store.del(KEY_OUTBOX);
-      Object.assign(S, { def: null, sig: '', personnes: {}, moi: {}, answers: {}, sid: '', loaded: false, done: null, doneWarn: '', mapOpen: false, grids: [], mode: 'declare', rec: null, decl: null, lastSent: null, flushNote: '' });
+      Object.assign(S, { def: null, sig: '', personnes: {}, moi: {}, answers: {}, sid: '', loaded: false, done: null, mapOpen: false, grids: [], mode: 'declare', rec: null, decl: null, lastSent: null, flushNote: '' });
       renderPending();
     }
 
