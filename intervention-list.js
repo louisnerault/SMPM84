@@ -56,19 +56,25 @@
     setState(S.data[scope] ? 'Mise à jour…' : 'Chargement…');
     try {
       const res = await app().api('itv_list', { token: app().token(), scope });
-      // Serveur pas à jour : il renvoie « Mes interventions » au lieu de la liste demandée
-      if (res.scope !== scope && scope !== 'mine') {
+      // Une seule réponse alimente les deux listes (« toutes » seulement pour CT et administrateurs)
+      const lists = { mine: res.mine || (res.scope !== 'toutes' ? res.interventions : null), toutes: res.toutes || (res.scope === 'toutes' ? res.interventions : null) };
+      if (!lists[scope]) {
         S.data[scope] = null;
         $('#itvl-list').replaceChildren();
         $('#itvl-empty').hidden = true;
         $('#itvl-tools').hidden = true;
-        setState('Le serveur ne transmet pas encore « Toutes les interventions » : dans Code.gs, la ligne itv_list de doPost() doit être « case \'itv_list\': result = itvList_(b.token, b.scope); break; », avec la dernière version d’Intervention.gs, puis redéployer.', true);
+        setState(res.version
+          ? 'Le serveur ne renvoie pas la liste complète pour votre compte (réservée aux conseillers techniques et administrateurs).'
+          : 'Le serveur exécute encore une ancienne version d’Intervention.gs : recollez la dernière version puis redéployez (Déployer › Gérer les déploiements › Nouvelle version).', true);
         return;
       }
-      S.data[scope] = { interventions: res.interventions || [], maj: res.maj };
-      S.stale[scope] = false;
-      S.fresh[scope] = true;
-      store.set(KEY(scope), JSON.stringify(S.data[scope]));
+      Object.keys(lists).forEach(k => {
+        if (!lists[k]) return;
+        S.data[k] = { interventions: lists[k], maj: res.maj };
+        S.stale[k] = false;
+        S.fresh[k] = true;
+        store.set(KEY(k), JSON.stringify(S.data[k]));
+      });
       if (conf().scope !== scope) return;
       setState('');
       render();
