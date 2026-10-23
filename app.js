@@ -181,7 +181,7 @@
     document.body.classList.toggle('mode-intervention', on);
     store.set(KEY_MODE, on ? 'intervention' : 'normal');
     $('#btn-intervention').setAttribute('aria-pressed', String(on));
-    $('#btn-intervention-label').textContent = on ? 'Mode intervention actif : quitter' : 'Passer en mode intervention';
+    $('#btn-intervention').title = on ? 'Quitter le mode intervention' : 'Activer le mode intervention';
     $('#drawer [data-page="accueil"]').hidden = !on;
     const meta = $('#meta-theme');
     if (meta) meta.setAttribute('content', on ? '#b3132b' : '#1d4f91');

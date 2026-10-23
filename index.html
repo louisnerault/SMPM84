@@ -77,9 +77,16 @@
 <main>
   <!-- Bascule du mode intervention : toujours visible dans l'application -->
   <div id="mode-bar" class="mode-bar" hidden>
-    <button type="button" id="btn-intervention" class="mode-btn" aria-pressed="false">
-      <span class="mode-dot" aria-hidden="true"></span>
-      <span id="btn-intervention-label">Passer en mode intervention</span>
+    <button type="button" id="btn-intervention" class="mode-btn" aria-pressed="false" title="Activer le mode intervention">
+      <svg class="beacon" viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+        <g class="beacon-rays" fill="none" stroke-width="2.4" stroke-linecap="round">
+          <path d="M4 8l3 2.5M28 8l-3 2.5M16 1.5v3.5M2 16h3.5M30 16h-3.5"/>
+        </g>
+        <path class="beacon-dome" d="M9 22v-7a7 7 0 0 1 14 0v7z"/>
+        <path class="beacon-shine" d="M12.5 14.5a3.6 3.6 0 0 1 3-3" fill="none" stroke-width="1.8" stroke-linecap="round"/>
+        <rect class="beacon-base" x="6" y="22" width="20" height="5" rx="1.5"/>
+      </svg>
+      <span id="btn-intervention-label">Mode intervention</span>
     </button>
   </div>
 
