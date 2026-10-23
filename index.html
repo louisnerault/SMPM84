@@ -186,12 +186,24 @@
       <p class="muted">Cette rubrique sera alimentée prochainement.</p>
     </div>
 
-    <!-- Mon livret › Remplir mon livret (contenu à définir) -->
+    <!-- Mon livret › Remplir mon livret : saisie des thèmes vus en FMPA (remplace le formulaire Google « thèmes FMPA ») -->
     <div id="tab-livret-remplir" hidden>
       <h1>Remplir mon livret</h1>
-      <div class="soon">
-        <p class="soon-title">Rubrique en préparation</p>
-        <p class="muted small">Cette page sera bientôt disponible.</p>
+      <p class="muted small">Saisissez les thèmes vus lors d'une FMPA. Votre chef d'unité les valide, puis ils sont inscrits dans votre livret.</p>
+      <p id="lr-state" class="muted small" role="status"></p>
+      <div id="lr-outbox"></div>
+      <div id="lr-mes"></div>
+      <div id="lr-form" hidden></div>
+      <p id="lr-msg" class="fmpa-msg" role="alert"></p>
+      <div id="lr-bar" class="fmpa-bar" hidden>
+        <button type="button" id="lr-send" class="primary">Envoyer à mon chef d'unité</button>
+      </div>
+      <div id="lr-done" class="fmpa-done" hidden>
+        <div class="login-icon" id="lr-done-icon" aria-hidden="true">✓</div>
+        <p class="login-title" id="lr-done-title">Saisie envoyée</p>
+        <p class="muted" id="lr-done-recap"></p>
+        <p class="muted small" id="lr-done-note"></p>
+        <button type="button" class="primary" id="lr-again">Nouvelle saisie</button>
       </div>
     </div>
 
@@ -324,6 +336,7 @@
 <script src="fmpa.js"></script>
 <script src="fmpa-list.js"></script>
 <script src="fmpa-valid.js"></script>
+<script src="livret-remplir.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

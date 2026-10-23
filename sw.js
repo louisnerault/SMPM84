@@ -2,10 +2,10 @@
 // - Squelette de l'application : réseau d'abord, cache en secours hors ligne.
 // - Fiches techniques : cache dédié (smpm84-fiches) rempli par fiches.js ; lecture hors ligne.
 // Les données personnelles ne passent jamais par ce cache (elles sont dans localStorage).
-const CACHE = 'smpm84-shell-v25';
+const CACHE = 'smpm84-shell-v26';
 const FICHES_CACHE = 'smpm84-fiches';
 const SHELL = [
-  './', 'index.html', 'style.css', 'app.js', 'fiches.js', 'fmpa.js', 'fmpa-list.js', 'fmpa-valid.js', 'config.js', 'manifest.webmanifest',
+  './', 'index.html', 'style.css', 'app.js', 'fiches.js', 'fmpa.js', 'fmpa-list.js', 'fmpa-valid.js', 'livret-remplir.js', 'config.js', 'manifest.webmanifest',
   'assets/ecusson.png', 'assets/sdis84.png', 'assets/icon-192.png', 'assets/icon-512.png',
   'assets/banniere.jpg', 'assets/banniere-1000.jpg',
 ];

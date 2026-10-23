@@ -744,3 +744,18 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
 }
 .soon-title { margin: 0 0 4px; font-weight: 700; color: var(--primary-dark); }
 @media (prefers-color-scheme: dark) { .soon-title { color: #cfe2fb; } }
+
+/* ---------- Remplir mon livret (saisie des thèmes) ---------- */
+#lr-state:empty { display: none; }
+#lr-state.error { color: var(--danger); }
+.lr-agent {
+  display: flex; align-items: baseline; gap: 10px; margin: 12px 0 0; padding: 10px 12px;
+  border-radius: 10px; background: var(--primary-soft);
+}
+.lr-agent span { font-size: .8rem; color: var(--muted); font-weight: 600; }
+.lr-mes { margin-top: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); }
+.lr-mes-title { margin: 0 0 6px; font-size: .85rem; font-weight: 700; color: var(--primary-dark); }
+@media (prefers-color-scheme: dark) { .lr-mes-title { color: #cfe2fb; } }
+.lr-mes ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.lr-mes li { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: .85rem; }
+.lr-mes li span { color: var(--muted); }
