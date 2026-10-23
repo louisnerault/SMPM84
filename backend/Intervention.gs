@@ -40,6 +40,7 @@
  */
 
 const ITV = {
+  VERSION: 'itv-5',         // renvoyé par itv_list : permet de vérifier quelle version est déployée
   SHEET_ID: '1a5CNbEvAfE_Jk2toGjCSS0jR8HPy56k0L7dgoiqdbeM',   // sheet « Interventions SMPM »
   FORM_ID: '',              // facultatif : identifiant d'édition du formulaire ; vide = formulaire relié au sheet
   ROLES: ['chef_unite', 'chef_section', 'ctd', 'admin'],
@@ -441,25 +442,35 @@ function itvTrouver_(t, id) {
 }
 
 /**
- * Liste des interventions, les plus récentes en premier.
- * scope : 'mine' (l'utilisateur est le chef d'unité) ou 'toutes' (conseiller technique, administrateur).
+ * Listes des interventions, les plus récentes en premier :
+ *   mine   : celles dont l'utilisateur est le chef d'unité (tout le monde) ;
+ *   toutes : toutes les interventions (conseiller technique et administrateur uniquement).
+ * Les deux listes sont renvoyées en une fois : la page « Toutes les interventions » ne dépend donc
+ * pas du paramètre scope transmis par doPost(). interventions = liste demandée (compatibilité).
  */
 function itvList_(token, scope) {
   const a = itvAuth_(token);
   const prof = itvProfil_(a);
-  scope = scope === 'toutes' ? 'toutes' : 'mine';
   if (scope === 'toutes' && !prof.admin) throw new Error('Accès réservé aux conseillers techniques et administrateurs');
   const t = itvTable_();
-  const out = [];
+  const mine = [], toutes = [];
   for (let i = 1; i < t.values.length; i++) {
     const m = itvMeta_(t, t.values[i]);
-    if (!m || (scope === 'mine' && itvCle_(m.cu) !== prof.nom)) continue;
+    if (!m) continue;
+    const estMoi = itvCle_(m.cu) === prof.nom;
+    if (!estMoi && !prof.admin) continue;
     const d = itvDroits_(m, prof);
     m.droits = { modifier: d.modifier, par: d.par || '', jusqua: d.jusqua || '', motif: d.motif || '' };
-    out.push(m);
+    if (prof.admin) toutes.push(m);
+    if (estMoi) mine.push(m);
   }
-  out.sort((x, y) => (x.horodateur < y.horodateur ? 1 : -1));
-  return { ok: true, scope, interventions: out, maj: new Date().toISOString() };
+  const tri = (x, y) => (x.horodateur < y.horodateur ? 1 : -1);
+  mine.sort(tri);
+  toutes.sort(tri);
+  const out = { ok: true, version: ITV.VERSION, scope: scope === 'toutes' ? 'toutes' : 'mine', mine, maj: new Date().toISOString() };
+  if (prof.admin) out.toutes = toutes;
+  out.interventions = out.scope === 'toutes' ? toutes : mine;
+  return out;
 }
 
 /**
@@ -671,7 +682,7 @@ function itvUpdate_(token, id, answers, version) {
 /** Vérifie la lecture de la base : onglet, colonnes résumées, nombre d'interventions, les 5 plus récentes. */
 function testInterventionsListe() {
   const t = itvTable_();
-  const lignes = ['Onglet lu : « ' + t.sh.getName() + ' » (' + (t.values.length - 1) + ' lignes)'];
+  const lignes = ['Version : ' + ITV.VERSION, 'Onglet lu : « ' + t.sh.getName() + ' » (' + (t.values.length - 1) + ' lignes)'];
   Object.keys(t.col).forEach(k => lignes.push('  colonne ' + k + ' : ' + (t.col[k] >= 0 ? '« ' + t.values[0][t.col[k]] + ' »' : 'INTROUVABLE')));
   const toutes = [];
   for (let i = 1; i < t.values.length; i++) { const m = itvMeta_(t, t.values[i]); if (m) toutes.push(m); }

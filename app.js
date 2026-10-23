@@ -68,7 +68,7 @@
   // ont un délai plus long : ils portent un identifiant qui évite les doublons au renvoi.
   const API_TIMEOUT = 20000;
   const API_TIMEOUT_LONG = 60000;
-  const LONG_ACTIONS = /(_submit|_update|_decide|^update_me$|^login$|^verify_code$|^request_code$)/;
+  const LONG_ACTIONS = /(_submit|_update|_decide|^itv_list$|^itv_get$|^itv_form$|^update_me$|^login$|^verify_code$|^request_code$)/;
 
   async function api(action, payload = {}) {
     let res;
