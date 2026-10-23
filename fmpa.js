@@ -526,7 +526,7 @@
         const t = d.par === 'cu' && d.jusqua
           ? `Modifiable jusqu’au ${fmtDateTime(d.jusqua)} (24 h après la déclaration). Ensuite, les modifications passeront par votre chef de section.`
           : d.par === 'section' ? `Modifiable en tant que chef de section ${cap(m.secteur)}.`
-          : 'Modifiable en tant qu’administrateur.';
+          : 'Modifiable.';
         return el('p', { class: 'fmpa-rights ok-box', text: t });
       }
       const n1 = (d.n1 || []).join(', ');
@@ -1549,7 +1549,7 @@
       title: (m, fd) => (m.date ? `Intervention du ${fd(m.date)}` : 'Intervention'),
       bits: (m, fdt) => [m.commune, m.debut ? `début ${m.debut}` : '', m.horodateur ? `envoyée le ${fdt(m.horodateur)}` : ''],
       droits: (d, m, fdt) => (d.modifier
-        ? (d.par === 'cu' && d.jusqua ? `Modifiable jusqu’au ${fdt(d.jusqua)} (24 h après l’envoi).` : 'Modifiable en tant qu’administrateur.')
+        ? (d.par === 'cu' && d.jusqua ? `Modifiable jusqu’au ${fdt(d.jusqua)} (24 h après l’envoi).` : 'Modifiable.')
         : d.motif === 'delai' ? 'Lecture seule : le délai de modification de 24 h est dépassé.' : 'Lecture seule.'),
     },
     returnHome: (status, entry) => {

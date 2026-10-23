@@ -36,6 +36,15 @@ Fichiers à copier dans le projet Apps Script « Web App SMPM84 », à côté de
 
   La modification réécrit seulement les cellules changées, sans renvoyer le formulaire (les traitements déclenchés à l'envoi ne sont pas relancés). Chaque modification est tracée dans l'onglet Journal.
 
+- `Roles.gs` : fonctions SMPM lues dans l'onglet « CT et CdS » de la Liste du personnel (CTD, chefs de section NORD/SUD/CENTRE/NEIGE/ISS/SSSM), IMP3 pour encadrer une FMPA, administration invisible.
+  1. **Supprimer la fonction `deriveRole_` de `Code.gs`** : `Roles.gs` la remplace (deux fonctions du même nom = comportement imprévisible).
+  2. Dans `doPost()` de `Code.gs`, ajouter :
+     ```js
+     case 'fonction': result = fonctionApi_(b.token); break;
+     ```
+  3. Vérifier que la case `is_admin` de l'onglet Comptes est cochée pour l'administrateur (le rôle forcé « admin » est encore reconnu, mais n'est plus affiché).
+  4. Exécuter une fois `testFonctions()` (le journal liste l'onglet lu et la fonction calculée pour chacun), puis redéployer en « Nouvelle version ».
+
 - `Validation.gs` : validation des thèmes FMPA par les chefs d'unité (rubrique FMPA > Validation des livrets).
   1. Dans `doPost()` de `Code.gs`, ajouter :
      ```js
