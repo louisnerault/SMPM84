@@ -54,7 +54,7 @@ const FMPA = {
 function fmpaAuth_(token) {
   const a = auth_(token);
   const role = deriveRole_(a.p.pt, a.p.row, a.acc);
-  const admin = isTrue_(a.acc.ct.cell(a.acc.row, 'is_admin'));
+  const admin = isAdminSmpm_(a.acc);
   if (!admin && FMPA.ROLES.indexOf(role) < 0) {
     throw new Error("Déclaration réservée aux chefs d'unité, chefs de section et administrateurs");
   }
@@ -225,6 +225,8 @@ function itemDef_(it, goto) {
  */
 function fmpaSubmit_(token, answers, submissionId) {
   const a = fmpaAuth_(token);
+  // Encadrer une FMPA demande la qualification IMP 3 (Roles.gs)
+  if (!isAdminSmpm_(a.acc) && !encadreFmpa_(a.p.pt, a.p.row)) throw new Error("Déclaration de FMPA réservée aux chefs d'unité (IMP3)");
   if (!answers || typeof answers !== 'object') throw new Error('Déclaration vide');
 
   const cache = CacheService.getScriptCache();
@@ -354,21 +356,27 @@ function memeValeur_(a, b) {
 function profilFmpa_(a) {
   const { pt, row } = a.p;
   const role = deriveRole_(pt, row, a.acc);
-  const admin = role === 'admin' || isTrue_(a.acc.ct.cell(a.acc.row, 'is_admin'));
-  // Section du chef de section : colonne « section » de Comptes si elle existe, sinon son secteur SMPM
-  let section = a.acc.ct.col('section') >= 0 ? String(a.acc.ct.cell(a.acc.row, 'section') || '') : '';
-  if (!section) section = String(pt.cell(row, H.SECTEUR) || '');
+  const admin = isAdminSmpm_(a.acc);
+  // Sections dirigées : onglet « CT et CdS » (Roles.gs). Un CTD peut aussi diriger une section (ISS).
+  let sections = fonctionDe_(pt, row).sections.map(cle_);
+  if (!sections.length && role === 'chef_section') {
+    const s = a.acc.ct.col('section') >= 0 ? String(a.acc.ct.cell(a.acc.row, 'section') || '') : '';
+    sections = [cle_(s || pt.cell(row, H.SECTEUR))].filter(Boolean);
+  }
   return {
     nom: cle_(pt.cell(row, H.NOM)),
     role, admin,
     ctd: role === 'ctd',
-    chefSection: role === 'chef_section',
-    section: cle_(section),
+    chefSection: sections.length > 0,
+    sections,
+    section: sections[0] || '',
   };
 }
 
 /** Chefs de section actifs par secteur (colonne « CHEFS DE SECTION » de la liste du personnel) : le N+1. */
 function chefsSectionFmpa_(pt) {
+  const fct = chefsParSection_(pt);          // onglet « CT et CdS » (Roles.gs)
+  if (Object.keys(fct).length) return fct;
   const out = {};
   if (pt.col('CHEFS DE SECTION') < 0) return out;
   for (let i = 1; i < pt.values.length; i++) {
@@ -427,7 +435,7 @@ function metaFmpa_(t, i, r) {
  */
 function droitsFmpa_(m, prof, chefs) {
   if (prof.admin || prof.ctd) return { voir: true, modifier: true, par: 'admin' };
-  if (prof.chefSection && m.secteur && m.secteur === prof.section) return { voir: true, modifier: true, par: 'section' };
+  if (prof.chefSection && m.secteur && prof.sections.indexOf(m.secteur) >= 0) return { voir: true, modifier: true, par: 'section' };
   if (prof.nom && cle_(m.cu) === prof.nom) {
     const fin = new Date(m.horodateur).getTime() + FMPA.EDIT_HOURS * 3600e3;
     if (Date.now() < fin) return { voir: true, modifier: true, par: 'cu', jusqua: new Date(fin).toISOString() };
@@ -467,7 +475,7 @@ function fmpaList_(token, scope) {
     const m = metaFmpa_(t, i);
     if (!m) continue;
     if (scope === 'mine' && cle_(m.cu) !== prof.nom) continue;
-    if (scope === 'secteur' && m.secteur !== prof.section) continue;
+    if (scope === 'secteur' && prof.sections.indexOf(m.secteur) < 0) continue;
     const d = droitsFmpa_(m, prof, chefs);
     if (!d.voir) continue;
     m.droits = { modifier: d.modifier, par: d.par || '', jusqua: d.jusqua || '', motif: d.motif || '' };

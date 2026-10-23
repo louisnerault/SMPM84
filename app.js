@@ -14,9 +14,9 @@
     equipier: 'Équipier',
     chef_unite: "Chef d'unité",
     chef_section: 'Chef de section',
-    ctd: 'Conseiller technique et personnel de santé',
+    ctd: 'Conseiller technique départemental',
   };
-  const SECTIONS = { NORD: 'Nord', SUD: 'Sud', CENTRE: 'Centre', NEIGE: 'Neige', ISS: 'ISS' };
+  const SECTIONS = { NORD: 'Nord', SUD: 'Sud', CENTRE: 'Centre', NEIGE: 'Neige', ISS: 'ISS', SSSM: 'SSSM' };
   // Déclaration de FMPA : chef d'unité ou supérieur, et administrateurs
   const FMPA_ROLES = ['chef_unite', 'chef_section', 'ctd', 'admin'];
   const canDeclare = session => !!session && (session.is_admin === true || FMPA_ROLES.includes(session.role));
@@ -28,17 +28,27 @@
   // Toutes les interventions : conseillers techniques et administrateurs
   const canAllInterv = session => !!session && (session.is_admin === true || ['ctd', 'admin'].includes(session.role));
   const canIntervene = session => !!session && (session.is_admin === true || ['chef_unite', 'chef_section', 'ctd', 'admin'].includes(session.role));
+  // Encadrer (déclarer) une FMPA : qualification IMP 3 (fonction renvoyée par le serveur), ou administrateur
+  const canEncadrer = data => {
+    if (!data || !data.session) return false;
+    if (data.session.is_admin === true) return true;
+    if (data.fonction && typeof data.fonction.imp3 === 'boolean') return data.fonction.imp3;
+    return (data.qualifications || []).some(q => String(q.code).replace(/\s/g, '') === 'IMP3' && q.acquis);
+  };
   const FMPA_LISTS = ['fmpa-mes', 'fmpa-toutes'];
   function allowedPage(name, session) {
-    if (name === 'fmpa' || name === 'fmpa-fiche' || name === 'fmpa-mes' || name === 'fmpa-valid') return canDeclare(session);
+    if (name === 'fmpa') return canDeclare(session) && canEncadrer(state.data);
+    if (name === 'fmpa-fiche' || name === 'fmpa-mes' || name === 'fmpa-valid') return canDeclare(session);
     if (name === 'fmpa-toutes') return canAllFmpa(session);
     if (name === 'interv-toutes') return canAllInterv(session);
     if (name.startsWith('interv-')) return canIntervene(session);
     return true;
   }
 
-  function roleLabel(session, me, qualifications) {
-    const base = ROLES[session.role] || session.role || '';
+  // Fonction affichée : jamais « administrateur » (droit d'administration invisible)
+  function roleLabel(session, me, qualifications, fonction) {
+    if (fonction && fonction.libelle) return fonction.libelle;
+    const base = ROLES[session.role] || '';
     if (session.role === 'equipier') {
       const sssm = (qualifications || []).some(q => q.code === 'SSSM' && q.acquis);
       return sssm ? `${base} SSSM` : base;
@@ -407,7 +417,12 @@
   // Profil et listes de choix demandés en parallèle (et non plus l'un après l'autre)
   async function fetchProfile(token, oldOptions) {
     const pOptions = api('options', { token }).catch(() => oldOptions);
+    // Fonction SMPM (onglet « CT et CdS ») : libellé, sections, IMP3 — facultatif si le serveur ne la connaît pas encore
+    const pFonction = api('fonction', { token }).catch(() => null);
     const data = await api('me', { token });
+    const fonction = await pFonction;
+    if (fonction && fonction.ok) data.fonction = { libelle: fonction.libelle || '', sections: fonction.sections || [], imp3: !!fonction.imp3 };
+    else if (state.data && state.data.fonction) data.fonction = state.data.fonction;
     return [data, await pOptions];
   }
 
@@ -738,10 +753,11 @@
   }
 
   function renderApp() {
-    const { me, session, qualifications } = state.data;
-    setIdentity(`${me.prenom} ${me.nom}`, roleLabel(session, me, qualifications));
+    const { me, session, qualifications, fonction } = state.data;
+    setIdentity(`${me.prenom} ${me.nom}`, roleLabel(session, me, qualifications, fonction));
     $('#info-secteur').textContent = me.secteur || '—';
     $('#nav-fmpa').hidden = !canDeclare(session);
+    $$('[data-page="fmpa"]').forEach(b => { b.hidden = !canEncadrer(state.data); });
     $('#nav-fmpa-all').hidden = !canAllFmpa(session);
     $('#nav-interv').hidden = !canIntervene(session);
     $('#nav-interv-all').hidden = !canAllInterv(session);
@@ -930,6 +946,7 @@
     $('.ok', f).textContent = '';
     try {
       const data = await api('update_me', { token: store.get(KEY_TOKEN), changes });
+      if (state.data && state.data.fonction && !data.fonction) data.fonction = state.data.fonction;
       state.data = data;
       store.set(KEY_CACHE, JSON.stringify({ data, options: state.options }));
       renderApp();
@@ -949,7 +966,11 @@
     goto: name => gotoPage(name),
     home: () => (isIntervention() ? 'accueil' : 'livret'),
     flash,
-    section: () => (state.data ? String(state.data.session.section || state.data.me.secteur || '') : ''),
+    section: () => {
+      if (!state.data) return '';
+      const f = state.data.fonction;
+      return String((f && f.sections && f.sections[0]) || state.data.session.section || state.data.me.secteur || '');
+    },
     canEditAll: () => !!state.data && canEditAllFmpa(state.data.session),
   };
 

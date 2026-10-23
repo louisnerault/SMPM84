@@ -59,7 +59,7 @@ const ITV = {
 function itvAuth_(token) {
   const a = auth_(token);
   const role = deriveRole_(a.p.pt, a.p.row, a.acc);
-  const admin = isTrue_(a.acc.ct.cell(a.acc.row, 'is_admin'));
+  const admin = isAdminSmpm_(a.acc);
   if (!admin && ITV.ROLES.indexOf(role) < 0) {
     throw new Error("Interventions réservées aux chefs d'unité, chefs de section, conseillers techniques et administrateurs");
   }
@@ -384,7 +384,7 @@ function itvProfil_(a) {
   const role = deriveRole_(pt, row, a.acc);
   return {
     nom: itvCle_(pt.cell(row, H.NOM)),
-    admin: role === 'admin' || role === 'ctd' || isTrue_(a.acc.ct.cell(a.acc.row, 'is_admin')),
+    admin: role === 'ctd' || isAdminSmpm_(a.acc),
   };
 }
 
