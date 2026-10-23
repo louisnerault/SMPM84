@@ -1011,3 +1011,36 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
 .saving-fill { width: 40%; height: 100%; border-radius: 3px; background: var(--primary); animation: boot-slide 1.2s ease-in-out infinite; }
 @keyframes saving-rot { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .saving-spin, .saving-fill { animation: none; } .saving-fill { width: 100%; opacity: .5; } }
+
+/* Annuaire des spécialistes */
+.ann-tools { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 12px; }
+.ann-tools input[type=search] { margin: 0; }
+.ann-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.ann-filters select { margin: 0; padding: 8px 10px; width: 100%; }
+.ann-qualifs { display: flex; flex-wrap: wrap; gap: 6px; }
+.ann-qf { padding: 6px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: .85rem; font-weight: 600; cursor: pointer; min-height: 34px; }
+.ann-qf[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+.ann-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: .9rem; }
+.ann-check { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 400; }
+.ann-check input { width: auto; margin: 0; }
+#ann-count { margin-left: auto; font-weight: 600; }
+#ann-state:empty { display: none; }
+#ann-state.error { color: var(--danger); }
+.ann-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.ann-group { font-weight: 700; color: var(--primary); text-transform: uppercase; font-size: .8rem; letter-spacing: .04em; margin-top: 8px; }
+.ann-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; }
+.ann-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+.ann-name { margin: 0; font-size: 1.05rem; }
+.ann-grade { margin-left: 8px; font-size: .75rem; color: var(--muted); font-weight: 600; }
+.ann-fct { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--primary-soft); color: var(--primary); }
+.ann-meta { margin: 4px 0 0; font-size: .85rem; color: var(--muted); }
+.ann-chips { margin-top: 6px; }
+.ann-num { margin: 6px 0 0; font-variant-numeric: tabular-nums; font-size: .9rem; }
+.ann-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.ann-btn { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; border-radius: 10px; font-weight: 600; font-size: .9rem; text-decoration: none; color: #fff; }
+.ann-btn span { white-space: nowrap; }
+.ann-tel { background: var(--ok); }
+.ann-sms { background: var(--primary); }
+.ann-wa { background: #1fa855; }
+.ann-btn.is-off { background: var(--line); color: var(--muted); cursor: not-allowed; }
+@media (max-width: 360px) { .ann-btn span { display: none; } }

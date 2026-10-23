@@ -310,6 +310,7 @@
     if (name.startsWith('livret')) setLivretGroup(true);
     window.scrollTo(0, 0);
     if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
+    if (name === 'annuaire' && window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.open();
     if (name === 'livret-remplir' && window.SMPM_THEMES) window.SMPM_THEMES.open();
     if (name === 'fmpa' && window.SMPM_FMPA) window.SMPM_FMPA.open();
     if (name === 'interv-new' && window.SMPM_ITV) window.SMPM_ITV.open();
@@ -376,6 +377,7 @@
     if (window.SMPM_FMPA) window.SMPM_FMPA.reset(explicit === true);
     if (window.SMPM_ITV) window.SMPM_ITV.reset(explicit === true);
     if (window.SMPM_ITV_LIST) window.SMPM_ITV_LIST.reset();
+    if (window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.reset();
     if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.reset();
     if (window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.reset();
     if (window.SMPM_THEMES) window.SMPM_THEMES.reset(explicit === true);

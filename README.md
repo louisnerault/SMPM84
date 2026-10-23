@@ -58,6 +58,16 @@ Fichiers à copier dans le projet Apps Script « Web App SMPM84 », à côté de
 
   Droits : chef d'unité et chef de section = demandes qui leur sont adressées ; conseiller technique et administrateur = toutes.
 
+- `Annuaire.gs` : annuaire des spécialistes (mode intervention › Annuaire des spécialistes). Accessible à tous les membres connectés ; personnel actif uniquement.
+  1. Dans `doPost()` de `Code.gs`, ajouter :
+     ```js
+     case 'annuaire': result = annuaireApi_(b.token); break;
+     ```
+  2. Optionnel : renseigner un jeton dans `testAnnuaire()` et l'exécuter (le journal indique combien de personnes ont un numéro).
+  3. Redéployer en « Nouvelle version ».
+
+  Renvoie nom, prénom, grade, secteur SMPM, centre d'affectation (colonne « Affectation »), qualifications acquises (IMP 1/2/3, NEIGE, ISS, SSH, CAN, SSSM), fonction (CTD / chef de section, onglet « CT et CdS ») et téléphone. Le téléphone est lu dans une colonne « Téléphone » (ou Tel, Portable, Mobile…) de la Liste du personnel, sinon dans l'onglet Comptes (rapprochement par e-mail puis par nom).
+
 - `Intervention.gs` : compte rendu d'intervention (rubrique Intervention › Nouvelle intervention). Fichier autonome, indépendant de `Fmpa.gs` (il n'utilise que les fonctions communes de `Code.gs`).
   1. Dans `doPost()` de `Code.gs`, ajouter :
      ```js
