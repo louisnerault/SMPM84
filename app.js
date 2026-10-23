@@ -288,7 +288,11 @@
     // déclarations de FMPA saisies hors ligne : envoi dès que possible
     if (window.SMPM_FMPA) { window.SMPM_FMPA.renderPending(); if (!offline) window.SMPM_FMPA.flush(); }
     // interventions saisies hors ligne : idem
-    if (window.SMPM_ITV) { window.SMPM_ITV.renderPending(); if (!offline) window.SMPM_ITV.flush(); }
+    if (window.SMPM_ITV && canIntervene(data.session)) {
+      window.SMPM_ITV.renderPending();
+      // formulaire gardé sur l'appareil dès l'ouverture : saisie possible ensuite sans réseau
+      if (!offline) { window.SMPM_ITV.flush(); window.SMPM_ITV.prefetch(); }
+    }
     // thèmes saisis hors ligne (Remplir mon livret) : envoi dès que possible
     if (!offline && window.SMPM_THEMES) window.SMPM_THEMES.flush();
     // demandes de validation des thèmes en attente : compteur du menu
