@@ -8,7 +8,7 @@
  * 1. Dans Code.gs, ajouter ces lignes dans le switch de doPost() :
  *        case 'itv_form':   result = itvForm_(b.token); break;
  *        case 'itv_submit': result = itvSubmit_(b.token, b.answers, b.submission_id); break;
- *        case 'itv_list':   result = itvList_(b.token); break;
+ *        case 'itv_list':   result = itvList_(b.token, b.scope); break;
  *        case 'itv_get':    result = itvGet_(b.token, b.id); break;
  *        case 'itv_update': result = itvUpdate_(b.token, b.id, b.answers, b.version); break;
  * 2. Exécuter une fois testIntervention() depuis l'éditeur (autorisations FormApp et Sheets ; le journal
@@ -29,7 +29,8 @@
  * Mes interventions et modification (ligne de l'onglet des réponses) :
  *   - chef d'unité indiqué dans « Chef d'unité SMPM » : ses interventions, modifiables pendant 24 h
  *     après l'envoi, ensuite en lecture seule ;
- *   - conseiller technique et administrateur : modification sans limite de délai.
+ *   - conseiller technique et administrateur : « Toutes les interventions » (scope 'toutes'),
+ *     consultation et modification sans limite de délai.
  * La modification réécrit uniquement les cellules changées de la ligne, sans renvoyer le formulaire.
  * Chaque question est rapprochée de sa colonne par son titre ; si plusieurs questions portent le même
  * titre (sections différentes), la n-ième question va dans la n-ième colonne de ce titre.
@@ -432,21 +433,26 @@ function itvTrouver_(t, id) {
   throw new Error('Intervention introuvable : elle a peut-être été supprimée du sheet');
 }
 
-/** Mes interventions : celles où l'utilisateur est le chef d'unité, les plus récentes en premier. */
-function itvList_(token) {
+/**
+ * Liste des interventions, les plus récentes en premier.
+ * scope : 'mine' (l'utilisateur est le chef d'unité) ou 'toutes' (conseiller technique, administrateur).
+ */
+function itvList_(token, scope) {
   const a = itvAuth_(token);
   const prof = itvProfil_(a);
+  scope = scope === 'toutes' ? 'toutes' : 'mine';
+  if (scope === 'toutes' && !prof.admin) throw new Error('Accès réservé aux conseillers techniques et administrateurs');
   const t = itvTable_();
   const out = [];
   for (let i = 1; i < t.values.length; i++) {
     const m = itvMeta_(t, t.values[i]);
-    if (!m || itvCle_(m.cu) !== prof.nom) continue;
+    if (!m || (scope === 'mine' && itvCle_(m.cu) !== prof.nom)) continue;
     const d = itvDroits_(m, prof);
     m.droits = { modifier: d.modifier, par: d.par || '', jusqua: d.jusqua || '', motif: d.motif || '' };
     out.push(m);
   }
   out.sort((x, y) => (x.horodateur < y.horodateur ? 1 : -1));
-  return { ok: true, interventions: out, maj: new Date().toISOString() };
+  return { ok: true, scope, interventions: out, maj: new Date().toISOString() };
 }
 
 /**
