@@ -8,6 +8,9 @@
  * 1. Dans Code.gs, ajouter ces lignes dans le switch de doPost() :
  *        case 'itv_form':   result = itvForm_(b.token); break;
  *        case 'itv_submit': result = itvSubmit_(b.token, b.answers, b.submission_id); break;
+ *        case 'itv_list':   result = itvList_(b.token); break;
+ *        case 'itv_get':    result = itvGet_(b.token, b.id); break;
+ *        case 'itv_update': result = itvUpdate_(b.token, b.id, b.answers, b.version); break;
  * 2. Exécuter une fois testIntervention() depuis l'éditeur (autorisations FormApp et Sheets ; le journal
  *    montre le formulaire trouvé, ses sections, ses questions et la question « Coordonnées GPS »).
  * 3. Redéployer : Déployer > Gérer les déploiements > (crayon) > Version : Nouvelle version.
@@ -23,6 +26,15 @@
  * l'application remplit la question réponse courte « Coordonnées GPS » du formulaire au format
  * « 44.174130, 5.278690 » (latitude, longitude en degrés décimaux).
  *
+ * Mes interventions et modification (ligne de l'onglet des réponses) :
+ *   - chef d'unité indiqué dans « Chef d'unité SMPM » : ses interventions, modifiables pendant 24 h
+ *     après l'envoi, ensuite en lecture seule ;
+ *   - conseiller technique et administrateur : modification sans limite de délai.
+ * La modification réécrit uniquement les cellules changées de la ligne, sans renvoyer le formulaire.
+ * Chaque question est rapprochée de sa colonne par son titre ; si plusieurs questions portent le même
+ * titre (sections différentes), la n-ième question va dans la n-ième colonne de ce titre.
+ * testIntervention() affiche ce rapprochement.
+ *
  * Accès : chef d'unité, chef de section, conseiller technique, administrateur (rôle ou is_admin).
  */
 
@@ -35,6 +47,9 @@ const ITV = {
   DEDUP_SEC: 6 * 3600,      // un même envoi (submission_id) n'est jamais soumis deux fois
   GPS_RE: /gps|coordonn/i,  // question qui reçoit le point pointé sur la carte
   JOURNAL: 'declaration_intervention',
+  EDIT_HOURS: 24,           // délai de modification pour le chef d'unité
+  // Colonnes résumées dans « Mes interventions » (titres comparés sans accents ni ponctuation)
+  COL: { CU: /^CHEF D ?UNITE/, DATE: /^DATE DE L ?INTERVENTION/, DEBUT: /^HEURE DE DEBUT/, COMMUNE: /COMMUNE/, DEPT: /^DEPARTEMENT/ },
 };
 
 // ============================ Accès ============================
@@ -54,18 +69,25 @@ function itvAuth_(token) {
 function itvFormulaire_() {
   if (ITV.FORM_ID) return FormApp.openById(ITV.FORM_ID);
   const ss = SpreadsheetApp.openById(ITV.SHEET_ID);
-  const sh = ss.getSheets().find(s => { try { return !!s.getFormUrl(); } catch (e) { return false; } });
+  const sh = itvOnglet_(ss);
   const url = (sh && sh.getFormUrl()) || ss.getFormUrl();
   if (!url) throw new Error('Formulaire des interventions introuvable : renseigner ITV.FORM_ID dans Intervention.gs');
   return FormApp.openByUrl(url);
 }
 
+/** Onglet qui reçoit les réponses du formulaire. */
+function itvOnglet_(ss) {
+  return ss.getSheets().find(s => { try { return !!s.getFormUrl(); } catch (e) { return false; } }) || null;
+}
+
 function itvForm_(token) {
   const a = itvAuth_(token);
+  return Object.assign({ ok: true, form: itvDef_() }, itvContexte_(a));
+}
+
+function itvContexte_(a) {
   const { pt, row } = a.p;
   return {
-    ok: true,
-    form: itvDef_(),
     personnes: itvPersonnes_(pt),
     moi: {
       nom: String(pt.cell(row, H.NOM) || '').trim().toUpperCase(),
@@ -337,6 +359,300 @@ function itvItemResponse_(it, v) {
   return null;
 }
 
+// ============================ Interventions enregistrées ============================
+
+/** Clé de comparaison : sans crochets, accents ni ponctuation, en majuscules. */
+function itvCle_(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/[\[\]]/g, ' ')
+    .replace(/[œŒ]/g, 'OE').replace(/[æÆ]/g, 'AE')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+}
+
+function itvProfil_(a) {
+  const { pt, row } = a.p;
+  const role = deriveRole_(pt, row, a.acc);
+  return {
+    nom: itvCle_(pt.cell(row, H.NOM)),
+    admin: role === 'admin' || role === 'ctd' || isTrue_(a.acc.ct.cell(a.acc.row, 'is_admin')),
+  };
+}
+
+function itvTable_() {
+  const sh = itvOnglet_(SpreadsheetApp.openById(ITV.SHEET_ID));
+  if (!sh) throw new Error('Onglet des réponses introuvable dans le sheet « Interventions SMPM »');
+  const nr = sh.getLastRow(), nc = sh.getLastColumn();
+  const values = nr > 0 ? sh.getRange(1, 1, nr, nc).getValues() : [[]];
+  const keys = values[0].map(itvCle_);
+  const c = re => keys.findIndex(k => re.test(k));
+  const C = ITV.COL;
+  return {
+    sh, values, keys,
+    col: { horo: 0, cu: c(C.CU), date: c(C.DATE), debut: c(C.DEBUT), commune: c(C.COMMUNE), dept: c(C.DEPT) },
+  };
+}
+
+/** Résumé d'une ligne ; null si ce n'est pas une réponse (pas d'horodateur). L'id est l'horodateur en ms. */
+function itvMeta_(t, r) {
+  const tz = 'Europe/Paris';
+  const v = k => (t.col[k] >= 0 ? r[t.col[k]] : '');
+  const horo = v('horo');
+  if (!(horo instanceof Date) || isNaN(horo)) return null;
+  const date = v('date'), debut = v('debut');
+  return {
+    id: String(horo.getTime()),
+    horodateur: horo.toISOString(),
+    date: date instanceof Date ? Utilities.formatDate(date, tz, 'yyyy-MM-dd') : String(date || ''),
+    debut: debut instanceof Date ? Utilities.formatDate(debut, tz, 'HH:mm') : String(debut || ''),
+    commune: String(v('commune') || '').trim(),
+    departement: String(v('dept') || '').trim(),
+    cu: String(v('cu') || '').trim().toUpperCase(),
+  };
+}
+
+/** Droits : CT / administrateur : tout ; chef d'unité indiqué : 24 h après l'envoi, puis lecture seule. */
+function itvDroits_(m, prof) {
+  if (prof.admin) return { voir: true, modifier: true, par: 'admin' };
+  if (prof.nom && itvCle_(m.cu) === prof.nom) {
+    const fin = new Date(m.horodateur).getTime() + ITV.EDIT_HOURS * 3600e3;
+    if (Date.now() < fin) return { voir: true, modifier: true, par: 'cu', jusqua: new Date(fin).toISOString() };
+    return { voir: true, modifier: false, motif: 'delai' };
+  }
+  return { voir: false, modifier: false, motif: 'droits' };
+}
+
+function itvTrouver_(t, id) {
+  const ms = Number(id);
+  if (!ms) throw new Error('Intervention introuvable');
+  for (let i = 1; i < t.values.length; i++) {
+    const d = t.values[i][0];
+    if (d instanceof Date && d.getTime() === ms) return i;
+  }
+  throw new Error('Intervention introuvable : elle a peut-être été supprimée du sheet');
+}
+
+/** Mes interventions : celles où l'utilisateur est le chef d'unité, les plus récentes en premier. */
+function itvList_(token) {
+  const a = itvAuth_(token);
+  const prof = itvProfil_(a);
+  const t = itvTable_();
+  const out = [];
+  for (let i = 1; i < t.values.length; i++) {
+    const m = itvMeta_(t, t.values[i]);
+    if (!m || itvCle_(m.cu) !== prof.nom) continue;
+    const d = itvDroits_(m, prof);
+    m.droits = { modifier: d.modifier, par: d.par || '', jusqua: d.jusqua || '', motif: d.motif || '' };
+    out.push(m);
+  }
+  out.sort((x, y) => (x.horodateur < y.horodateur ? 1 : -1));
+  return { ok: true, interventions: out, maj: new Date().toISOString() };
+}
+
+/**
+ * Rapproche chaque question de sa colonne par le titre. Titres répétés (même question dans plusieurs
+ * sections) : la n-ième question de ce titre va dans la n-ième colonne de ce titre.
+ * Grille : une colonne par ligne, intitulée « Titre [ligne] ».
+ */
+function itvMapping_(def, keys) {
+  const vus = {};
+  const prend = k => {
+    const toutes = keys.reduce((acc, x, i) => (x === k && k ? acc.concat(i) : acc), []);
+    const n = vus[k] || 0;
+    vus[k] = n + 1;
+    return toutes.length > n ? toutes[n] : -1;
+  };
+  const map = {};
+  def.sections.forEach(s => s.items.forEach(it => {
+    if (it.type === 'header') return;
+    if (it.rows) map[it.id] = { rows: it.rows.map(r => prend(itvCle_(it.title + ' ' + r))) };
+    else map[it.id] = { col: prend(itvCle_(it.title)) };
+  }));
+  return map;
+}
+
+/** Sépare « a, b, c » en retrouvant les choix connus (un choix peut contenir une virgule). */
+function itvSplit_(s, known) {
+  const parts = String(s).split(/,\s*/).map(p => p.trim()).filter(Boolean);
+  const byKey = {};
+  known.forEach(k => { byKey[itvCle_(k)] = k; });
+  const out = [];
+  for (let i = 0; i < parts.length; i++) {
+    let found = false;
+    for (let j = Math.min(parts.length, i + 4); j > i + 1 && !found; j--) {
+      const k = itvCle_(parts.slice(i, j).join(', '));
+      if (byKey[k]) { out.push(byKey[k]); i = j - 1; found = true; }
+    }
+    if (!found) out.push(byKey[itvCle_(parts[i])] || parts[i]);
+  }
+  return out;
+}
+
+/** Ligne du sheet -> réponses au format de l'application ({ [itemId]: valeur }). */
+function itvLireReponses_(def, map, r) {
+  const tz = 'Europe/Paris';
+  const ans = {};
+  def.sections.forEach(s => s.items.forEach(it => {
+    const m = map[it.id];
+    if (!m) return;
+    if (it.rows) {
+      const arr = m.rows.map(c => {
+        const raw = c >= 0 ? r[c] : '';
+        if (itvVide_(raw)) return null;
+        if (it.type === 'checkgrid') { const p = itvSplit_(raw, it.cols); return p.length ? p : null; }
+        return it.cols.find(x => itvCle_(x) === itvCle_(raw)) || String(raw).trim();
+      });
+      if (arr.some(Boolean)) ans[it.id] = arr;
+      return;
+    }
+    if (m.col < 0) return;
+    const raw = r[m.col];
+    if (itvVide_(raw)) return;
+    const d = raw instanceof Date ? raw : null;
+    switch (it.type) {
+      case 'date': {
+        if (d) ans[it.id] = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
+        else {
+          const x = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(String(raw));
+          ans[it.id] = x ? x[3] + '-' + x[2].padStart(2, '0') + '-' + x[1].padStart(2, '0') : String(raw);
+        }
+        break;
+      }
+      case 'datetime': ans[it.id] = d ? Utilities.formatDate(d, tz, "yyyy-MM-dd'T'HH:mm") : String(raw); break;
+      case 'time':
+      case 'duration': ans[it.id] = d ? Utilities.formatDate(d, tz, 'HH:mm') : String(raw); break;
+      case 'checkbox': ans[it.id] = itvSplit_(raw, it.choices.map(c => c.v)); break;
+      default: {
+        const c = it.choices && it.choices.find(ch => itvCle_(ch.v) === itvCle_(raw));
+        ans[it.id] = c ? c.v : String(raw).trim();
+      }
+    }
+  }));
+  return ans;
+}
+
+/** Valeur de l'application -> valeur de cellule. */
+function itvCellule_(it, v, old) {
+  if (itvVide_(v)) return '';
+  switch (it.type) {
+    case 'date': {
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v));
+      if (!m) throw new Error('Date invalide pour « ' + it.title + ' »');
+      return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    }
+    case 'time':
+    case 'duration': {
+      const m = /^(\d{1,2}):(\d{2})$/.exec(String(v).trim());
+      if (!m) throw new Error('Heure invalide pour « ' + it.title + ' »');
+      return m[1].padStart(2, '0') + ':' + m[2] + ':00';
+    }
+    case 'checkbox': return [].concat(v).filter(x => !itvVide_(x)).join(', ');
+    case 'text': if (ITV.GPS_RE.test(it.title)) return itvGps_(v);   // falls through
+    default: {
+      const s = String(v).trim();
+      if ((typeof old === 'number' || old === '') && /^-?\d+([.,]\d+)?$/.test(s)) return Number(s.replace(',', '.'));
+      return s;
+    }
+  }
+}
+
+function itvMemeValeur_(it, a, b) {
+  if (it && (it.type === 'time' || it.type === 'duration') && a instanceof Date) {
+    return Utilities.formatDate(a, 'Europe/Paris', 'HH:mm:ss') === String(b);
+  }
+  if (a instanceof Date || b instanceof Date) return a instanceof Date && b instanceof Date && a.getTime() === b.getTime();
+  return String(a === null || a === undefined ? '' : a) === String(b === null || b === undefined ? '' : b);
+}
+
+function itvVersion_(r) {
+  const d = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, JSON.stringify(r), Utilities.Charset.UTF_8);
+  return Utilities.base64EncodeWebSafe(d).slice(0, 22);
+}
+
+/** Une intervention : réponses rapprochées du formulaire, droits, version (modifications concurrentes). */
+function itvGet_(token, id) {
+  const a = itvAuth_(token);
+  const prof = itvProfil_(a);
+  const t = itvTable_();
+  const r = t.values[itvTrouver_(t, id)];
+  const m = itvMeta_(t, r);
+  const d = itvDroits_(m, prof);
+  if (!d.voir) throw new Error("Vous n'avez pas accès à cette intervention");
+  const def = itvDef_();
+  m.answers = itvLireReponses_(def, itvMapping_(def, t.keys), r);
+  m.version = itvVersion_(r);
+  m.droits = d;
+  return Object.assign({ ok: true, form: def, intervention: m }, itvContexte_(a));
+}
+
+/**
+ * Modifie une intervention : seules les cellules changées sont réécrites (formules préservées).
+ * answers contient les questions des sections affichées ; null = réponse effacée.
+ */
+function itvUpdate_(token, id, answers, version) {
+  const a = itvAuth_(token);
+  const prof = itvProfil_(a);
+  if (!answers || typeof answers !== 'object') throw new Error('Aucune modification');
+
+  const t = itvTable_();
+  const i = itvTrouver_(t, id);
+  const r = t.values[i];
+  const d = itvDroits_(itvMeta_(t, r), prof);
+  if (!d.modifier) {
+    throw new Error(d.motif === 'delai'
+      ? 'Délai de ' + ITV.EDIT_HOURS + ' h dépassé : cette intervention n’est plus modifiable'
+      : "Vous n'avez pas le droit de modifier cette intervention");
+  }
+  if (version && version !== itvVersion_(r)) {
+    throw new Error('Cette intervention a été modifiée entre-temps : rouvrez-la avant de recommencer');
+  }
+
+  const def = itvDef_();
+  const map = itvMapping_(def, t.keys);
+  const items = {};
+  def.sections.forEach(s => s.items.forEach(it => { items[it.id] = it; }));
+
+  const writes = {};          // index de colonne -> { v, it }
+  Object.keys(answers).forEach(qid => {
+    const it = items[qid], mp = map[qid];
+    if (!it || !mp) return;
+    const v = answers[qid];
+    if (it.rows) {
+      it.rows.forEach((_, k) => {
+        const c = mp.rows[k];
+        if (c < 0) return;
+        const val = Array.isArray(v) ? v[k] : null;
+        let cell = '';
+        if (!itvVide_(val)) {
+          if (it.type === 'checkgrid') cell = [].concat(val).join(', ');
+          else if (it.cols.indexOf(val) < 0) throw new Error('Colonne inconnue « ' + val + ' »');
+          else cell = val;
+        }
+        writes[c] = { v: cell, it };
+      });
+      return;
+    }
+    if (mp.col < 0) return;
+    const old = r[mp.col];
+    // même jour calendaire : on ne réécrit pas la date (évite un faux changement lié au fuseau)
+    if (it.type === 'date' && old instanceof Date && Utilities.formatDate(old, 'Europe/Paris', 'yyyy-MM-dd') === String(v || '').slice(0, 10)) return;
+    writes[mp.col] = { v: itvCellule_(it, v, old), it };
+  });
+
+  const changes = Object.keys(writes).map(Number).filter(c => !itvMemeValeur_(writes[c].it, r[c], writes[c].v));
+  if (changes.length) {
+    changes.forEach(c => t.sh.getRange(i + 1, c + 1).setValue(writes[c].v));
+    const champs = changes.map(c => String(t.values[0][c])).join(', ');
+    try { journalSheet_().appendRow([new Date(), a.id, 'modif_intervention', id, (changes.length + ' champ(s) : ' + champs).slice(0, 1000)]); } catch (e) {}
+  }
+
+  const nr = t.sh.getRange(i + 1, 1, 1, t.values[0].length).getValues()[0];
+  const nm = itvMeta_(t, nr);
+  nm.version = itvVersion_(nr);
+  nm.droits = itvDroits_(nm, prof);
+  return { ok: true, changed: changes.length, intervention: nm };
+}
+
 // ============================ Test (éditeur) ============================
 
 function testIntervention() {
@@ -353,5 +669,20 @@ function testIntervention() {
   });
   lignes.push(gps ? 'GPS : question « ' + gps.title + ' » (remplie par la carte de l’application)'
     : 'GPS : aucune question réponse courte « Coordonnées GPS » trouvée dans le formulaire');
+
+  // Rapprochement questions <-> colonnes de l'onglet des réponses (pour Mes interventions / modification)
+  const t = itvTable_();
+  const map = itvMapping_(def, t.keys);
+  const head = t.values[0];
+  const manquantes = [];
+  lignes.push('', 'Onglet des réponses : ' + t.sh.getName() + ' (' + (t.values.length - 1) + ' lignes)');
+  Object.keys(t.col).forEach(k => lignes.push('  colonne ' + k + ' : ' + (t.col[k] >= 0 ? head[t.col[k]] : 'introuvable')));
+  def.sections.forEach(s => s.items.forEach(it => {
+    const m = map[it.id];
+    if (!m) return;
+    if (m.rows) m.rows.forEach((c, k) => { if (c < 0) manquantes.push(it.title + ' [' + it.rows[k] + ']'); });
+    else if (m.col < 0) manquantes.push(it.title);
+  }));
+  lignes.push(manquantes.length ? 'Questions sans colonne (non modifiables) : ' + manquantes.join(' ; ') : 'Toutes les questions ont leur colonne.');
   Logger.log(lignes.join('\n'));
 }
