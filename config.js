@@ -7,11 +7,11 @@ window.SMPM_CONFIG = {
   // Certificats Web Push). Laisser vide : les notifications push restent masquées dans l'application.
   // La clé privée du compte de service n'est JAMAIS ici : elle est dans les propriétés du script Apps Script.
   FIREBASE: {
-    apiKey: '',
-    authDomain: '',
-    projectId: '',
-    messagingSenderId: '',
-    appId: '',
-    vapidKey: '',
+    apiKey: 'AIzaSyBfjRdrYdZH9TxLMN-8PxGWkOnW_ooAUI8',
+    authDomain: 'webappsmpm84.firebaseapp.com',
+    projectId: 'webappsmpm84',
+    messagingSenderId: '417173282740',
+    appId: '1:417173282740:web:766ffea19488cd7c921ce1',
+    vapidKey: 'BNMEtPl5SjoKwMD8E9bF8X0z6k9W3jiGf8RBBcd6yrnNoCD4Uwx4M4rjOiJDsVVLEIIP1aQdaowW2XMGhCOma0Y',
   },
 };
