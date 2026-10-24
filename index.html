@@ -416,6 +416,35 @@
         <p class="ok" role="status"></p>
         <button type="submit" class="primary" id="btn-save">Enregistrer</button>
       </form>
+      <section id="push-card" class="carte-card push-card" hidden>
+        <h2 class="section-title">Notifications</h2>
+        <p id="push-text" class="muted small"></p>
+        <p id="push-status" class="ok small" role="status"></p>
+        <p id="push-error" class="error small" role="alert"></p>
+        <div class="carte-actions">
+          <button type="button" id="btn-push-on" class="primary" hidden>Activer sur ce téléphone</button>
+          <button type="button" id="btn-push-test" hidden>Envoyer un test</button>
+          <button type="button" id="btn-push-off" hidden>Désactiver</button>
+        </div>
+        <div id="push-send" class="push-send" hidden>
+          <h3>Envoyer une notification</h3>
+          <form id="push-send-form">
+            <label>Destinataires
+              <select name="cible" id="push-cible"></select>
+            </label>
+            <label>Titre
+              <input type="text" name="titre" maxlength="60" required>
+            </label>
+            <label>Message
+              <textarea name="message" rows="3" maxlength="300" required></textarea>
+            </label>
+            <p class="muted small">Reçue uniquement par les membres qui ont activé les notifications sur leur téléphone.</p>
+            <p id="push-send-error" class="error" role="alert"></p>
+            <p id="push-send-status" class="ok" role="status"></p>
+            <button type="submit" class="primary" id="btn-push-send">Envoyer</button>
+          </form>
+        </div>
+      </section>
       <h2 class="section-title">Qualifications</h2>
       <ul id="list-qualifs" class="qualifs"></ul>
       <p class="muted small">Ces informations sont validées par les responsables de la spécialité. En cas d'erreur, contactez votre chef de section.</p>
@@ -454,6 +483,7 @@
 <script src="livret-remplir.js"></script>
 <script src="livret-themes.js"></script>
 <script src="carte-hors-ligne.js"></script>
+<script src="push.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

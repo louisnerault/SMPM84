@@ -413,6 +413,7 @@
   // explicit : déconnexion volontaire (bouton), tout est effacé de l'appareil ;
   // sinon (session expirée) les déclarations de FMPA non envoyées sont conservées
   function logout(explicit) {
+    if (window.SMPM_PUSH) window.SMPM_PUSH.reset(store.get(KEY_TOKEN));   // avant la suppression du jeton
     store.del(KEY_TOKEN);
     store.del(KEY_CACHE);          // important sur un appareil partagé
     store.del(KEY_LIVRET);
@@ -485,6 +486,7 @@
       // ne pas écraser une saisie en cours dans « Mes informations »
       if (!(form && form.contains(document.activeElement))) renderApp();
       if (window.SMPM_CARTE) window.SMPM_CARTE.setAllowed(canDeclare(data.session));
+      if (window.SMPM_PUSH) window.SMPM_PUSH.setSession(data.session);
       if (state.page && !allowedPage(state.page, data.session)) gotoPage(isIntervention() ? 'accueil' : 'livret');
     } catch (e) {
       if (AUTH_ERRORS.includes(e.message)) { logout(); return; }
@@ -510,6 +512,7 @@
     setOffline(offline);
     renderApp();
     if (window.SMPM_CARTE) window.SMPM_CARTE.setAllowed(canDeclare(data.session));
+    if (window.SMPM_PUSH) window.SMPM_PUSH.setSession(data.session);
     show('app');
     applyMode(store.get(KEY_MODE) === 'intervention');
     // Au retour du réseau, on rafraîchit sans quitter la page en cours (ex. déclaration de FMPA en cours de saisie)
