@@ -219,13 +219,14 @@
   }
 
   // Questions du formulaire « thèmes » non affichées au chef d'unité
-  const MASQUES = [/QUEL EST VOTRE NIVEAU/, /SPECIALITE CONCERNEE/, /APPRECIATION/];
+  const MASQUES = [/QUEL EST VOTRE NIVEAU/, /SPECIALITE CONCERNEE/];
   const cle = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
 
   /** Libellés courts pour les questions les plus longues. */
   function libelle(titre) {
     const t = cle(titre);
     if (/AISANCE/.test(t)) return 'Aisance';
+    if (/APPRECIATION/.test(t)) return 'Appréciation de la FMPA';
     if (/CORDE PARCOURUE/.test(t)) return 'Corde parcourue';
     return titre;
   }
@@ -233,20 +234,30 @@
   /** Aisance : échelle visuelle de 1 à 5 ; corde parcourue : en mètres ; sinon texte brut. */
   function valeurInfo(x) {
     const t = cle(x.titre), v = String(x.valeur).trim();
-    if (/AISANCE/.test(t)) {
-      const m = /[1-5]/.exec(v);
-      if (m) {
-        const n = Number(m[0]);
-        return el('span', { class: 'cuv-scale', role: 'img', 'aria-label': `${n} sur 5` },
-          [1, 2, 3, 4, 5].map(i => el('span', { class: 'cuv-step' + (i <= n ? ' on' : ''), text: String(i) })),
-          el('span', { class: 'cuv-scale-n', text: `${n}/5` }));
-      }
+    const echelle = /AISANCE/.test(t) ? ['Peu à l’aise', 'Très à l’aise']
+      : /APPRECIATION/.test(t) ? ['Peu satisfaisante', 'Très satisfaisante'] : null;
+    if (echelle) {
+      // Le classeur peut stocker la note comme une date (5 -> 05/01/1900) : on récupère le jour
+      const d = /^(\d{1,2})\/01\/1900$/.exec(v);
+      const m = d ? [String(Number(d[1]))] : /^\s*([1-5])\b/.exec(v);
+      const n = m ? Number(m[m.length - 1]) : NaN;
+      if (n >= 1 && n <= 5) return jauge(n, echelle);
     }
     if (/CORDE PARCOURUE/.test(t)) {
       const n = Number(v.replace(',', '.').replace(/\s*m(etres?|ètres?)?$/i, ''));
       if (!isNaN(n)) return document.createTextNode(new Intl.NumberFormat('fr-FR').format(n) + ' m');
     }
     return document.createTextNode(v);
+  }
+
+  /** Échelle 1 à 5 en lecture seule : curseur positionné sur la note, graduations et légende. */
+  function jauge(n, [bas, haut]) {
+    return el('div', { class: 'jauge', role: 'img', 'aria-label': `${n} sur 5 (1 = ${bas}, 5 = ${haut})` },
+      el('div', { class: 'jauge-track' },
+        el('span', { class: 'jauge-fill', style: `width:${(n - 1) * 25}%` }),
+        el('span', { class: 'jauge-thumb', style: `left:${(n - 1) * 25}%`, text: String(n) })),
+      el('div', { class: 'jauge-ticks' }, [1, 2, 3, 4, 5].map(i => el('span', { class: i === n ? 'on' : '', text: String(i) }))),
+      el('div', { class: 'jauge-legend' }, el('span', { text: '1 · ' + bas }), el('span', { text: '5 · ' + haut })));
   }
 
   const fr = iso => (iso ? iso.split('-').reverse().join('/') : '');

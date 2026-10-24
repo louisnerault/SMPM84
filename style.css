@@ -1117,3 +1117,28 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
 }
 .cuv-notif p { margin: 0; flex: 1; }
 .cuv-notif .pill { flex: none; }
+
+/* ---------- échelles 1 à 5 : curseur (saisie) et jauge (lecture) ---------- */
+.jauge { margin-top: 2px; max-width: 320px; }
+.jauge-track { position: relative; height: 8px; margin: 14px 12px 4px; border-radius: 99px; background: var(--line); }
+.jauge-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: var(--primary); }
+.jauge-thumb {
+  position: absolute; top: 50%; transform: translate(-50%, -50%);
+  width: 26px; height: 26px; border-radius: 50%; background: var(--primary); color: #fff;
+  display: grid; place-items: center; font-size: .78rem; font-weight: 800; box-shadow: 0 0 0 3px var(--card);
+}
+.jauge-ticks { display: flex; justify-content: space-between; padding: 0 6px; font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.jauge-ticks span { width: 24px; text-align: center; }
+.jauge-ticks span.on { color: var(--primary); font-weight: 800; }
+.jauge-legend { display: flex; justify-content: space-between; gap: 8px; margin-top: 2px; font-size: .75rem; color: var(--muted); }
+.jauge-legend span:last-child { text-align: right; }
+.curseur { margin-top: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.curseur-head { display: flex; align-items: baseline; justify-content: space-between; }
+.curseur-val { font-size: 1.4rem; color: var(--primary); font-variant-numeric: tabular-nums; }
+.curseur input[type="range"] { width: 100%; margin: 10px 0 4px; padding: 0; border: 0; background: none; accent-color: var(--primary); height: 32px; }
+.curseur.vide input[type="range"] { opacity: .45; }
+.curseur.vide .curseur-val { color: var(--muted); }
+.fmpa-q.invalid .curseur { outline: 2px solid var(--danger); outline-offset: 2px; }
+.cuv-infos dt:has(+ dd .jauge), .cuv-infos dd:has(.jauge) { grid-column: 1 / -1; }
+.cuv-infos dd:has(.jauge) { margin-bottom: 4px; }
+.jauge .jauge-ticks { padding: 0; }
