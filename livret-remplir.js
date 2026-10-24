@@ -273,20 +273,41 @@
         return field(it, renderChoices(it, false));
       case 'checkbox':
         return field(it, renderChoices(it, true));
-      case 'scale': {
-        const box = el('div', { class: 'fmpa-scale', role: 'radiogroup', 'aria-labelledby': lab });
-        for (let n = it.min; n <= it.max; n++) {
-          box.append(el('button', {
-            type: 'button', class: 'pill', 'aria-pressed': String(String(v) === String(n)), text: String(n),
-            onclick: () => { setAnswer(it, String(v) === String(n) ? '' : String(n)); rerenderItem(it); },
-          }));
-        }
-        return field(it, box, (it.minLabel || it.maxLabel)
-          ? el('p', { class: 'fmpa-scale-legend' }, el('span', { text: it.minLabel || '' }), el('span', { text: it.maxLabel || '' }))
-          : null);
-      }
+      case 'scale':
+        return field(it, curseur(it, v, lab));
     }
     return el('div');
+  }
+
+  // Échelle : curseur à déplacer, graduations et légende (libellés du formulaire, sinon génériques)
+  function curseur(it, v, lab) {
+    const min = Number(it.min) || 1, max = Number(it.max) || 5;
+    const pris = v !== undefined && v !== null && String(v) !== '';
+    const bas = it.minLabel || (/aisance/i.test(it.title) ? 'Peu à l’aise' : 'Faible');
+    const haut = it.maxLabel || (/aisance/i.test(it.title) ? 'Très à l’aise' : 'Excellente');
+    const val = el('strong', { class: 'curseur-val', text: pris ? String(v) : '–' });
+    const ticks = [];
+    for (let n = min; n <= max; n++) ticks.push(el('span', { class: pris && String(v) === String(n) ? 'on' : '', text: String(n) }));
+    const tickBox = el('div', { class: 'jauge-ticks' }, ticks);
+    const box = el('div', { class: 'curseur' + (pris ? '' : ' vide') });
+    const input = el('input', {
+      type: 'range', min: String(min), max: String(max), step: '1', value: pris ? String(v) : String(Math.round((min + max) / 2)),
+      'aria-labelledby': lab, 'aria-valuetext': pris ? `${v} sur ${max}` : 'non renseigné',
+      oninput: e => {
+        const x = e.target.value;
+        box.classList.remove('vide');
+        val.textContent = x;
+        e.target.setAttribute('aria-valuetext', `${x} sur ${max}`);
+        tickBox.querySelectorAll('span').forEach((s, i) => s.classList.toggle('on', String(min + i) === x));
+        setAnswer(it, x);
+      },
+    });
+    box.append(
+      el('div', { class: 'curseur-head' }, el('span', { class: 'muted small', text: pris ? 'Votre note' : 'Déplacez le curseur' }), val),
+      input, tickBox,
+      el('div', { class: 'jauge-legend' }, el('span', { text: `${min} · ${bas}` }), el('span', { text: `${max} · ${haut}` })));
+    input.addEventListener('input', () => { box.querySelector('.curseur-head span').textContent = 'Votre note'; }, { once: true });
+    return box;
   }
 
   function rerenderItem(it) {
