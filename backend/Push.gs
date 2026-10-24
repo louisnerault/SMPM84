@@ -283,12 +283,19 @@ function pushSend_(token, titre, message, cible) {
 // ============================ Nouvelles demandes de validation ============================
 
 /**
- * Déclencheur (toutes les 5 min, installé par installerPush) : signale au chef d'unité destinataire
+ * Appelé juste après une demande envoyée depuis l'application (Themes.gs) et par le déclencheur
+ * de secours (toutes les 5 min, installé par installerPush, pour les demandes faites par le formulaire Google) : signale au chef d'unité destinataire
  * chaque nouvelle demande de validation des thèmes arrivée dans le fichier CORE.
  */
 function pushNouvellesDemandes() {
   const props = PropertiesService.getScriptProperties();
   if (!props.getProperty(PUSH.PROP_SA) || !props.getProperty(PUSH.PROP_SHEET)) return;
+  const lock = LockService.getScriptLock();                    // appel immédiat (themesSubmit_) et déclencheur
+  if (!lock.tryLock(10000)) return;
+  try { pushNouvellesDemandesSousVerrou_(props); } finally { lock.releaseLock(); }
+}
+
+function pushNouvellesDemandesSousVerrou_(props) {
   const t = coreTable_();                                       // Validation.gs
   const enAttente = [];
   for (let i = 1; i < t.values.length; i++) {

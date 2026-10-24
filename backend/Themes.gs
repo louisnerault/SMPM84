@@ -189,6 +189,8 @@ function themesSubmit_(token, answers, submissionId) {
 
   const sent = resp.submit();
   try { journalSheet_().appendRow([new Date(), a.id, THEMES.JOURNAL, sid, sent.getId()]); } catch (e) {}
+  // Notification push immédiate au chef d'unité (Push.gs ; laisse le temps à la réponse d'arriver dans le CORE)
+  try { if (typeof pushNouvellesDemandes === 'function') { SpreadsheetApp.flush(); Utilities.sleep(2000); pushNouvellesDemandes(); } } catch (e) { console.warn(e.message); }
 
   const out = { ok: true, response_id: sent.getId(), at: new Date().toISOString() };
   if (key) cache.put(key, JSON.stringify(out), THEMES.DEDUP_SEC);

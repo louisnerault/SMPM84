@@ -1,7 +1,7 @@
 // Demandes de validation des thèmes FMPA (rubrique FMPA > Demandes à valider).
 // L'équipier saisit les thèmes vus en FMPA dans le formulaire « thèmes » ; la demande arrive dans le
 // fichier CORE. Le chef d'unité désigné la valide (copie dans l'onglet LOGS du livret de l'agent)
-// ou la rejette (motif facultatif). L'agent est prévenu par mail dans les deux cas.
+// ou la rejette, avec un commentaire facultatif transmis à l'agent (notification push et mail). L'agent est prévenu par mail dans les deux cas.
 // Actions : cu_list (liste), cu_decide (valider / rejeter). Dernière liste gardée pour l'affichage hors ligne.
 (() => {
   'use strict';
@@ -191,7 +191,7 @@
       infos.flatMap(x => [el('dt', { text: libelle(x.titre) }), el('dd', null, valeurInfo(x))])));
 
     const msg = el('p', { class: 'fmpa-msg', role: 'alert' });
-    const motif = el('textarea', { class: 'cuv-motif', rows: '2', maxlength: '500', placeholder: 'Motif du rejet (facultatif, transmis à l’agent)', hidden: true });
+    const motif = el('textarea', { class: 'cuv-motif', rows: '2', maxlength: '500', placeholder: 'Commentaire (facultatif, transmis à l’agent par notification et par mail)', 'aria-label': 'Commentaire du chef d’unité' });
     const off = !navigator.onLine;
     const busy = !!S.busy[d.id];
     const bValider = el('button', { type: 'button', class: 'primary cuv-ok', disabled: off || busy, text: 'Valider' });
@@ -199,18 +199,17 @@
     const bAnnuler = el('button', { type: 'button', class: 'link', hidden: true, text: 'Annuler' });
 
     bValider.addEventListener('click', () => {
-      if (!motif.hidden) return decide(d, 'rejeter', motif.value, msg);
+      if (bAnnuler.hidden === false) return decide(d, 'rejeter', motif.value, msg);
       if (!confirm(`Valider les thèmes de ${d.agent} pour la FMPA du ${fr(d.date)} ? Ils seront inscrits dans son livret.`)) return;
-      decide(d, 'valider', '', msg);
+      decide(d, 'valider', motif.value, msg);
     });
     bRejeter.addEventListener('click', () => {
-      motif.hidden = false; motif.focus();
+      motif.focus();
       bRejeter.hidden = true; bAnnuler.hidden = false;
       bValider.textContent = 'Confirmer le rejet';
       bValider.classList.add('cuv-danger');
     });
     bAnnuler.addEventListener('click', () => {
-      motif.hidden = true; motif.value = '';
       bRejeter.hidden = false; bAnnuler.hidden = true;
       bValider.textContent = 'Valider';
       bValider.classList.remove('cuv-danger');

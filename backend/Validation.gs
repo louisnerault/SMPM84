@@ -154,7 +154,7 @@ function cuList_(token) {
 }
 
 /**
- * Valide ou rejette une demande. decision : 'valider' | 'rejeter' ; motif facultatif (rejet).
+ * Valide ou rejette une demande. decision : 'valider' | 'rejeter' ; motif = commentaire facultatif du chef d'unité (validation ou rejet).
  */
 function cuDecide_(token, id, decision, motif) {
   const a = fmpaAuth_(token);
@@ -210,16 +210,17 @@ function cuDecide_(token, id, decision, motif) {
       mailAgent_(mail, 'Validation des thèmes dans votre livret de formation',
         'Bonjour,\n\nLe chef d\'unité ' + valideur + ' a validé les thèmes vus lors de votre FMPA du ' + dateTxt + '.\n\n' +
         (lien ? 'Vous pouvez consulter votre livret individuel en utilisant ce lien : ' + lien + '\n' : '') +
+        (motif ? 'Commentaire : ' + motif + '\n\n' : '') +
         'Ils apparaissent aussi dans l\'application SMPM 84.');
-      pushA_([d.agent], { titre: 'Thèmes validés', corps: valideur + ' a validé les thèmes de votre FMPA du ' + dateTxt + '.', page: 'livret-themes', tag: 'smpm-themes' });
+      pushA_([d.agent], { titre: 'Thèmes validés', corps: valideur + ' a validé les thèmes de votre FMPA du ' + dateTxt + (motif ? '.\nCommentaire : ' + motif : '.'), page: 'livret-themes', tag: 'smpm-themes' });
     } else {
       t.sh.getRange(ligne, VALID.COL_STATUT).setValue('rejeté');
       archiverEtRetirer_(t.sh, ligne, t.nc);
       mailAgent_(mail, 'Thèmes FMPA : Demande rejetée',
         'Bonjour,\n\nLe chef d\'unité ' + valideur + ' a rejeté votre demande de validation des thèmes vus lors de votre FMPA du ' + dateTxt + '.\n\n' +
-        (motif ? 'Motif : ' + motif + '\n\n' : '') +
+        (motif ? 'Commentaire : ' + motif + '\n\n' : '') +
         'Rapprochez-vous du chef d\'unité concerné et renouvelez votre demande via ce lien : ' + VALID.FORM_URL);
-      pushA_([d.agent], { titre: 'Demande rejetée', corps: valideur + ' a rejeté vos thèmes de la FMPA du ' + dateTxt + (motif ? ' : ' + motif : '.'), tag: 'smpm-themes' });
+      pushA_([d.agent], { titre: 'Demande rejetée', corps: valideur + ' a rejeté vos thèmes de la FMPA du ' + dateTxt + (motif ? '.\nCommentaire : ' + motif : '.'), page: 'livret-themes', tag: 'smpm-themes' });
     }
 
     try {
