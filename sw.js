@@ -5,7 +5,7 @@
 // - Fiches techniques : cache dédié (smpm84-fiches) rempli par fiches.js ; lecture hors ligne.
 // - Carte hors ligne : cache dédié (smpm84-carte) rempli par carte-hors-ligne.js à la demande ; jamais rempli ici.
 // Les données personnelles ne passent jamais par ce cache (elles sont dans localStorage).
-const CACHE = 'smpm84-shell-v50';
+const CACHE = 'smpm84-shell-v51';
 const FICHES_CACHE = 'smpm84-fiches';
 const CARTE_CACHE = 'smpm84-carte';
 const SHELL = [
@@ -19,6 +19,20 @@ const SHELL = [
 // Numéro de version affiché dans le bandeau : demandé par la page au service worker qui la sert
 self.addEventListener('message', e => {
   if (e.data === 'version' && e.ports[0]) e.ports[0].postMessage(CACHE.replace(/^.*-v/, ''));
+});
+
+// Notification (ex. nouvelle demande de validation) : ouvre l'application sur la page concernée
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const page = (e.notification.data && e.notification.data.page) || '';
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    const c = list[0];
+    if (c) {
+      if (page) c.postMessage({ type: 'goto', page });
+      return c.focus();
+    }
+    return self.clients.openWindow('./' + (page ? '?page=' + encodeURIComponent(page) : ''));
+  }));
 });
 
 self.addEventListener('install', e => {

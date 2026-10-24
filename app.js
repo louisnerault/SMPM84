@@ -480,6 +480,9 @@
   }
 
   // ---------- application ----------
+  // Page à ouvrir au démarrage, transmise par une notification (?page=…)
+  let startPage = new URLSearchParams(location.search).get('page');
+
   function enterApp(data, options, offline) {
     const wasInApp = !$('#view-app').hidden;
     state.data = data;
@@ -490,7 +493,13 @@
     show('app');
     applyMode(store.get(KEY_MODE) === 'intervention');
     // Au retour du réseau, on rafraîchit sans quitter la page en cours (ex. déclaration de FMPA en cours de saisie)
-    if (!(state.keepPage && wasInApp && state.page)) gotoPage(isIntervention() ? 'accueil' : 'livret');
+    if (startPage) {
+      // ouverture depuis une notification (ex. ?page=fmpa-valid) : page demandée, une seule fois
+      const p = startPage;
+      startPage = null;
+      try { history.replaceState(null, '', location.pathname); } catch (e) {}
+      gotoPage(p);
+    } else if (!(state.keepPage && wasInApp && state.page)) gotoPage(isIntervention() ? 'accueil' : 'livret');
     state.keepPage = false;
     // Livret : affichage immédiat depuis l'appareil, puis rafraîchissement si en ligne
     const cachedLivret = store.getJSON(KEY_LIVRET);
@@ -508,7 +517,8 @@
     // thèmes saisis hors ligne (Remplir mon livret) : envoi dès que possible
     if (!offline && window.SMPM_THEMES) window.SMPM_THEMES.flush();
     // demandes de validation des thèmes en attente : compteur du menu
-    if (!offline && canDeclare(data.session) && window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.refresh();
+    // (compteur affiché tout de suite depuis l'appareil, puis rafraîchi : menu, bouton ☰ et icône de l'application)
+    if (canDeclare(data.session) && window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.refresh();
   }
 
   // ---------- livret individuel : compteurs d'heures et formations ----------
@@ -1032,6 +1042,10 @@
   // ---------- démarrage ----------
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
+    // Toucher une notification alors que l'application est ouverte : le service worker demande la page
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data && e.data.type === 'goto' && e.data.page && state.data) gotoPage(e.data.page);
+    });
     // version affichée = celle du service worker qui sert réellement la page
     const showVersion = () => {
       const sw = navigator.serviceWorker.controller, el = document.getElementById('app-version');
