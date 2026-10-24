@@ -333,7 +333,9 @@ function itvItemResponse_(it, v) {
     case T.SCALE:           return it.asScaleItem().createResponse(Number(v));
     case T.DATE: {
       const [y, m, d] = ymd(v);
-      return it.asDateItem().createResponse(new Date(y, m, d));
+      // Midi et non minuit : quel que soit le fuseau du classeur de réponses (souvent GMT),
+      // le jour reste le même (minuit à Paris = 22 h ou 23 h la veille en temps universel).
+      return it.asDateItem().createResponse(new Date(y, m, d, 12, 0, 0));
     }
     case T.DATETIME: {
       const [y, m, d] = ymd(v);
