@@ -269,8 +269,16 @@
         sel.value = v || '';
         return field(it, sel);
       }
-      case 'radio':
+      case 'radio': {
+        // Choix « 1, 2, 3, 4, 5 » sans saut de section (ex. aisance) : curseur plutôt que boutons
+        const nums = it.choices.map(c => c.v);
+        const ok = nums.length >= 3 && nums.every((x, i) => /^\d+$/.test(x) && Number(x) === Number(nums[0]) + i) &&
+          it.choices.every(c => c.go === null) && !it.other;
+        if (ok) return field(it, curseur(Object.assign({}, it, { min: Number(nums[0]), max: Number(nums[nums.length - 1]) }), v, lab));
         return field(it, renderChoices(it, false));
+      }
+      case 'rating':
+        return field(it, etoiles(it, v, lab));
       case 'checkbox':
         return field(it, renderChoices(it, true));
       case 'scale':
@@ -308,6 +316,32 @@
       el('div', { class: 'jauge-legend' }, el('span', { text: `${min} · ${bas}` }), el('span', { text: `${max} · ${haut}` })));
     input.addEventListener('input', () => { box.querySelector('.curseur-head span').textContent = 'Votre note'; }, { once: true });
     return box;
+  }
+
+  // Note : étoiles à toucher (toucher à nouveau la même étoile efface la note si la question est facultative)
+  function etoiles(it, v, lab) {
+    const max = Number(it.max) || 5;
+    const n = Number(v) || 0;
+    const box = el('div', { class: 'etoiles', role: 'radiogroup', 'aria-labelledby': lab });
+    const txt = el('span', { class: 'etoiles-txt', text: n ? `${n} / ${max}` : 'Touchez une étoile' });
+    const btns = [];
+    const paint = k => btns.forEach((b, i) => { b.classList.toggle('on', i < k); b.setAttribute('aria-checked', String(i + 1 === k)); });
+    for (let i = 1; i <= max; i++) {
+      const b = el('button', {
+        type: 'button', class: 'etoile', role: 'radio', 'aria-label': `${i} étoile${i > 1 ? 's' : ''} sur ${max}`, text: '★',
+        onclick: () => {
+          const cur = Number(S.answers[it.id]) || 0;
+          const k = cur === i && !it.required ? 0 : i;
+          setAnswer(it, k ? String(k) : '');
+          paint(k);
+          txt.textContent = k ? `${k} / ${max}` : 'Touchez une étoile';
+        },
+      });
+      btns.push(b);
+      box.append(b);
+    }
+    paint(n);
+    return el('div', { class: 'etoiles-wrap' }, box, txt);
   }
 
   function rerenderItem(it) {
