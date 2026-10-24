@@ -6,6 +6,7 @@
  *
  * Puis, dans Code.gs, ajouter cette ligne dans le switch de doPost() :
  *     case 'livret':       result = livret_(b.token); break;
+ *     case 'livret_pdf':   result = livretPdf_(b.token, b.annee); break;
  * et redéployer : Déployer > Gérer les déploiements > (crayon) > Version : Nouvelle version.
  *
  * Source des données : le Google Sheet du livret individuel (colonne ID_livret de la liste du personnel)
@@ -47,7 +48,7 @@ function livret_(token) {
   if (!id) throw new Error('Aucun livret associé à votre fiche');
 
   const cache = CacheService.getScriptCache();
-  const key = 'livret2_' + id;
+  const key = 'livret3_' + id;
   const hit = cache.get(key);
   let data = hit ? JSON.parse(hit) : null;
   if (!data) {
@@ -70,6 +71,7 @@ function livret_(token) {
       },
       quotas: quotasPersonne_(pt, row, data.quotas),
       seances: data.seances || [],
+      evaluations: data.evaluations || {},
       referentiel: referentielThemes_(),
       maj: new Date().toISOString(),
     },
@@ -177,7 +179,7 @@ function lireLivret_(id, nom) {
       if (k in quotas && n > 0) quotas[k] = n;
     });
   }
-  return { formations, quotas, seances, validations: lireValidations_(ss, ymd) };
+  return { formations, quotas, seances, validations: lireValidations_(ss, ymd), evaluations: evaluationsMeta_(id, nom) };
 }
 
 /**
@@ -255,4 +257,66 @@ function quotasPersonne_(pt, row, q) {
     if (has(s)) out[s] = { quota: q[s] || 0, depuis: year(dates[s]) };
   });
   return out;
+}
+
+/**
+ * PDF des évaluations annuelles : dossier au nom de l'agent, dans le dossier « LIVRET ».
+ * Le dossier est d'abord cherché parmi les parents du classeur du livret, sinon par son nom.
+ * L'année est lue dans le nom du fichier (ex. « Evaluation 2026.pdf ») ; à défaut, sa date de création.
+ * Renvoie la liste des fichiers PDF { annee: File } (le plus récent par année).
+ */
+function evaluationsPdf_(idLivret, nom) {
+  const estLivret = f => /livret/i.test(f.getName());
+  const norm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+  let dossier = null;
+  try {
+    const it = DriveApp.getFileById(idLivret).getParents();
+    while (it.hasNext() && !dossier) {
+      const f = it.next();
+      const gp = f.getParents();
+      while (gp.hasNext()) if (estLivret(gp.next())) { dossier = f; break; }
+    }
+  } catch (e) { /* livret inaccessible : recherche par nom */ }
+  if (!dossier && nom) {
+    const it = DriveApp.searchFolders("title contains '" + nom.replace(/'/g, "\\'") + "'");
+    while (it.hasNext() && !dossier) {
+      const f = it.next();
+      if (norm(f.getName()).indexOf(norm(nom)) < 0) continue;
+      const gp = f.getParents();
+      while (gp.hasNext()) if (estLivret(gp.next())) { dossier = f; break; }
+    }
+  }
+  const out = {};
+  if (!dossier) return out;
+  const files = dossier.getFilesByType(MimeType.PDF);
+  while (files.hasNext()) {
+    const f = files.next();
+    const m = /(?:^|\D)(20\d{2})(?:\D|$)/.exec(f.getName());
+    const y = m ? m[1] : String(f.getDateCreated().getFullYear());
+    if (!out[y] || out[y].getLastUpdated() < f.getLastUpdated()) out[y] = f;
+  }
+  return out;
+}
+
+/** { '2026': { nom } } : années pour lesquelles un PDF d'évaluation existe. */
+function evaluationsMeta_(idLivret, nom) {
+  try {
+    const pdfs = evaluationsPdf_(idLivret, nom);
+    const out = {};
+    Object.keys(pdfs).forEach(y => { out[y] = { nom: pdfs[y].getName() }; });
+    return out;
+  } catch (e) {
+    return {};
+  }
+}
+
+/** Contenu du PDF d'évaluation de l'année demandée, pour l'agent connecté uniquement (base64). */
+function livretPdf_(token, annee) {
+  const a = auth_(token);
+  const { pt, row } = a.p;
+  const id = String(pt.cell(row, H.ID) || '').trim();
+  if (!id) throw new Error('Aucun livret associé à votre fiche');
+  const f = evaluationsPdf_(id, String(pt.cell(row, H.NOM) || '').trim())[String(annee)];
+  if (!f) throw new Error("Aucune évaluation PDF pour " + annee);
+  return { ok: true, nom: f.getName(), data: Utilities.base64Encode(f.getBlob().getBytes()) };
 }
