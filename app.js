@@ -334,6 +334,7 @@
     if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
     if (name === 'annuaire' && window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.open();
     if (name === 'livret-remplir' && window.SMPM_THEMES) window.SMPM_THEMES.open();
+    if (name === 'livret-themes' && window.SMPM_THEMES_VUS) window.SMPM_THEMES_VUS.open();
     if (name === 'fmpa' && window.SMPM_FMPA) window.SMPM_FMPA.open();
     if (name === 'interv-new' && window.SMPM_ITV) window.SMPM_ITV.open();
     if (name === 'interv-mes' && window.SMPM_ITV) window.SMPM_ITV.renderPending();
@@ -566,6 +567,8 @@
     sel.value = String(state.year);
     sel.disabled = !L;
     renderLivretYear();
+    // Thèmes vus : même livret, rafraîchi en même temps (si la page est affichée)
+    if (window.SMPM_THEMES_VUS) window.SMPM_THEMES_VUS.render();
   }
 
   // Partie qui dépend de l'année choisie dans la liste déroulante
@@ -989,6 +992,7 @@
   // Accès partagé pour les rubriques chargées à part (fmpa.js)
   window.SMPM_APP = {
     api, token: () => store.get(KEY_TOKEN), NetworkError, AUTH_ERRORS, logout,
+    livret: () => state.livret,
     goto: name => gotoPage(name),
     home: () => (isIntervention() ? 'accueil' : 'livret'),
     flash,
