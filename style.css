@@ -1102,3 +1102,18 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
 @media (prefers-reduced-motion: reduce) { .tv-cat > summary::after { transition: none; } }
 .livret-head h1 { white-space: nowrap; }
 #tv-year { max-width: 140px; }
+
+/* ---------- pastille des demandes de validation : bouton ☰ et encart notifications ---------- */
+.burger .burger-count {
+  /* annule le style des trois traits du bouton (.burger span) */
+  position: absolute; top: 1px; right: -3px; width: auto; height: 20px; min-width: 20px; margin: 0; padding: 0 5px;
+  border-radius: 99px; background: var(--danger); color: #fff;
+  font-size: .7rem; font-weight: 700; line-height: 20px; text-align: center;
+  box-shadow: 0 0 0 2px rgba(6, 20, 40, .55);
+}
+.cuv-notif {
+  display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 10px 12px;
+  border-radius: 10px; background: var(--primary-soft); font-size: .85rem;
+}
+.cuv-notif p { margin: 0; flex: 1; }
+.cuv-notif .pill { flex: none; }

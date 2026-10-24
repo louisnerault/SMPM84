@@ -7,6 +7,8 @@
   'use strict';
 
   const KEY = 'smpm_cu_demandes';
+  const KEY_VUES = 'smpm_cu_vues';          // demandes déjà signalées (pour ne notifier que les nouvelles)
+  const REFRESH_MS = 5 * 60e3;              // compteur rafraîchi toutes les 5 min quand l'app est ouverte
   const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
   const $ = (sel, root = document) => root.querySelector(sel);
   const store = {
@@ -17,7 +19,7 @@
   const app = () => window.SMPM_APP;
   const cap = s => (s ? s.charAt(0) + s.slice(1).toLowerCase() : '');
 
-  const S = { data: null, filtre: 'moi', busy: {}, loading: false };
+  const S = { data: null, filtre: 'moi', busy: {}, loading: false, active: false, lastLoad: 0 };
 
   function el(tag, attrs, ...children) {
     const n = document.createElement(tag);
@@ -34,6 +36,7 @@
   }
 
   function open() {
+    S.active = true;
     if (!S.data) S.data = store.getJSON(KEY);
     render();
     load();
@@ -47,9 +50,11 @@
     try {
       const res = await app().api('cu_list', { token: app().token() });
       S.data = { demandes: res.demandes || [], maj: res.maj };
+      S.lastLoad = Date.now();
       store.set(KEY, JSON.stringify(S.data));
       if (!silent) setState('');
       render();
+      signalerNouvelles();
     } catch (err) {
       if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
       if (silent) return;
@@ -66,17 +71,83 @@
     p.classList.toggle('error', !!isError);
   }
 
-  /** Pastille du menu : demandes adressées à l'utilisateur. */
+  const aMoi = () => (S.data ? S.data.demandes.filter(d => d.par === 'cu') : []);
+
+  /** Pastilles : menu (bouton ☰, groupe FMPA, Validation des livrets) et icône de l'application. */
   function badge() {
-    const n = S.data ? S.data.demandes.filter(d => d.par === 'cu').length : 0;
+    const n = aMoi().length;
     document.querySelectorAll('[data-cu-count]').forEach(b => {
       b.textContent = n > 99 ? '99+' : String(n);
       b.hidden = !n;
     });
+    iconBadge(n);
   }
+
+  // Nombre sur l'icône de l'application (API Badging : iPhone/iPad 16.4+ installée sur l'écran
+  // d'accueil avec notifications autorisées, Chrome/Edge sur ordinateur ; non disponible sur Android)
+  function iconBadge(n) {
+    try {
+      if (!('setAppBadge' in navigator)) return;
+      (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {});
+    } catch (e) { /* non pris en charge */ }
+  }
+
+  // ---------- notifications ----------
+  const notifPossible = () => 'Notification' in window && 'serviceWorker' in navigator;
+
+  /** Notification système pour les demandes arrivées depuis le dernier passage (aussi : pastille de l'icône sur Android). */
+  async function signalerNouvelles() {
+    const mes = aMoi();
+    const ids = mes.map(d => d.id);
+    const vues = store.getJSON(KEY_VUES);
+    store.set(KEY_VUES, JSON.stringify(ids));
+    if (!vues) return;                                   // premier chargement sur l'appareil : rien de « nouveau »
+    const nouvelles = mes.filter(d => !vues.includes(d.id));
+    if (!nouvelles.length || !notifPossible() || Notification.permission !== 'granted') return;
+    if (document.visibilityState === 'visible' && !$('#tab-fmpa-valid').hidden) return;   // déjà sous les yeux
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) return;
+      const d = nouvelles[0];
+      const qui = [d.prenom, d.agent].filter(Boolean).join(' ');
+      await reg.showNotification('Validation des livrets', {
+        body: nouvelles.length > 1
+          ? `${nouvelles.length} nouvelles demandes de validation de thèmes (${mes.length} en attente).`
+          : `${qui || 'Un équipier'} demande la validation de ses thèmes${d.date ? ' (FMPA du ' + d.date.split('-').reverse().join('/') + ')' : ''}.`,
+        tag: 'smpm-cu-validation', renotify: true,
+        icon: 'assets/icon-192.png', badge: 'assets/icon-192.png',
+        data: { page: 'fmpa-valid' },
+      });
+    } catch (e) { /* notifications indisponibles : la pastille du menu suffit */ }
+  }
+
+  // Encart d'activation (une seule demande d'autorisation, sur action de l'utilisateur)
+  function renderNotif() {
+    const box = $('#cuv-notif');
+    if (!box) return;
+    box.hidden = !(S.active && notifPossible() && Notification.permission === 'default');
+  }
+  function activerNotif() {
+    if (!notifPossible()) return;
+    Promise.resolve(Notification.requestPermission()).catch(() => {}).then(() => {
+      renderNotif();
+      badge();
+    });
+  }
+
+  // Rafraîchissement du compteur : retour sur l'application, puis toutes les 5 min
+  function refreshAuto() {
+    if (!S.active || S.loading || !navigator.onLine || !app() || !app().token()) return;
+    if (Date.now() - S.lastLoad < 60e3) return;
+    load(true);
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshAuto(); });
+  window.addEventListener('online', refreshAuto);
+  setInterval(() => { if (document.visibilityState === 'visible') refreshAuto(); }, REFRESH_MS);
 
   function render() {
     badge();
+    renderNotif();
     if ($('#tab-fmpa-valid').hidden) return;
     const all = (S.data && S.data.demandes) || [];
     const autres = all.filter(d => d.par !== 'cu').length;
@@ -206,9 +277,13 @@
 
   function reset() {
     store.del(KEY);
-    Object.assign(S, { data: null, filtre: 'moi', busy: {}, loading: false });
+    store.del(KEY_VUES);
+    Object.assign(S, { data: null, filtre: 'moi', busy: {}, loading: false, active: false, lastLoad: 0 });
     badge();
+    renderNotif();
   }
+
+  $('#cuv-notif-btn').addEventListener('click', activerNotif);
 
   $('#cuv-filtres').addEventListener('click', e => {
     const b = e.target.closest('.pill');
@@ -217,5 +292,13 @@
     render();
   });
 
-  window.SMPM_FMPA_VALID = { open, refresh: () => load(true), reset };
+  // refresh : appelé à l'ouverture de l'application pour les chefs d'unité et au-delà (active le suivi du compteur)
+  window.SMPM_FMPA_VALID = {
+    open, reset,
+    refresh: () => {
+      S.active = true;
+      if (!S.data) { S.data = store.getJSON(KEY); badge(); }     // compteur immédiat, même hors ligne
+      return load(true);
+    },
+  };
 })();

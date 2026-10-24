@@ -21,6 +21,8 @@
     <span></span><span></span><span></span>
     <span class="sync-dot" data-sync-dot hidden></span>
     <span class="pending-dot" title="Déclaration en attente d'envoi" hidden></span>
+  
+    <span class="nav-count burger-count" data-cu-count title="Demandes de validation en attente" hidden></span>
   </button>
   <img src="assets/ecusson-132.png" alt="" class="logo" width="44" height="44">
   <button type="button" id="btn-identity" class="brand" disabled><strong id="top-title">SMPM 84</strong><span id="top-sub">Secours en milieu périlleux et montagne</span></button>
@@ -354,6 +356,10 @@
     <!-- Validation des thèmes FMPA saisis par les équipiers : chefs d'unité et au-delà -->
     <div id="tab-fmpa-valid" hidden>
       <h1>Validation des livrets</h1>
+      <div id="cuv-notif" class="cuv-notif" hidden>
+        <p>Soyez prévenu d'une nouvelle demande : notification et nombre de demandes sur l'icône de l'application.</p>
+        <button type="button" class="pill" id="cuv-notif-btn">Activer</button>
+      </div>
       <p class="muted small">Thèmes saisis par les équipiers après une FMPA. Une fois validés, ils sont inscrits dans leur livret individuel. En cas de rejet, l'agent est prévenu par mail (avec votre motif s'il y en a un).</p>
       <div id="cuv-filtres" class="cuv-filtres" hidden>
         <button type="button" class="pill" data-f="moi" aria-pressed="true">Adressées à moi</button>
