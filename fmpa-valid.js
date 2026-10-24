@@ -71,7 +71,9 @@
     p.classList.toggle('error', !!isError);
   }
 
-  const aMoi = () => (S.data ? S.data.demandes.filter(d => d.par === 'cu') : []);
+  // Demandes que l'utilisateur peut traiter : les siennes (chef d'unité), toutes pour l'encadrement (CT, administrateurs).
+  // Le serveur ne renvoie que celles-là : le compteur des pastilles et des notifications les prend toutes.
+  const aMoi = () => (S.data ? S.data.demandes : []);
 
   /** Pastilles : menu (bouton ☰, groupe FMPA, Validation des livrets) et icône de l'application. */
   function badge() {
