@@ -25,6 +25,8 @@
  * du CORE est refusée proprement.
  *
  * Droits :
+ *   - l'appréciation de la FMPA par l'agent n'est envoyée qu'au conseiller technique et aux administrateurs,
+ *     jamais au chef d'unité destinataire (celui qui a encadré la manœuvre) ;
  *   - chef d'unité et chef de section : les demandes qui leur sont adressées (colonne « Chef d'unité responsable ») ;
  *   - administrateur et conseiller technique : toutes les demandes.
  */
@@ -136,6 +138,9 @@ function cuList_(token) {
     const par = droitDemande_(d, prof);
     if (!par) continue;
     d.par = par;
+    // Appréciation de la FMPA par l'agent : réservée à l'encadrement (conseiller technique, administrateur).
+    // Jamais transmise au chef d'unité destinataire de la demande, c'est-à-dire celui qui a encadré la manœuvre.
+    if (par === 'cu') d.infos = d.infos.filter(x => !/APPRECIATION/.test(cle_(x.titre)));
     out.push(d);
   }
   out.sort((x, y) => (x.horodateur < y.horodateur ? -1 : 1));   // les plus anciennes d'abord
