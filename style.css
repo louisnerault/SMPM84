@@ -1048,7 +1048,7 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
 .ann-meta { margin: 4px 0 0; font-size: .85rem; color: var(--muted); }
 .ann-chips { margin-top: 6px; }
 .ann-num { margin: 6px 0 0; font-variant-numeric: tabular-nums; font-size: .9rem; }
-.ann-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.ann-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
 .ann-btn { display: flex; align-items: center; justify-content: center; min-height: 44px; background: none; border: 0; color: var(--muted); text-decoration: none; }
 .ann-btn:hover, .ann-btn:active { color: var(--ink); }
 .ann-btn.is-off { opacity: .3; cursor: not-allowed; }
@@ -1181,3 +1181,11 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
 @media (min-width: 900px) { #lr-form .fmpa-sec > .section-title { margin-left: 0; margin-right: 0; padding-left: 14px; padding-right: 14px; } }
 @media (prefers-color-scheme: dark) { #lr-form .fmpa-sec > .section-title { color: #fff; } }
 #lr-form .fmpa-sec + .fmpa-sec { border-top: 0; }
+button.ann-btn { width: 100%; padding: 0; cursor: pointer; font: inherit; }
+.ann-dialog { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); color: var(--ink); padding: 16px; width: min(92vw, 420px); }
+.ann-dialog::backdrop { background: rgba(0, 0, 0, .45); }
+.ann-dialog h2 { margin: 0 0 4px; font-size: 1.1rem; }
+.ann-dialog textarea { width: 100%; box-sizing: border-box; }
+.ann-dialog-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.ann-dialog-btns button { margin: 0; width: auto; min-height: 44px; padding: 0 18px; border-radius: 10px; }
+#ann-push-cancel { background: none; border: 1px solid var(--line); color: var(--ink); }
