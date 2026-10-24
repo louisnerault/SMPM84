@@ -203,7 +203,7 @@ function cuDecide_(token, id, decision, motif) {
       if (n >= VALID.COL_ANNEE && dFmpa instanceof Date) copie[VALID.COL_ANNEE - 1] = Utilities.formatDate(dFmpa, 'Europe/Paris', 'yyyy');
       logs.insertRowAfter(1);
       logs.getRange(2, 1, 1, n).setValues([copie]);
-      try { CacheService.getScriptCache().remove('livret3_' + idLivret); } catch (e) {}
+      try { CacheService.getScriptCache().remove('livret4_' + idLivret); } catch (e) {}
 
       t.sh.getRange(ligne, VALID.COL_STATUT).setValue('validé');
       archiverEtRetirer_(t.sh, ligne, t.nc);

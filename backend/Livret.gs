@@ -6,7 +6,7 @@
  *
  * Puis, dans Code.gs, ajouter cette ligne dans le switch de doPost() :
  *     case 'livret':       result = livret_(b.token); break;
- *     case 'livret_pdf':   result = livretPdf_(b.token, b.annee); break;
+ *     case 'livret_pdf':   result = livretPdf_(b.token, b.annee, b.type); break;
  * et redéployer : Déployer > Gérer les déploiements > (crayon) > Version : Nouvelle version.
  *
  * Source des données : le Google Sheet du livret individuel (colonne ID_livret de la liste du personnel)
@@ -48,7 +48,7 @@ function livret_(token) {
   if (!id) throw new Error('Aucun livret associé à votre fiche');
 
   const cache = CacheService.getScriptCache();
-  const key = 'livret3_' + id;
+  const key = 'livret4_' + id;
   const hit = cache.get(key);
   let data = hit ? JSON.parse(hit) : null;
   if (!data) {
@@ -66,7 +66,7 @@ function livret_(token) {
     livret: {
       formations: data.formations,
       validations: {
-        criteres: (data.validations.criteres || []).map((label, i) => ({ label, requis: requis[i] !== false })),
+        criteres: (data.validations.criteres || []).map((label, i) => ({ label, requis: requis[i] !== false, eval: typeEval_(label, i) })),
         annees: data.validations.annees,
       },
       quotas: quotasPersonne_(pt, row, data.quotas),
@@ -261,13 +261,27 @@ function quotasPersonne_(pt, row, q) {
 
 /**
  * PDF des évaluations annuelles : dossier au nom de l'agent, dans le dossier « LIVRET ».
- * Le dossier est d'abord cherché parmi les parents du classeur du livret, sinon par son nom.
- * L'année est lue dans le nom du fichier (ex. « Evaluation 2026.pdf ») ; à défaut, sa date de création.
- * Renvoie la liste des fichiers PDF { annee: File } (le plus récent par année).
+ * Nommage : « année agent - évaluation », ex. « 2026 DUPONT Jean - ÉVALUATION PARCOURS SUR CORDE.pdf ».
+ * 4 types : PARCOURS SUR CORDE, MISE EN OEUVRE D'UN AGRÈS, ÉQUIPEMENT D'UN SITE, RÉALISATION D'UNE MANŒUVRE.
+ * Le dossier est d'abord cherché parmi les parents du classeur du livret, sinon par le nom de l'agent.
+ * Renvoie { '2026': { CORDE: File, AGRES: File, SITE: File, MANOEUVRE: File } } (le plus récent par type).
  */
+const EVAL_TYPES = ['CORDE', 'AGRES', 'SITE', 'MANOEUVRE'];   // ordre des critères de VALIDATION ANNUELLE
+
+function normEval_(t) {
+  return String(t || '').replace(/[Œœ]/g, 'OE').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+}
+
+/** Type d'évaluation d'un libellé (critère ou nom de fichier) ; à défaut, d'après la position du critère. */
+function typeEval_(label, i) {
+  const t = normEval_(label);
+  const k = EVAL_TYPES.filter(x => t.indexOf(x) >= 0);
+  if (k.length) return k[k.length - 1] === 'CORDE' && k.length > 1 ? k.find(x => x !== 'CORDE') : k[0];
+  return i === undefined ? null : EVAL_TYPES[i] || null;
+}
+
 function evaluationsPdf_(idLivret, nom) {
   const estLivret = f => /livret/i.test(f.getName());
-  const norm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
   let dossier = null;
   try {
     const it = DriveApp.getFileById(idLivret).getParents();
@@ -281,7 +295,7 @@ function evaluationsPdf_(idLivret, nom) {
     const it = DriveApp.searchFolders("title contains '" + nom.replace(/'/g, "\\'") + "'");
     while (it.hasNext() && !dossier) {
       const f = it.next();
-      if (norm(f.getName()).indexOf(norm(nom)) < 0) continue;
+      if (normEval_(f.getName()).indexOf(normEval_(nom)) < 0) continue;
       const gp = f.getParents();
       while (gp.hasNext()) if (estLivret(gp.next())) { dossier = f; break; }
     }
@@ -291,32 +305,38 @@ function evaluationsPdf_(idLivret, nom) {
   const files = dossier.getFilesByType(MimeType.PDF);
   while (files.hasNext()) {
     const f = files.next();
-    const m = /(?:^|\D)(20\d{2})(?:\D|$)/.exec(f.getName());
-    const y = m ? m[1] : String(f.getDateCreated().getFullYear());
-    if (!out[y] || out[y].getLastUpdated() < f.getLastUpdated()) out[y] = f;
+    const name = f.getName();
+    const m = /^\s*(20\d{2})\b/.exec(name);
+    if (!m) continue;
+    const parts = name.replace(/\.pdf$/i, '').split(' - ');
+    const type = typeEval_(parts.length > 1 ? parts.slice(1).join(' - ') : name);
+    if (!type) continue;
+    const y = out[m[1]] || (out[m[1]] = {});
+    if (!y[type] || y[type].getLastUpdated() < f.getLastUpdated()) y[type] = f;
   }
   return out;
 }
 
-/** { '2026': { nom } } : années pour lesquelles un PDF d'évaluation existe. */
+/** { '2026': ['CORDE', 'SITE'] } : évaluations PDF disponibles par année. */
 function evaluationsMeta_(idLivret, nom) {
   try {
     const pdfs = evaluationsPdf_(idLivret, nom);
     const out = {};
-    Object.keys(pdfs).forEach(y => { out[y] = { nom: pdfs[y].getName() }; });
+    Object.keys(pdfs).forEach(y => { out[y] = Object.keys(pdfs[y]); });
     return out;
   } catch (e) {
     return {};
   }
 }
 
-/** Contenu du PDF d'évaluation de l'année demandée, pour l'agent connecté uniquement (base64). */
-function livretPdf_(token, annee) {
+/** Contenu d'un PDF d'évaluation (année + type), pour l'agent connecté uniquement (base64). */
+function livretPdf_(token, annee, type) {
   const a = auth_(token);
   const { pt, row } = a.p;
   const id = String(pt.cell(row, H.ID) || '').trim();
   if (!id) throw new Error('Aucun livret associé à votre fiche');
-  const f = evaluationsPdf_(id, String(pt.cell(row, H.NOM) || '').trim())[String(annee)];
-  if (!f) throw new Error("Aucune évaluation PDF pour " + annee);
+  const y = evaluationsPdf_(id, String(pt.cell(row, H.NOM) || '').trim())[String(annee)] || {};
+  const f = y[String(type)];
+  if (!f) throw new Error('Évaluation PDF introuvable pour ' + annee);
   return { ok: true, nom: f.getName(), data: Utilities.base64Encode(f.getBlob().getBytes()) };
 }
