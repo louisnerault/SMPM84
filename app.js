@@ -100,7 +100,7 @@
   // ont un délai plus long : ils portent un identifiant qui évite les doublons au renvoi.
   const API_TIMEOUT = 20000;
   const API_TIMEOUT_LONG = 60000;
-  const LONG_ACTIONS = /(_submit|_update|_decide|^itv_list$|^itv_get$|^itv_form$|^update_me$|^login$|^verify_code$|^request_code$)/;
+  const LONG_ACTIONS = /(_submit|_update|_decide|^itv_list$|^itv_get$|^itv_form$|^update_me$|^login$|^verify_code$|^request_code$|^livret_pdf$)/;
 
   // ---------- barre de progression des requêtes ----------
   // Apps Script ne renvoie pas d'avancement : la barre progresse vite puis ralentit
@@ -610,7 +610,6 @@
     const year = state.year;
     const list = ((L && L.formations) || []).filter(f => f.date.startsWith(String(year)));
     renderCounters(L, list, year);
-    renderStats(L, list);
     renderValidations(L, year);
     renderFormations(L, list, year);
   }
@@ -626,6 +625,7 @@
     if (!criteres.length) return;
     $('#livret-valid-title').textContent = `Validation annuelle ${year}`;
     const res = (V.annees && V.annees[String(year)]) || [];
+    const pdf = L.evaluations && L.evaluations[String(year)];
 
     $('#livret-valid-list').replaceChildren(...criteres.map((c, i) => {
       const r = res[i];
@@ -652,10 +652,68 @@
         st === 'non_valide' ? `Non validé${detail ? ' — ' + detail : ''}` :
         st === 'na' ? 'Non requis à votre niveau' : 'Non effectué';
       txt.append(lab, sub);
+      if (pdf && r) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'valid-pdf';
+        btn.textContent = "📄 Consulter l'évaluation (PDF)";
+        btn.addEventListener('click', () => openEvaluationPdf(year, btn));
+        txt.append(btn);
+      }
 
       li.append(ico, txt);
       return li;
     }));
+  }
+
+  // PDF d'évaluation annuelle : téléchargé via le serveur (l'agent n'a pas forcément accès au Drive)
+  async function openEvaluationPdf(year, btn) {
+    const token = store.get(KEY_TOKEN);
+    if (!token) return;
+    const win = window.open('', '_blank');
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Ouverture…';
+    try {
+      const res = await api('livret_pdf', { token, annee: String(year) });
+      const bin = atob(res.data);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      if (win) win.location.href = url;
+      else { const a = document.createElement('a'); a.href = url; a.download = res.nom || `evaluation-${year}.pdf`; a.click(); }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      if (win) win.close();
+      if (AUTH_ERRORS.includes(err.message)) return logout();
+      alert(err instanceof NetworkError ? 'Réseau indisponible : évaluation non consultable hors ligne.' : err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = label;
+    }
+  }
+
+  // Camembert (anneau SVG) : rempli selon le % du quota ; rouge et battant à 100 % et plus
+  function pieChart(pct, full) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 120 120');
+    svg.setAttribute('class', 'pie' + (full ? ' pie-full' : ''));
+    svg.setAttribute('aria-hidden', 'true');
+    const R = 50, C = 2 * Math.PI * R;
+    const bg = document.createElementNS(NS, 'circle');
+    bg.setAttribute('class', 'pie-bg');
+    const fg = document.createElementNS(NS, 'circle');
+    fg.setAttribute('class', 'pie-fg');
+    [bg, fg].forEach(c => { c.setAttribute('cx', '60'); c.setAttribute('cy', '60'); c.setAttribute('r', String(R)); });
+    fg.setAttribute('stroke-dasharray', `${C * Math.min(pct, 100) / 100} ${C}`);
+    fg.setAttribute('transform', 'rotate(-90 60 60)');
+    const t = document.createElementNS(NS, 'text');
+    t.setAttribute('x', '60'); t.setAttribute('y', '60');
+    t.setAttribute('class', 'pie-pct');
+    t.textContent = pct + ' %';
+    svg.append(bg, fg, t);
+    return svg;
   }
 
   function renderCounters(L, list, year) {
@@ -672,7 +730,6 @@
     }).map(c => {
       const done = hours[c.key] || 0;
       const q = quotas[c.key] && (!quotas[c.key].depuis || quotas[c.key].depuis <= year) ? Number(quotas[c.key].quota) || 0 : 0;
-      const pct = q ? Math.min(100, Math.round(done / q * 100)) : 0;
       // Paliers : bleu < 80 %, orange à partir de 80 %, rouge une fois le quota atteint
       const level = !q ? '' : done >= q ? ' full' : done >= q * 0.8 ? ' warn' : '';
 
@@ -695,29 +752,26 @@
       unit.className = 'unit';
       unit.textContent = q ? ` / ${nf.format(q)} h` : ' h';
       val.append(big, unit);
-
       card.append(head, val);
+
       if (q) {
-        const bar = document.createElement('div');
-        bar.className = 'bar';
-        bar.setAttribute('role', 'progressbar');
-        bar.setAttribute('aria-valuemin', '0');
-        bar.setAttribute('aria-valuemax', String(q));
-        bar.setAttribute('aria-valuenow', String(Math.min(done, q)));
-        bar.setAttribute('aria-label', `${c.label} : ${fmtH(done)} sur ${fmtH(q)}`);
-        const fill = document.createElement('span');
-        fill.style.width = pct + '%';
-        bar.append(fill);
+        const realPct = Math.round(done / q * 100);
+        const fig = document.createElement('div');
+        fig.className = 'pie-wrap';
+        fig.setAttribute('role', 'img');
+        fig.setAttribute('aria-label', `${c.label} : ${fmtH(done)} sur ${fmtH(q)}, ${realPct} %`);
+        fig.append(pieChart(realPct, done >= q));
+        card.append(fig);
         const note = document.createElement('p');
         if (done >= q) {
           note.className = 'counter-alert';
           note.setAttribute('role', 'note');
-          note.textContent = "Vous avez atteint votre quota d'heures de formation. Vous ne devez plus effectuer de FMPA cette année.";
+          note.textContent = 'STOP FMPA cette année';
         } else {
           note.className = 'counter-note';
           note.textContent = `Reste ${fmtH(q - done)}`;
         }
-        card.append(bar, note);
+        card.append(note);
       } else {
         const note = document.createElement('p');
         note.className = 'counter-note';
@@ -727,27 +781,6 @@
       return card;
     });
     box.replaceChildren(...cards);
-  }
-
-  function renderStats(L, list) {
-    const box = $('#livret-stats');
-    if (!L) { box.replaceChildren(); return; }
-    const total = list.reduce((s, f) => s + (Number(f.heures) || 0), 0);
-    const corde = list.reduce((s, f) => s + (Number(f.corde) || 0), 0);
-    const items = [
-      [String(list.length), list.length > 1 ? 'formations' : 'formation'],
-      [fmtH(total), 'au total'],
-      [nf.format(corde) + ' m', 'de corde parcourue'],
-    ];
-    box.replaceChildren(...items.map(([v, l]) => {
-      const d = document.createElement('div');
-      const b = document.createElement('strong');
-      b.textContent = v;
-      const s = document.createElement('span');
-      s.textContent = l;
-      d.append(b, s);
-      return d;
-    }));
   }
 
   function renderFormations(L, list, year) {
