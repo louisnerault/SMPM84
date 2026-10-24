@@ -1142,3 +1142,30 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
 .cuv-infos dt:has(+ dd .jauge), .cuv-infos dd:has(.jauge) { grid-column: 1 / -1; }
 .cuv-infos dd:has(.jauge) { margin-bottom: 4px; }
 .jauge .jauge-ticks { padding: 0; }
+
+/* ---------- note en étoiles ---------- */
+.etoiles-wrap { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+.etoiles { display: inline-flex; gap: 2px; }
+.etoile {
+  width: 44px; height: 44px; padding: 0; border: 0; background: none; cursor: pointer;
+  font-size: 2rem; line-height: 1; color: var(--line); transition: transform .1s ease, color .1s ease;
+}
+.etoile.on { color: #f5b301; }
+.etoile:active { transform: scale(1.15); }
+.etoiles-txt { font-size: .85rem; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.etoiles-lecture { display: inline-flex; align-items: center; gap: 1px; font-size: 1.2rem; color: var(--line); }
+.etoiles-lecture .on { color: #f5b301; }
+.etoiles-lecture .etoiles-txt { margin-left: 8px; font-size: .8rem; }
+.fmpa-q.invalid .etoiles-wrap { outline: 2px solid var(--danger); outline-offset: 4px; border-radius: 8px; }
+
+/* ---------- Remplir mon livret : titre de rubrique collé en haut jusqu'à la rubrique suivante ---------- */
+#lr-form .fmpa-sec > .section-title {
+  position: sticky; top: 58px; z-index: 6;
+  margin: 18px -16px 0; padding: 10px 16px;
+  background: var(--card); border-bottom: 1px solid var(--line);
+  box-shadow: 0 6px 8px -8px rgba(19, 34, 56, .35);
+}
+@media (min-width: 900px) { #lr-form .fmpa-sec > .section-title { margin-left: -24px; margin-right: -24px; padding-left: 24px; padding-right: 24px; } }
+#lr-form .fmpa-sec > .section-title::before {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 60px; background: var(--card);
+}

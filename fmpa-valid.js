@@ -234,8 +234,17 @@
   /** Aisance : échelle visuelle de 1 à 5 ; corde parcourue : en mètres ; sinon texte brut. */
   function valeurInfo(x) {
     const t = cle(x.titre), v = String(x.valeur).trim();
-    const echelle = /AISANCE/.test(t) ? ['Peu à l’aise', 'Très à l’aise']
-      : /APPRECIATION/.test(t) ? ['Peu satisfaisante', 'Très satisfaisante'] : null;
+    if (/APPRECIATION/.test(t)) {
+      const d = /^(\d{1,2})\/01\/1900$/.exec(v);
+      const n = d ? Number(d[1]) : Number((/^\s*(\d+)/.exec(v) || [])[1]);
+      if (n >= 1 && n <= 10) {
+        const max = Math.max(5, n);
+        return el('span', { class: 'etoiles-lecture', role: 'img', 'aria-label': `${n} étoile${n > 1 ? 's' : ''} sur ${max}` },
+          Array.from({ length: max }, (_, i) => el('span', { class: i < n ? 'on' : '', text: '★' })),
+          el('span', { class: 'etoiles-txt', text: `${n} / ${max}` }));
+      }
+    }
+    const echelle = /AISANCE/.test(t) ? ['Peu à l’aise', 'Très à l’aise'] : null;
     if (echelle) {
       // Le classeur peut stocker la note comme une date (5 -> 05/01/1900) : on récupère le jour
       const d = /^(\d{1,2})\/01\/1900$/.exec(v);
