@@ -362,7 +362,27 @@
     $('#nav-livret-sub').hidden = !open;
   }
 
-  function setOffline(flag) { $('#offline-banner').hidden = !flag; }
+  // Bandeau « hors ligne » : tant qu'il est affiché, on retente la connexion en arrière-plan.
+  // Sans cela, un échec ponctuel d'appel réseau (le téléphone étant pourtant en ligne) laissait le bandeau
+  // jusqu'à un événement « online » qui ne vient pas si la connexion n'a jamais été coupée.
+  let retryTimer = null;
+  function setOffline(flag) {
+    $('#offline-banner').hidden = !flag;
+    if (flag && !retryTimer) retryTimer = setInterval(retryOnline, 30000);
+    if (!flag && retryTimer) { clearInterval(retryTimer); retryTimer = null; }
+  }
+  async function retryOnline() {
+    const token = store.get(KEY_TOKEN);
+    const cached = store.getJSON(KEY_CACHE);
+    if (!token || !cached || !cached.data || !navigator.onLine) return;
+    if ($('#offline-banner').hidden) return;
+    await refreshProfile(token, cached);
+    if ($('#offline-banner').hidden) {                  // de retour en ligne : envoi des saisies en attente
+      if (window.SMPM_FMPA) window.SMPM_FMPA.flush();
+      if (window.SMPM_ITV) window.SMPM_ITV.flush();
+      if (window.SMPM_THEMES) window.SMPM_THEMES.flush();
+    }
+  }
 
   function setBusy(form, busy) {
     $$('button[type="submit"]', form).forEach(b => { b.disabled = busy; });
@@ -1026,6 +1046,7 @@
     if (syncBusy || !navigator.onLine || !store.get(KEY_TOKEN)) return;
     setSyncBusy(true);
     try {
+      await retryOnline();
       if (window.SMPM_FMPA) await window.SMPM_FMPA.flush();
       if (window.SMPM_ITV) await window.SMPM_ITV.flush();
       if (window.SMPM_THEMES) await window.SMPM_THEMES.flush();
