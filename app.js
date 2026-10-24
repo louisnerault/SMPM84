@@ -625,7 +625,7 @@
     if (!criteres.length) return;
     $('#livret-valid-title').textContent = `Validation annuelle ${year}`;
     const res = (V.annees && V.annees[String(year)]) || [];
-    const pdf = L.evaluations && L.evaluations[String(year)];
+    const pdfs = (L.evaluations && L.evaluations[String(year)]) || [];
 
     $('#livret-valid-list').replaceChildren(...criteres.map((c, i) => {
       const r = res[i];
@@ -652,12 +652,12 @@
         st === 'non_valide' ? `Non validé${detail ? ' — ' + detail : ''}` :
         st === 'na' ? 'Non requis à votre niveau' : 'Non effectué';
       txt.append(lab, sub);
-      if (pdf && r) {
+      if (c.eval && pdfs.includes(c.eval)) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'valid-pdf';
         btn.textContent = "📄 Consulter l'évaluation (PDF)";
-        btn.addEventListener('click', () => openEvaluationPdf(year, btn));
+        btn.addEventListener('click', () => openEvaluationPdf(year, c.eval, btn));
         txt.append(btn);
       }
 
@@ -667,7 +667,7 @@
   }
 
   // PDF d'évaluation annuelle : téléchargé via le serveur (l'agent n'a pas forcément accès au Drive)
-  async function openEvaluationPdf(year, btn) {
+  async function openEvaluationPdf(year, type, btn) {
     const token = store.get(KEY_TOKEN);
     if (!token) return;
     const win = window.open('', '_blank');
@@ -675,13 +675,13 @@
     btn.disabled = true;
     btn.textContent = 'Ouverture…';
     try {
-      const res = await api('livret_pdf', { token, annee: String(year) });
+      const res = await api('livret_pdf', { token, annee: String(year), type });
       const bin = atob(res.data);
       const bytes = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
       const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
       if (win) win.location.href = url;
-      else { const a = document.createElement('a'); a.href = url; a.download = res.nom || `evaluation-${year}.pdf`; a.click(); }
+      else { const a = document.createElement('a'); a.href = url; a.download = res.nom || `evaluation-${year}-${type}.pdf`; a.click(); }
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (err) {
       if (win) win.close();
