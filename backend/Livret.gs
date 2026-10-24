@@ -69,9 +69,33 @@ function livret_(token) {
         annees: data.validations.annees,
       },
       quotas: quotasPersonne_(pt, row, data.quotas),
+      seances: data.seances || [],
+      referentiel: referentielThemes_(),
       maj: new Date().toISOString(),
     },
   };
+}
+
+/**
+ * Liste complète des thèmes, par catégorie, d'après les cases à cocher du formulaire des thèmes
+ * (Themes.gs) : [ { titre, choix: [...] } ] dans l'ordre du formulaire. Les titres sont les en-têtes
+ * de LOGS. null si Themes.gs n'est pas installé ou le formulaire inaccessible (la page n'affiche
+ * alors que les thèmes déjà vus).
+ */
+function referentielThemes_() {
+  try {
+    if (typeof themesDef_ !== 'function') return null;
+    const cles = LIVRET.LOGS_THEMES.map(cle_);
+    const out = [];
+    themesDef_().sections.forEach(s => s.items.forEach(it => {
+      if (it.type !== 'checkbox' || cles.indexOf(cle_(it.title)) < 0) return;
+      if (out.some(o => cle_(o.titre) === cle_(it.title))) return;
+      out.push({ titre: it.title, choix: (it.choices || []).map(c => c.v) });
+    }));
+    return out.length ? out : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 function lireLivret_(id, nom) {
@@ -106,6 +130,7 @@ function lireLivret_(id, nom) {
   });
 
   // ---- thèmes et chef d'unité (LOGS), rapprochés par date ----
+  let seances = [];
   const logs = ss.getSheetByName(LIVRET.SHEET_LOGS);
   if (logs && logs.getLastRow() > 1) {
     const width = Math.min(logs.getLastColumn(), 30);
@@ -120,13 +145,20 @@ function lireLivret_(id, nom) {
       if (!(d instanceof Date)) continue;
       if (nom && cNom >= 0 && String(v[i][cNom]).trim().toUpperCase() !== nom.toUpperCase()) continue;
       const k = ymd(d);
-      const e = parDate[k] || (parDate[k] = { themes: [], cu: '' });
+      const e = parDate[k] || (parDate[k] = { themes: [], cu: '', cats: {} });
       cThemes.forEach(c => String(v[i][c] || '').split(',').forEach(t => {
         t = t.trim();
-        if (t && e.themes.indexOf(t) < 0) e.themes.push(t);
+        if (!t) return;
+        if (e.themes.indexOf(t) < 0) e.themes.push(t);
+        const cat = e.cats[head[c]] || (e.cats[head[c]] = []);      // thèmes rangés par catégorie (en-tête LOGS)
+        if (cat.indexOf(t) < 0) cat.push(t);
       }));
       if (!e.cu && cCu >= 0) e.cu = String(v[i][cCu] || '').trim();
     }
+    // Séances de LOGS (Mon livret › Thèmes vus) : une par date, thèmes par catégorie
+    seances = Object.keys(parDate).sort().reverse()
+      .filter(k => Object.keys(parDate[k].cats).length)
+      .map(k => ({ date: k, cu: parDate[k].cu, cats: parDate[k].cats }));
     formations.forEach(f => {
       const e = parDate[f.date];
       if (e) { f.themes = e.themes; f.cu = e.cu; }
@@ -145,7 +177,7 @@ function lireLivret_(id, nom) {
       if (k in quotas && n > 0) quotas[k] = n;
     });
   }
-  return { formations, quotas, validations: lireValidations_(ss, ymd) };
+  return { formations, quotas, seances, validations: lireValidations_(ss, ymd) };
 }
 
 /**

@@ -292,11 +292,16 @@
 
     <!-- Mon livret › Thèmes vus (contenu à définir) -->
     <div id="tab-livret-themes" hidden>
-      <h1>Thèmes vus</h1>
-      <div class="soon">
-        <p class="soon-title">Rubrique en préparation</p>
-        <p class="muted small">Cette page sera bientôt disponible.</p>
+      <div class="livret-head">
+        <h1>Thèmes vus</h1>
+        <label class="year-pick">Année
+          <select id="tv-year" aria-label="Période affichée"></select>
+        </label>
       </div>
+      <p id="tv-state" class="muted small" role="status"></p>
+      <div id="tv-stats" class="stats"></div>
+      <label class="tv-only"><input type="checkbox" id="tv-only"> Masquer les thèmes non vus</label>
+      <div id="tv-tables"></div>
     </div>
 
     <!-- Mon livret › Mes heures -->
@@ -441,6 +446,7 @@
 <script src="annuaire.js"></script>
 <script src="fmpa-valid.js"></script>
 <script src="livret-remplir.js"></script>
+<script src="livret-themes.js"></script>
 <script src="carte-hors-ligne.js"></script>
 <script src="app.js"></script>
 </body>
