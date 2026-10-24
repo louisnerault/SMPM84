@@ -72,14 +72,20 @@ function pushAbonnes_(sh) {
 }
 
 function pushProfil_(a) {
-  const prof = profilFmpa_(a);                                  // Fmpa.gs : nom (clé), rôle, sections dirigées
+  // Calcul autonome (ne dépend pas de la version de Fmpa.gs installée sur le serveur)
+  const { pt, row } = a.p;
+  const admin = isAdminSmpm_(a.acc);                            // Roles.gs
+  const role = deriveRole_(pt, row, a.acc);                     // Roles.gs
+  let sections = [];
+  try { sections = ((fonctionDe_(pt, row) || {}).sections || []).map(cle_).filter(Boolean); } catch (e) { sections = []; }
+  if (!sections.length && role === 'chef_section') sections = [cle_(pt.cell(row, H.SECTEUR))].filter(Boolean);
   return {
-    nom: prof.nom,
-    prenom: String(a.p.pt.cell(a.p.row, H.PRENOM) || '').trim(),
-    role: prof.admin ? 'admin' : prof.role,
-    admin: prof.admin,
-    secteur: cle_(a.p.pt.cell(a.p.row, H.SECTEUR)),
-    sections: prof.sections,
+    nom: cle_(pt.cell(row, H.NOM)),
+    prenom: String(pt.cell(row, H.PRENOM) || '').trim(),
+    role: admin ? 'admin' : role,
+    admin,
+    secteur: cle_(pt.cell(row, H.SECTEUR)),
+    sections,
   };
 }
 
