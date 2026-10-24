@@ -29,7 +29,7 @@ const THEMES = {
   // Identifiant du formulaire (dans son URL d'édition : /forms/d/<ID>/edit). Laisser vide pour le
   // retrouver automatiquement : c'est le formulaire relié à l'onglet « formulaire thèmes » du fichier CORE.
   FORM_ID: '',
-  CACHE_KEY: 'themes_form_v1',
+  CACHE_KEY: 'themes_form_v2',
   CACHE_SEC: 600,
   DEDUP_SEC: 6 * 3600,
   H_AGENT: 'Qui êtes-vous?',
@@ -77,7 +77,7 @@ function themesDef_() {
       sections.push({ title: it.getTitle(), help: it.getHelpText(), next: 'next', items: [] });
       return;
     }
-    const d = itemDef_(it, goto);            // défini dans Fmpa.gs
+    const d = themesItemDef_(it, goto);
     if (d) sections[sections.length - 1].items.push(d);
   });
   sections[sections.length - 1].next = 'submit';
@@ -85,6 +85,19 @@ function themesDef_() {
   const def = { title: form.getTitle(), description: form.getDescription(), sections };
   try { cache.put(THEMES.CACHE_KEY, JSON.stringify(def), THEMES.CACHE_SEC); } catch (e) { /* trop gros */ }
   return def;
+}
+
+/** Comme itemDef_ (Fmpa.gs), plus les questions « Note » (étoiles), absentes de la déclaration de FMPA. */
+function themesItemDef_(it, goto) {
+  const T = FormApp.ItemType;
+  if (T.RATING && it.getType() === T.RATING) {
+    const x = it.asRatingItem();
+    let max = 5, icone = 'STAR';
+    try { max = x.getRatingScaleLevel() || 5; } catch (e) {}
+    try { icone = String(x.getRatingIcon()); } catch (e) {}
+    return { id: it.getId(), title: it.getTitle(), help: it.getHelpText(), type: 'rating', required: x.isRequired(), min: 1, max, icone };
+  }
+  return itemDef_(it, goto);                                      // défini dans Fmpa.gs
 }
 
 /** Question « Qui êtes-vous ? » et choix correspondant à l'utilisateur. */
@@ -163,7 +176,12 @@ function themesSubmit_(token, answers, submissionId) {
     const it = form.getItemById(Number(id));
     if (!it) throw new Error('Le formulaire a été modifié : rouvrez « Remplir mon livret »');
     let r;
-    try { r = itemResponse_(it, answers[id]); }                  // défini dans Fmpa.gs
+    try {
+      const T = FormApp.ItemType;
+      r = T.RATING && it.getType() === T.RATING
+        ? (vide_(answers[id]) ? null : it.asRatingItem().createResponse(Number(answers[id])))
+        : itemResponse_(it, answers[id]);                         // défini dans Fmpa.gs
+    }
     catch (e) { throw new Error('Réponse refusée pour « ' + it.getTitle() + ' » : ' + e.message); }
     if (r) { resp.withItemResponse(r); n++; }
   });
