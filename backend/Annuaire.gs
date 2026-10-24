@@ -12,7 +12,8 @@
  *
  * Accès : tous les membres connectés. Seul le personnel ACTIF est renvoyé.
  * Contenu par personne : nom, prénom, grade, secteur SMPM, centre d'affectation, qualifications
- * acquises (IMP 1/2/3, NEIGE, ISS, SSH, CAN, SSSM), fonction (CTD, chef de section) et téléphone.
+ * acquises (IMP 1/2/3, NEIGE, ISS, SSH, CAN, SSSM), fonction (CTD, chef de section), téléphone
+ * et « push » (true si la personne a activé les notifications : Push.gs, envoi via push_send cible personne:<NOM>).
  *
  * Téléphone : cherché d'abord dans une colonne de la Liste du personnel (Téléphone, Telephone,
  * Tel, Portable, Mobile…), sinon dans l'onglet Comptes (même recherche de colonne), rapproché
@@ -70,6 +71,12 @@ function annuaireListe_(a) {
   try { fonctions = typeof fonctionsSmpm_ === 'function' ? fonctionsSmpm_() : []; } catch (e) { fonctions = []; }
   const cle = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
 
+  // Personnes abonnées aux notifications push (Push.gs) : bouton cloche actif dans l'annuaire
+  const abonnes = {};
+  try {
+    if (typeof pushAbonnes_ === 'function') pushAbonnes_(pushSheet_()).forEach(x => { abonnes[x.nom] = true; });
+  } catch (e) { /* push non installé */ }
+
   const out = [];
   for (let i = 1; i < pt.values.length; i++) {
     const nom = annTxt_(pt.cell(i, H.NOM));
@@ -95,6 +102,7 @@ function annuaireListe_(a) {
       qualifs,
       fonctions: fct,
       tel,
+      push: !!abonnes[typeof cle_ === 'function' ? cle_(nom) : k],
     });
   }
   out.sort((x, y) => (x.nom + ' ' + x.prenom).localeCompare(y.nom + ' ' + y.prenom, 'fr'));

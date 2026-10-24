@@ -231,6 +231,20 @@
       </div>
       <p id="ann-empty" class="muted center" hidden></p>
       <ul id="ann-list" class="ann-list"></ul>
+      <dialog id="ann-push" class="ann-dialog" aria-labelledby="ann-push-title">
+        <form id="ann-push-form" method="dialog">
+          <h2 id="ann-push-title">Notification</h2>
+          <p class="muted small" id="ann-push-to"></p>
+          <label>Message
+            <textarea name="message" rows="4" maxlength="300" required placeholder="Ex. : Besoin d'un IMP 3 sur intervention à Gigondas, rappelle-moi."></textarea>
+          </label>
+          <p class="error small" id="ann-push-error" role="alert"></p>
+          <div class="ann-dialog-btns">
+            <button type="button" id="ann-push-cancel">Annuler</button>
+            <button type="submit" class="primary" id="ann-push-send">Envoyer</button>
+          </div>
+        </form>
+      </dialog>
     </div>
 
     <!-- Intervention : chefs d'unité, chefs de section, conseillers techniques, administrateurs -->

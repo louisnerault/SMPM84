@@ -29,7 +29,8 @@
  *   - nouvelle demande de validation des thèmes -> chef d'unité destinataire (déclencheur, 5 min) ;
  *   - demande validée ou rejetée -> équipier concerné (Validation.gs, cuDecide_) ;
  *   - message libre : administrateur et conseiller technique -> tous, encadrement ou une section ;
- *     chef de section -> sa section.
+ *     chef de section -> sa section ;
+ *   - message à une personne (annuaire des spécialistes, cible « personne:<NOM> ») : tous les membres.
  * Les personnes sont identifiées par leur NOM (clé cle_), comme dans le reste du serveur.
  * Un jeton refusé par Firebase (appareil désabonné, application supprimée) est retiré automatiquement.
  */
@@ -246,8 +247,9 @@ function pushTest_(token) {
 }
 
 /**
- * Message libre. cible : 'tous' | 'encadrement' | 'section:<CODE>'.
- * Administrateur et conseiller technique : toutes les cibles ; chef de section : sa ou ses sections.
+ * Message libre. cible : 'tous' | 'encadrement' | 'section:<CODE>' | 'personne:<NOM>'.
+ * Administrateur et conseiller technique : toutes les cibles ; chef de section : sa ou ses sections ;
+ * personne:<NOM> (annuaire) : tout membre connecté.
  */
 function pushSend_(token, titre, message, cible) {
   const a = auth_(token);
@@ -257,10 +259,15 @@ function pushSend_(token, titre, message, cible) {
   message = String(message || '').trim().slice(0, 300);
   cible = String(cible || '');
   if (!titre || !message) throw new Error('Titre et message obligatoires');
-  if (!tout && !p.sections.length) throw new Error("Envoi réservé à l'encadrement (chef de section, conseiller technique, administrateur)");
+  const perso = /^personne:/.test(cible);   // annuaire : un membre à un autre, tous les membres connectés
+  if (!perso && !tout && !p.sections.length) throw new Error("Envoi réservé à l'encadrement (chef de section, conseiller technique, administrateur)");
 
   let filtre;
-  if (cible === 'tous' && tout) filtre = () => true;
+  if (perso) {
+    const nom = cle_(cible.slice(9));
+    if (!nom) throw new Error('Destinataire inconnu');
+    filtre = s => s.nom === nom;
+  } else if (cible === 'tous' && tout) filtre = () => true;
   else if (cible === 'encadrement' && tout) filtre = s => ['chef_unite', 'chef_section', 'ctd', 'admin'].indexOf(s.role) >= 0;
   else if (/^section:/.test(cible)) {
     const sec = cle_(cible.slice(8));
