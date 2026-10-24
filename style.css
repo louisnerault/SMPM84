@@ -945,6 +945,11 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
 /* ---------- carte hors ligne (Mes informations) ---------- */
 .carte-card { margin-top: 20px; }
 .carte-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.push-card { margin-bottom: 8px; }
+.push-card .ok:empty, .push-card .error:empty { display: none; }
+.push-send { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.push-send h3 { margin: 0 0 8px; font-size: 1rem; }
+.push-send textarea { width: 100%; resize: vertical; font: inherit; }
 /* la barre de recherche des grilles se cale sous les liens rapides */
 .fmpa-sec .grid-tools { top: 76px; }
 [id$="-form"]:has(.secnav) .grid-tools { top: 53px; }
