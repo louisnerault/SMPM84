@@ -10,6 +10,7 @@
  * 2. Exécuter une fois testValidation() depuis l'éditeur (autorisations Sheets et envoi de mails ;
  *    le journal montre les colonnes du fichier CORE et les demandes en attente).
  * 3. Redéployer : Déployer > Gérer les déploiements > (crayon) > Version : Nouvelle version.
+ * Nécessite Push.gs (notification push à l'agent après la décision ; sans effet si push non installé).
  *
  * Circuit existant (inchangé) : l'équipier remplit le formulaire « thèmes FMPA » ; la réponse arrive
  * dans le fichier CORE (onglet « formulaire thèmes »), qui alimente la feuille « validation CU » de chaque
@@ -210,6 +211,7 @@ function cuDecide_(token, id, decision, motif) {
         'Bonjour,\n\nLe chef d\'unité ' + valideur + ' a validé les thèmes vus lors de votre FMPA du ' + dateTxt + '.\n\n' +
         (lien ? 'Vous pouvez consulter votre livret individuel en utilisant ce lien : ' + lien + '\n' : '') +
         'Ils apparaissent aussi dans l\'application SMPM 84.');
+      pushA_([d.agent], { titre: 'Thèmes validés', corps: valideur + ' a validé les thèmes de votre FMPA du ' + dateTxt + '.', page: 'livret-themes', tag: 'smpm-themes' });
     } else {
       t.sh.getRange(ligne, VALID.COL_STATUT).setValue('rejeté');
       archiverEtRetirer_(t.sh, ligne, t.nc);
@@ -217,6 +219,7 @@ function cuDecide_(token, id, decision, motif) {
         'Bonjour,\n\nLe chef d\'unité ' + valideur + ' a rejeté votre demande de validation des thèmes vus lors de votre FMPA du ' + dateTxt + '.\n\n' +
         (motif ? 'Motif : ' + motif + '\n\n' : '') +
         'Rapprochez-vous du chef d\'unité concerné et renouvelez votre demande via ce lien : ' + VALID.FORM_URL);
+      pushA_([d.agent], { titre: 'Demande rejetée', corps: valideur + ' a rejeté vos thèmes de la FMPA du ' + dateTxt + (motif ? ' : ' + motif : '.'), tag: 'smpm-themes' });
     }
 
     try {
