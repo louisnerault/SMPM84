@@ -1166,6 +1166,13 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
   box-shadow: 0 6px 8px -8px rgba(19, 34, 56, .35);
 }
 @media (min-width: 900px) { #lr-form .fmpa-sec > .section-title { margin-left: -24px; margin-right: -24px; padding-left: 24px; padding-right: 24px; } }
-#lr-form .fmpa-sec > .section-title::before {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 60px; background: var(--card);
+
+/* Intitulés de rubrique : fond coloré (le titre collé reste lisible sur le contenu qui défile) */
+#lr-form .fmpa-sec > .section-title {
+  margin: 18px 0 0; padding: 10px 14px; border: 0; border-radius: 10px;
+  background: var(--primary); color: #fff;
+  box-shadow: 0 4px 10px -4px rgba(19, 34, 56, .45);
 }
+@media (min-width: 900px) { #lr-form .fmpa-sec > .section-title { margin-left: 0; margin-right: 0; padding-left: 14px; padding-right: 14px; } }
+@media (prefers-color-scheme: dark) { #lr-form .fmpa-sec > .section-title { color: #fff; } }
+#lr-form .fmpa-sec + .fmpa-sec { border-top: 0; }
