@@ -652,7 +652,7 @@
         st === 'non_valide' ? `Non validé${detail ? ' — ' + detail : ''}` :
         st === 'na' ? 'Non requis à votre niveau' : 'Non effectué';
       txt.append(lab, sub);
-      if (c.eval && pdfs.includes(c.eval)) {
+      if (c.eval && pdfs.includes(c.eval)) {  // affiché dès que le PDF existe
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'valid-pdf';
