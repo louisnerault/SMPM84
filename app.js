@@ -310,6 +310,7 @@
     if (!allowedPage(name, state.data && state.data.session)) name = 'livret';
     showFlash(pendingFlash);
     pendingFlash = null;
+    if (state.page !== name) state.prevPage = state.page;
     state.page = name;
     $$('.drawer-nav button[data-page]').forEach(b => {
       if (b.dataset.page === name) b.setAttribute('aria-current', 'page');
@@ -320,6 +321,7 @@
     $('#tab-livret-themes').hidden = name !== 'livret-themes';
     $('#tab-profil').hidden = name !== 'infos';
     $('#tab-fiches').hidden = name !== 'fiches';
+    $('#tab-bug').hidden = name !== 'bug';
     $('#tab-accueil').hidden = name !== 'accueil';
     $('#tab-annuaire').hidden = name !== 'annuaire';
     $('#tab-fmpa').hidden = !(name === 'fmpa' || name === 'fmpa-fiche');
@@ -331,6 +333,7 @@
     if (name.startsWith('interv-')) setIntervGroup(true);
     if (name.startsWith('livret')) setLivretGroup(true);
     window.scrollTo(0, 0);
+    if (name === 'bug' && window.SMPM_BUGS) window.SMPM_BUGS.open(state.prevPage);
     if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
     if (name === 'annuaire' && window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.open();
     if (name === 'livret-remplir' && window.SMPM_THEMES) window.SMPM_THEMES.open();

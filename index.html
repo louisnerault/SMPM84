@@ -90,6 +90,7 @@
     </div>
     <button data-page="infos"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>Mes informations</button>
     <button data-page="fiches"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M2 5.5c3.2-1.2 6.4-1.2 10 1 3.6-2.2 6.8-2.2 10-1v13c-3.2-1.2-6.4-1.2-10 1-3.6-2.2-6.8-2.2-10-1z"/><path d="M12 6.5v13"/></svg>Fiches techniques</button>
+    <button data-page="bug"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="10" height="13" rx="5"/><path d="M9.5 7a2.5 2.5 0 0 1 5 0M12 11v9M3 13h4M17 13h4M4 7.5l3 2M20 7.5l-3 2M4 19l3-2M20 19l-3-2"/></svg>Signaler un bug</button>
   </nav>
   <div class="drawer-foot">
     <button id="btn-logout" class="logout" hidden>Déconnexion</button>
@@ -474,6 +475,34 @@
       </section>
     </div>
 
+    <div id="tab-bug" hidden>
+      <h1>Signaler un bug</h1>
+      <p class="muted small">Un problème, un affichage incorrect, une idée d'amélioration ? Décrivez-le : l'administrateur est prévenu immédiatement. Sans réseau, le signalement part au retour de la connexion.</p>
+      <form id="form-bug">
+        <label>Rubrique concernée
+          <select name="rubrique">
+            <option>Mon livret</option><option>FMPA</option><option>Validation des livrets</option><option>Intervention</option>
+            <option>Mode intervention / annuaire</option><option>Fiches techniques</option><option>Mes informations</option>
+            <option>Notifications</option><option>Connexion</option><option selected>Autre</option>
+          </select>
+        </label>
+        <label>Gravité
+          <select name="gravite">
+            <option value="Bloquant">Bloquant — impossible de continuer</option>
+            <option value="Gênant" selected>Gênant — contournable</option>
+            <option value="Mineur">Mineur — détail</option>
+            <option value="Suggestion">Suggestion d'amélioration</option>
+          </select>
+        </label>
+        <label>Description
+          <textarea name="description" rows="6" maxlength="3000" required placeholder="Ce que vous faisiez, ce qui s'est passé, ce que vous attendiez…"></textarea>
+        </label>
+        <p class="muted small">La page, la version de l'application et le type d'appareil sont joints automatiquement.</p>
+        <p class="error" role="alert"></p>
+        <p class="ok" role="status"></p>
+        <button type="submit" class="primary" id="btn-bug">Envoyer le signalement</button>
+      </form>
+    </div>
     <div id="tab-fiches" hidden>
       <p class="muted small">Documents de référence. Sur smartphone, ils sont synchronisés automatiquement et restent disponibles hors ligne.</p>
       <p id="fiches-empty" class="muted center" hidden>Aucune fiche synchronisée pour le moment.</p>
@@ -497,6 +526,7 @@
 <script src="livret-themes.js"></script>
 <script src="carte-hors-ligne.js"></script>
 <script src="push.js"></script>
+<script src="bugs.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
