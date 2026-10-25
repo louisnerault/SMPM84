@@ -89,7 +89,7 @@
         const q = store.get(); q.push(item); store.set(q);
         f.reset();
         msg('', 'Pas de réseau : le signalement est gardé sur cet appareil et sera envoyé au retour de la connexion.');
-      } else if (app().AUTH_ERRORS && app().AUTH_ERRORS.test && app().AUTH_ERRORS.test(e.message)) {
+      } else if ((app().AUTH_ERRORS || []).includes(e.message)) {
         app().logout();
       } else {
         msg(e.message || 'Envoi impossible');
