@@ -332,6 +332,13 @@ body.is-offline .status-net { color: #ffd66b; }
 .pie-full { transform-origin: center; animation: pie-beat 1.1s ease-in-out infinite; }
 @keyframes pie-beat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.09); } 30% { transform: scale(.98); } 45% { transform: scale(1.05); } }
 .counter.full .counter-alert { text-align: center; text-transform: uppercase; font-weight: 800; font-size: .9rem; letter-spacing: .02em; border-left: 0; }
+/* ordinateur : tous les compteurs sur une même ligne, le SMPM à égalité avec les autres */
+@media (min-width: 900px) {
+  .counters { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+  .counter:first-child { grid-column: auto; }
+  .counter:first-child .pie { width: 112px; height: 112px; }
+  .counter:first-child .counter-value .big { font-size: 1.9rem; }
+}
 @media (prefers-reduced-motion: reduce) { .pie-full { animation: none; } .pie-fg { transition: none; } }
 .valid-pdf {
   margin-top: 6px; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--line);
