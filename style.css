@@ -324,7 +324,7 @@ body.is-offline .status-net { color: #ffd66b; }
 .pie { width: 112px; height: 112px; overflow: visible; }
 .counter:first-child .pie { width: 150px; height: 150px; }
 .pie-bg { fill: none; stroke: color-mix(in srgb, var(--run) 18%, transparent); stroke-width: 18; }
-.pie-fg { fill: none; stroke: var(--run); stroke-width: 18; transition: stroke-dasharray .5s ease; }
+.pie-fg { fill: none; stroke: var(--run); stroke-width: 18; }
 .counter.warn .pie-fg { stroke: var(--warn); }
 .pie-full .pie-fg { stroke: var(--full); }
 .pie-pct { text-anchor: middle; dominant-baseline: central; font-size: 22px; font-weight: 800; fill: currentColor; font-variant-numeric: tabular-nums; }

@@ -709,12 +709,15 @@
     const fg = document.createElementNS(NS, 'circle');
     fg.setAttribute('class', 'pie-fg');
     [bg, fg].forEach(c => { c.setAttribute('cx', '60'); c.setAttribute('cy', '60'); c.setAttribute('r', String(R)); });
-    fg.setAttribute('stroke-dasharray', `${C * Math.min(pct, 100) / 100} ${C}`);
+    fg.setAttribute('stroke-dasharray', `0 ${C}`);
+    fg.dataset.to = String(C * Math.min(pct, 100) / 100);
+    fg.dataset.c = String(C);
     fg.setAttribute('transform', 'rotate(-90 60 60)');
     const t = document.createElementNS(NS, 'text');
     t.setAttribute('x', '60'); t.setAttribute('y', '60');
     t.setAttribute('class', 'pie-pct');
-    t.textContent = pct + ' %';
+    t.textContent = '0 %';
+    t.dataset.to = String(pct);
     svg.append(bg, fg, t);
     return svg;
   }
@@ -750,7 +753,8 @@
       val.className = 'counter-value';
       const big = document.createElement('span');
       big.className = 'big';
-      big.textContent = nf.format(done);
+      big.textContent = '0';
+      big.dataset.to = String(done);
       const unit = document.createElement('span');
       unit.className = 'unit';
       unit.textContent = q ? ` / ${nf.format(q)} h` : ' h';
@@ -784,6 +788,36 @@
       return card;
     });
     box.replaceChildren(...cards);
+    animateCounters(box);
+  }
+
+  // Remplissage progressif des compteurs (heures, camembert, %) jusqu'à la valeur réelle
+  function animateCounters(box) {
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const nums = Array.from(box.querySelectorAll('.counter-value .big[data-to], .pie-pct[data-to]'));
+    const arcs = Array.from(box.querySelectorAll('.pie-fg[data-to]'));
+    const pies = Array.from(box.querySelectorAll('.pie-full'));
+    pies.forEach(p => p.classList.remove('pie-full'));   // le battement démarre une fois rempli
+    const fin = () => {
+      nums.forEach(el => { el.textContent = el.classList.contains('pie-pct') ? el.dataset.to + ' %' : nf.format(Number(el.dataset.to)); });
+      arcs.forEach(el => el.setAttribute('stroke-dasharray', `${el.dataset.to} ${el.dataset.c}`));
+      pies.forEach(p => p.classList.add('pie-full'));
+    };
+    if (reduce || !window.requestAnimationFrame) return fin();
+    const DUR = 1200, t0 = performance.now();
+    const ease = x => 1 - Math.pow(1 - x, 3);
+    const step = now => {
+      if (!box.isConnected) return;
+      const k = Math.min(1, (now - t0) / DUR), e = ease(k);
+      if (k >= 1) return fin();
+      nums.forEach(el => {
+        const v = Number(el.dataset.to) * e;
+        el.textContent = el.classList.contains('pie-pct') ? Math.round(v) + ' %' : nf.format(Math.round(v * 10) / 10);
+      });
+      arcs.forEach(el => el.setAttribute('stroke-dasharray', `${Number(el.dataset.to) * e} ${el.dataset.c}`));
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
   }
 
   function renderFormations(L, list, year) {
