@@ -9,6 +9,7 @@
 
   const KEY = 'smpm_poi';
   const KEY_FILTRES = 'smpm_poi_filtres';
+  const KEY_OUTBOX = 'smpm_poi_outbox';      // points créés hors ligne, envoyés au retour du réseau
   const PHOTO_CACHE = 'smpm84-poi';          // gardé par sw.js lors des mises à jour
   const VAUCLUSE = [44.0, 5.15];
   const STALE = 30000;                       // liste rechargée à l'ouverture si plus vieille que 30 s
@@ -96,6 +97,8 @@
 
   function open() {
     if (!S.data) S.data = store.getJSON(KEY);
+    renderPending();
+    flush();
     showForm(false);
     buildFilters();
     if (S.data) render();
@@ -561,10 +564,13 @@
     if (S.photo === null && S.edit && S.edit.photo) poi.photo_suppr = true;
 
     const btn = $('#poi-f-save');
+    const sid = S.edit ? undefined : (S.sid = S.sid || ('poi-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)));
+    if (!S.edit) poi.saisi_le = new Date().toISOString();
+    // Création sans réseau : mise en attente sur l'appareil, envoi automatique au retour du réseau
+    if (!S.edit && !navigator.onLine) return queue(sid, poi);
     btn.disabled = true;
     btn.textContent = 'Enregistrement…';
     try {
-      const sid = S.edit ? undefined : (S.sid = S.sid || ('poi-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)));
       const res = await app().api('poi_save', { token: app().token(), poi, submission_id: sid });
       S.sid = null;
       const pts = S.data.points.filter(x => x.id !== res.point.id);
@@ -580,13 +586,117 @@
       setState(msg);
     } catch (e2) {
       if (app().AUTH_ERRORS.includes(e2.message)) return app().logout();
+      if (!S.edit && e2 instanceof app().NetworkError) { queue(sid, poi); return; }
       err.textContent = e2 instanceof app().NetworkError
-        ? app().netLabel() + ' : enregistrement impossible pour l’instant. Gardez cette page ouverte et réessayez avec du réseau.'
+        ? app().netLabel() + ' : modification impossible pour l’instant. Réessayez avec du réseau.'
         : e2.message;
     } finally {
       btn.disabled = false;
       btn.textContent = 'Enregistrer';
     }
+  }
+
+  // ---------- points créés hors ligne (file d'attente sur l'appareil) ----------
+  const outbox = () => store.getJSON(KEY_OUTBOX) || [];
+  function setOutbox(list) {
+    try { localStorage.setItem(KEY_OUTBOX, JSON.stringify(list)); return true; } catch (e) { return false; }
+  }
+  let flushing = false, lastSent = null;
+
+  function queue(sid, poi) {
+    const list = outbox().filter(x => x.sid !== sid);
+    const entry = { sid, poi, ts: Date.now(), erreur: '' };
+    let note = '';
+    if (!setOutbox(list.concat(entry))) {
+      // mémoire de l'appareil pleine (photo) : le point est gardé sans sa photo
+      delete entry.poi.photo;
+      if (!setOutbox(list.concat(entry))) { $('#poi-f-error').textContent = 'Mémoire de l’appareil pleine : point non enregistré.'; return; }
+      note = ' La photo n’a pas pu être gardée (mémoire de l’appareil pleine) : ajoutez-la ensuite.';
+    }
+    S.sid = null;
+    closeForm();
+    renderPending();
+    setState(`Point « ${poi.nom} » enregistré sur l’appareil : il sera envoyé automatiquement au retour du réseau.` + note);
+  }
+
+  async function flush() {
+    if (flushing || !navigator.onLine || !app() || !app().token()) return;
+    const list = outbox().filter(x => !x.erreur);
+    if (!list.length) return;
+    flushing = true;
+    renderPending();
+    let sent = 0;
+    try {
+      for (const e of list) {
+        try {
+          const res = await app().api('poi_save', { token: app().token(), poi: e.poi, submission_id: e.sid });
+          setOutbox(outbox().filter(x => x.sid !== e.sid));
+          if (!S.data) S.data = store.getJSON(KEY);
+          if (S.data) { S.data.points = S.data.points.filter(x => x.id !== res.point.id).concat(res.point); save(); }
+          sent++;
+        } catch (err) {
+          if (app().AUTH_ERRORS.includes(err.message)) { app().logout(); return; }
+          if (err instanceof app().NetworkError) break;          // nouvel essai plus tard
+          setOutbox(outbox().map(x => (x.sid === e.sid ? Object.assign(x, { erreur: err.message }) : x)));
+        }
+      }
+    } finally {
+      flushing = false;
+      if (sent) lastSent = { n: sent, at: Date.now() };
+      renderPending();
+      if (sent && S.data) { buildFilters(); render(); }
+    }
+  }
+
+  function renderPending() {
+    const list = outbox();
+    const dot = $('#poi-nav-dot');
+    if (dot) dot.hidden = !list.length;
+    if (window.SMPM_PENDING_DOT) window.SMPM_PENDING_DOT('poi', list.length);
+    const box = $('#poi-outbox');
+    if (!list.length) {
+      const recent = lastSent && Date.now() - lastSent.at < 5 * 60e3;
+      box.replaceChildren(...(recent ? [el('div', { class: 'outbox outbox-ok', role: 'status' },
+        el('span', { text: `✓ ${lastSent.n} point${lastSent.n > 1 ? 's' : ''} en attente ${lastSent.n > 1 ? 'ont été envoyés' : 'a été envoyé'}.` }),
+        el('button', { type: 'button', class: 'link', 'aria-label': 'Masquer', text: '×', onclick: () => { lastSent = null; renderPending(); } }))] : []));
+      return;
+    }
+    const offline = !navigator.onLine;
+    const waiting = list.filter(e => !e.erreur);
+    box.replaceChildren(el('div', { class: 'outbox', role: 'status' },
+      el('div', { class: 'outbox-head' },
+        el('strong', { text: `${list.length} point${list.length > 1 ? 's' : ''} en attente d’envoi` }),
+        waiting.length ? el('button', { type: 'button', class: 'pill', disabled: offline || flushing,
+          text: flushing ? 'Envoi…' : offline ? 'En attente du réseau' : 'Envoyer maintenant', onclick: () => flush() }) : null),
+      el('ul', { class: 'outbox-list' }, ...list.map(e => {
+        const when = new Date(e.ts).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const li = el('li', { class: e.erreur ? 'is-error' : '' },
+          el('span', { text: `${e.poi.nom} · ${(e.poi.secteurs || []).map(c => '#' + c).join(' ')}` }),
+          el('small', { text: e.erreur ? `Refusé : ${e.erreur}` : `${fmtLL(e.poi.lat, e.poi.lng)} · saisi le ${when}${e.poi.photo ? ' · avec photo' : ''}` }));
+        if (e.erreur) li.append(el('div', { class: 'outbox-actions' },
+          el('button', { type: 'button', class: 'link', text: 'Réessayer', onclick: () => { setOutbox(outbox().map(x => (x.sid === e.sid ? Object.assign(x, { erreur: '' }) : x))); flush(); } }),
+          el('button', { type: 'button', class: 'link', text: 'Reprendre', onclick: () => resume(e) }),
+          el('button', { type: 'button', class: 'link danger', text: 'Supprimer', onclick: () => { if (confirm(`Supprimer définitivement le point « ${e.poi.nom} » non envoyé ?`)) { setOutbox(outbox().filter(x => x.sid !== e.sid)); renderPending(); } } })));
+        return li;
+      })),
+      offline ? el('p', { class: 'small', text: 'Envoi automatique dès le retour du réseau.' }) : null));
+  }
+
+  // Point refusé par le serveur : remis dans le formulaire pour le corriger
+  function resume(e) {
+    if (!droits().creer) return;
+    setOutbox(outbox().filter(x => x.sid !== e.sid));
+    renderPending();
+    openForm(null);
+    const f = $('#poi-form'), p = e.poi;
+    f.elements.nom.value = p.nom || '';
+    $('#poi-f-gps').value = fmtLL(p.lat, p.lng);
+    f.elements.commentaire.value = p.commentaire || '';
+    document.querySelectorAll('#poi-f-secteurs [data-code]').forEach(b => b.setAttribute('aria-pressed', String((p.secteurs || []).includes(b.dataset.code))));
+    document.querySelectorAll('#poi-f-caracs [data-v]').forEach(b => b.setAttribute('aria-pressed', String((p.caracs || []).includes(b.dataset.v))));
+    if (p.photo) { S.photo = p.photo; const prev = $('#poi-f-preview'); prev.src = p.photo; prev.hidden = false; $('#poi-f-photo-del').hidden = false; }
+    S.sid = e.sid;
+    $('#poi-f-error').textContent = e.erreur ? `Refusé par le serveur : ${e.erreur}` : '';
   }
 
   async function remove() {
@@ -609,7 +719,10 @@
     } finally { btn.disabled = false; }
   }
 
-  function reset() {
+  // explicit : déconnexion volontaire (tout est effacé) ; sinon les points en attente d'envoi sont gardés
+  function reset(explicit) {
+    if (explicit === true) store.del(KEY_OUTBOX);
+    lastSent = null;
     store.del(KEY);
     store.del(KEY_FILTRES);
     try { caches.delete(PHOTO_CACHE); } catch (e) {}
@@ -618,6 +731,7 @@
     if (M.group) M.group.clearLayers();
     showForm(false);
     setState('');
+    renderPending();
   }
 
   // ---------- événements ----------
@@ -682,5 +796,9 @@
     $('#poi-f-photo-note').textContent = S.edit && S.edit.photo ? 'La photo sera retirée à l’enregistrement.' : '';
   });
 
-  window.SMPM_POI = { open, prefetch, reset, refresh: () => { S.loadedAt = 0; return load(true); } };
+  window.addEventListener('online', () => { renderPending(); flush(); });
+  window.addEventListener('offline', renderPending);
+  renderPending();
+
+  window.SMPM_POI = { open, prefetch, flush, pending: () => outbox().length, reset, refresh: () => { S.loadedAt = 0; return load(true); } };
 })();

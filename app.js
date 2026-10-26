@@ -442,7 +442,7 @@
       if (window.SMPM_FMPA) window.SMPM_FMPA.flush();
       if (window.SMPM_ITV) window.SMPM_ITV.flush();
       if (window.SMPM_THEMES) window.SMPM_THEMES.flush();
-      if (window.SMPM_POI) window.SMPM_POI.prefetch();
+      if (window.SMPM_POI) { window.SMPM_POI.flush(); window.SMPM_POI.prefetch(); }
     }
   }
 
@@ -484,7 +484,7 @@
     if (window.SMPM_ITV) window.SMPM_ITV.reset(explicit === true);
     if (window.SMPM_ITV_LIST) window.SMPM_ITV_LIST.reset();
     if (window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.reset();
-    if (window.SMPM_POI) window.SMPM_POI.reset();
+    if (window.SMPM_POI) window.SMPM_POI.reset(explicit === true);
     if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.reset();
     if (window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.reset();
     if (window.SMPM_THEMES) window.SMPM_THEMES.reset(explicit === true);
@@ -620,7 +620,7 @@
     // thèmes saisis hors ligne (Remplir mon livret) : envoi dès que possible
     if (!offline && window.SMPM_THEMES) window.SMPM_THEMES.flush();
     // points d'intérêt : liste gardée sur l'appareil pour une consultation hors ligne
-    if (!offline && window.SMPM_POI) window.SMPM_POI.prefetch();
+    if (!offline && window.SMPM_POI) { window.SMPM_POI.flush(); window.SMPM_POI.prefetch(); }
     // demandes de validation des thèmes en attente : compteur du menu
     // (compteur affiché tout de suite depuis l'appareil, puis rafraîchi : menu, bouton ☰ et icône de l'application)
     if (canDeclare(data.session) && window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.refresh();
@@ -1107,8 +1107,8 @@
   });
 
   $('#btn-logout').addEventListener('click', () => {
-    const n = (window.SMPM_FMPA ? window.SMPM_FMPA.pending() : 0) + (window.SMPM_ITV ? window.SMPM_ITV.pending() : 0);
-    if (n && !confirm(`${n} déclaration${n > 1 ? 's' : ''} (FMPA ou intervention) ${n > 1 ? 'ne sont' : 'n’est'} pas encore envoyée${n > 1 ? 's' : ''}. ` +
+    const n = (window.SMPM_FMPA ? window.SMPM_FMPA.pending() : 0) + (window.SMPM_ITV ? window.SMPM_ITV.pending() : 0) + (window.SMPM_POI ? window.SMPM_POI.pending() : 0);
+    if (n && !confirm(`${n} saisie${n > 1 ? 's' : ''} (FMPA, intervention ou point d’intérêt) ${n > 1 ? 'ne sont' : 'n’est'} pas encore envoyée${n > 1 ? 's' : ''}. ` +
       'Se déconnecter les supprimera de cet appareil. Continuer ?')) return;
     logout(true);
   });
@@ -1270,6 +1270,7 @@
       if (window.SMPM_FMPA) await window.SMPM_FMPA.flush();
       if (window.SMPM_ITV) await window.SMPM_ITV.flush();
       if (window.SMPM_THEMES) await window.SMPM_THEMES.flush();
+      if (window.SMPM_POI) await window.SMPM_POI.flush();
       await loadLivret();
       if (window.SMPM_POI) await window.SMPM_POI.refresh();
       if (window.SMPM_FICHES) await window.SMPM_FICHES.sync();
@@ -1297,7 +1298,33 @@
       sw.postMessage('version', [ch.port2]);
     };
     showVersion();
-    navigator.serviceWorker.addEventListener('controllerchange', showVersion);
+    // Nouvelle version installée pendant l'utilisation : la page affichée est encore l'ancienne.
+    // Rechargement automatique (même page) si aucune saisie n'est en cours, sinon proposé par un message.
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloading = false;
+    const typing = () => {
+      const a = document.activeElement;
+      if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'search') return true;
+      const poiForm = document.getElementById('poi-form');
+      return (poiForm && !poiForm.hidden) || state.page === 'bug' || state.page === 'infos';
+    };
+    const reloadNow = () => {
+      if (reloading) return;
+      reloading = true;
+      const p = state.data && state.page && state.page !== 'livret' ? '?page=' + encodeURIComponent(state.page) : '';
+      location.replace(location.pathname + p);
+    };
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      showVersion();
+      if (!hadController) return;                      // première installation : rien à recharger
+      if (!typing()) return reloadNow();
+      showFlash({ kind: 'info', text: 'Nouvelle version de l’application installée.', link: null });
+      const box = $('#flash');
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'link'; b.textContent = 'Recharger maintenant';
+      b.addEventListener('click', reloadNow);
+      box.firstChild.append(' ', b);
+    });
   }
   init();
 })();

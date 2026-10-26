@@ -20,6 +20,8 @@
     const dot = document.querySelector('#btn-menu .pending-dot');
     if (dot) dot.hidden = !Object.keys(pendingBy).some(k => pendingBy[k] > 0);
   }
+  // Autres rubriques avec envois en attente (ex. points d'intérêt créés hors ligne, poi.js)
+  window.SMPM_PENDING_DOT = (k, n) => { pendingBy[k] = n; paintBurgerDot(); };
 
   function createDeclarer(C) {
     const KEY_FORM = C.keys.form;
