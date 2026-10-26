@@ -504,14 +504,30 @@
   }
 
   // Profil et listes de choix demandés en parallèle (et non plus l'un après l'autre)
+  // Profil, listes de choix et fonction en un seul appel (« boot ») : 1 exécution Apps Script par ouverture
+  // au lieu de 3. Tant que le serveur ne connaît pas « boot », on revient aux trois appels séparés.
+  let bootUnknown = false;
+  function applyFonction(data, fonction) {
+    if (fonction && fonction.ok) data.fonction = { libelle: fonction.libelle || '', sections: fonction.sections || [], imp3: !!fonction.imp3 };
+    else if (state.data && state.data.fonction) data.fonction = state.data.fonction;
+  }
   async function fetchProfile(token, oldOptions) {
+    if (!bootUnknown) {
+      try {
+        const r = await api('boot', { token });
+        const data = r.me;
+        applyFonction(data, r.fonction);
+        return [data, (r.options && r.options.ok) ? r.options : oldOptions];
+      } catch (e) {
+        if (e.message !== 'Action inconnue') throw e;
+        bootUnknown = true;
+      }
+    }
     const pOptions = api('options', { token }).catch(() => oldOptions);
     // Fonction SMPM (onglet « CT et CdS ») : libellé, sections, IMP3 — facultatif si le serveur ne la connaît pas encore
     const pFonction = api('fonction', { token }).catch(() => null);
     const data = await api('me', { token });
-    const fonction = await pFonction;
-    if (fonction && fonction.ok) data.fonction = { libelle: fonction.libelle || '', sections: fonction.sections || [], imp3: !!fonction.imp3 };
-    else if (state.data && state.data.fonction) data.fonction = state.data.fonction;
+    applyFonction(data, await pFonction);
     return [data, await pOptions];
   }
 
