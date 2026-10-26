@@ -797,6 +797,11 @@
   });
 
   window.addEventListener('online', () => { renderPending(); flush(); });
+  // Le retour du réseau n'est pas toujours signalé par le téléphone, et une application remise au premier plan
+  // n'est pas rechargée : nouvel essai à chaque retour au premier plan et toutes les 30 s tant qu'un point attend.
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { renderPending(); flush(); } });
+  window.addEventListener('pageshow', () => flush());
+  setInterval(() => { if (outbox().some(x => !x.erreur)) { renderPending(); flush(); } }, 30000);
   window.addEventListener('offline', renderPending);
   renderPending();
 
