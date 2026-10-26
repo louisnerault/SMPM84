@@ -58,7 +58,27 @@
   <nav class="drawer-nav">
     <button data-page="accueil" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Accueil intervention</button>
     <button data-page="infos"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>Mon profil</button>
-    <div id="nav-fmpa" class="nav-group" hidden>
+    
+    <div id="nav-livret" class="nav-group">
+      <button type="button" class="nav-group-btn" aria-expanded="true" aria-controls="nav-livret-sub"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3.5h11a3 3 0 0 1 3 3v14H8a3 3 0 0 1-3-3z"/><path d="M5 17.5a3 3 0 0 1 3-3h11"/><path d="M9 7.5h6M9 10.5h4"/></svg>Mon livret<svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div id="nav-livret-sub" class="nav-sub">
+        <button data-page="livret-remplir"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h8.5"/><path d="M16.2 3.8a2 2 0 0 1 2.9 2.9L7.5 18.3 3.5 19.5l1.2-4z"/></svg>Remplir mon livret</button>
+        <button data-page="livret" aria-current="page"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12.5" r="8.5"/><path d="M12 7.5v5l3.2 2"/></svg>Mes heures</button>
+        <button data-page="livret-themes"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6.5l1.6 1.6L8.5 5.2"/><path d="M4 12.5l1.6 1.6 2.9-2.9"/><path d="M4 18.5l1.6 1.6 2.9-2.9"/><path d="M11.5 7h8.5M11.5 13h8.5M11.5 19h8.5"/></svg>Thèmes vus</button>
+      </div>
+    </div>
+    
+    <button data-page="annuaire"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.3c2.1.7 3.5 2.6 3.5 5.7"/></svg>Annuaire des spécialistes</button>
+    <div id="nav-doc" class="nav-group">
+      <button type="button" class="nav-group-btn" aria-expanded="false" aria-controls="nav-doc-sub"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M2 5.5c3.2-1.2 6.4-1.2 10 1 3.6-2.2 6.8-2.2 10-1v13c-3.2-1.2-6.4-1.2-10 1-3.6-2.2-6.8-2.2-10-1z"/><path d="M12 6.5v13"/></svg>Documentation<svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div id="nav-doc-sub" class="nav-sub" hidden>
+        <button data-page="fiches"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M2 5.5c3.2-1.2 6.4-1.2 10 1 3.6-2.2 6.8-2.2 10-1v13c-3.2-1.2-6.4-1.2-10 1-3.6-2.2-6.8-2.2-10-1z"/><path d="M12 6.5v13"/></svg>FTE</button>
+        <button data-page="notices"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><path d="M12 7.6h.01"/></svg>Notices</button>
+      </div>
+    </div>
+    <div id="nav-sec-cu" class="nav-section" hidden>
+      <p class="nav-sep">Chefs d'unité</p>
+<div id="nav-fmpa" class="nav-group" hidden>
       <button type="button" class="nav-group-btn" aria-expanded="false" aria-controls="nav-fmpa-sub"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17.5" rx="2"/><path d="M9 3.5h6v3H9z"/><path d="M8.5 12.5l2.2 2.2 4.8-4.8"/><path d="M9 18h6"/></svg>FMPA<svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg><span class="pending-dot" title="Déclaration en attente d'envoi" hidden></span><span class="nav-count" data-cu-count title="Demandes de validation en attente" hidden></span></button>
       <div id="nav-fmpa-sub" class="nav-sub" hidden>
         <div class="nav-subgroup">
@@ -73,15 +93,7 @@
         </div>
       </div>
     </div>
-    <div id="nav-livret" class="nav-group">
-      <button type="button" class="nav-group-btn" aria-expanded="true" aria-controls="nav-livret-sub"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3.5h11a3 3 0 0 1 3 3v14H8a3 3 0 0 1-3-3z"/><path d="M5 17.5a3 3 0 0 1 3-3h11"/><path d="M9 7.5h6M9 10.5h4"/></svg>Mon livret<svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
-      <div id="nav-livret-sub" class="nav-sub">
-        <button data-page="livret-remplir"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h8.5"/><path d="M16.2 3.8a2 2 0 0 1 2.9 2.9L7.5 18.3 3.5 19.5l1.2-4z"/></svg>Remplir mon livret</button>
-        <button data-page="livret" aria-current="page"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12.5" r="8.5"/><path d="M12 7.5v5l3.2 2"/></svg>Mes heures</button>
-        <button data-page="livret-themes"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6.5l1.6 1.6L8.5 5.2"/><path d="M4 12.5l1.6 1.6 2.9-2.9"/><path d="M4 18.5l1.6 1.6 2.9-2.9"/><path d="M11.5 7h8.5M11.5 13h8.5M11.5 19h8.5"/></svg>Thèmes vus</button>
-      </div>
-    </div>
-    <div id="nav-interv" class="nav-group" hidden>
+<div id="nav-interv" class="nav-group" hidden>
       <button type="button" class="nav-group-btn" aria-expanded="false" aria-controls="nav-interv-sub"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18v-5a6 6 0 0 1 12 0v5"/><path d="M4 18h16v3H4z"/><path d="M12 2.5v2M3.5 6l1.5 1.4M20.5 6L19 7.4"/></svg>Interventions<svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg><span class="pending-dot" title="Intervention en attente d'envoi" hidden></span></button>
       <div id="nav-interv-sub" class="nav-sub" hidden>
         <button data-page="interv-new"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></svg>Nouvelle intervention</button>
@@ -89,12 +101,12 @@
         <button data-page="interv-toutes" id="nav-interv-all" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>Toutes les interventions</button>
       </div>
     </div>
-    <div id="nav-doc" class="nav-group">
-      <button type="button" class="nav-group-btn" aria-expanded="false" aria-controls="nav-doc-sub"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M2 5.5c3.2-1.2 6.4-1.2 10 1 3.6-2.2 6.8-2.2 10-1v13c-3.2-1.2-6.4-1.2-10 1-3.6-2.2-6.8-2.2-10-1z"/><path d="M12 6.5v13"/></svg>Documentation<svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
-      <div id="nav-doc-sub" class="nav-sub" hidden>
-        <button data-page="fiches"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M2 5.5c3.2-1.2 6.4-1.2 10 1 3.6-2.2 6.8-2.2 10-1v13c-3.2-1.2-6.4-1.2-10 1-3.6-2.2-6.8-2.2-10-1z"/><path d="M12 6.5v13"/></svg>FTE</button>
-        <button data-page="notices"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><path d="M12 7.6h.01"/></svg>Notices</button>
-      </div>
+    </div>
+    <div id="nav-sec-cs" class="nav-section" hidden>
+      <p class="nav-sep">Chefs de section</p>
+      <button data-page="cs-heures"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12.5" r="8.5"/><path d="M12 7.5v5l3.2 2"/></svg>Heures chefs de sections</button>
+      <button data-page="cs-tableau"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="9" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="5" rx="1.5"/><rect x="13.5" y="11.5" width="7" height="9" rx="1.5"/><rect x="3.5" y="15.5" width="7" height="5" rx="1.5"/></svg>Tableau de bord</button>
+      <button data-page="cs-specialistes"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/><path d="M17.5 3.5l1 2 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5 2.2-.3z"/></svg>Mes spécialistes</button>
     </div>
   </nav>
   <div class="drawer-foot">
@@ -217,7 +229,7 @@
     </div>
 
     <div id="tab-annuaire" hidden>
-      <div class="sub-head"><button type="button" class="link" data-go="accueil">← Accueil intervention</button></div>
+      <div class="sub-head only-intervention"><button type="button" class="link" data-go="accueil">← Accueil intervention</button></div>
       <h1>Annuaire des spécialistes</h1>
       <p id="ann-state" class="muted small" role="status"></p>
       <div class="ann-tools">
@@ -490,7 +502,7 @@
         <label>Rubrique concernée
           <select name="rubrique">
             <option>Mon livret</option><option>FMPA</option><option>Validation des livrets</option><option>Intervention</option>
-            <option>Mode intervention / annuaire</option><option>Fiches techniques (FTE)</option><option>Notices</option><option>Mon profil</option>
+            <option>Mode intervention / annuaire</option><option>Fiches techniques (FTE)</option><option>Notices</option><option>Mon profil</option><option>Annuaire des spécialistes</option><option>Rubriques chefs de section</option>
             <option>Notifications</option><option>Connexion</option><option selected>Autre</option>
           </select>
         </label>
@@ -510,6 +522,18 @@
         <p class="ok" role="status"></p>
         <button type="submit" class="primary" id="btn-bug">Envoyer le signalement</button>
       </form>
+    </div>
+    <div id="tab-cs-heures" hidden>
+      <h1>Heures chefs de sections</h1>
+      <p class="muted">Rubrique en construction : elle sera bientôt disponible.</p>
+    </div>
+    <div id="tab-cs-tableau" hidden>
+      <h1>Tableau de bord</h1>
+      <p class="muted">Rubrique en construction : elle sera bientôt disponible.</p>
+    </div>
+    <div id="tab-cs-specialistes" hidden>
+      <h1>Mes spécialistes</h1>
+      <p class="muted">Rubrique en construction : elle sera bientôt disponible.</p>
     </div>
     <div id="tab-notices" hidden>
       <h1>Notices</h1>
