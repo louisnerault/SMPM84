@@ -86,6 +86,14 @@
   const secteurLib = code => { const d = secteurDef(code); return d ? d.libelle : code; };
 
   // ---------- chargement ----------
+  // Liste gardée sur l'appareil dès l'ouverture de l'application (comme le formulaire d'intervention) :
+  // consultable hors ligne même si la rubrique n'a jamais été ouverte.
+  function prefetch() {
+    if (!S.data) S.data = store.getJSON(KEY);
+    if (!navigator.onLine || Date.now() - S.loadedAt < STALE) return Promise.resolve();
+    return load(true);
+  }
+
   function open() {
     if (!S.data) S.data = store.getJSON(KEY);
     showForm(false);
@@ -94,19 +102,23 @@
     if (!S.loading && Date.now() - S.loadedAt > STALE) load();
   }
 
-  async function load() {
+  // silent : chargement en arrière-plan (démarrage, synchronisation) — aucun message si la rubrique est fermée
+  async function load(silent) {
+    if (S.loading) return;
+    const quiet = silent === true && $('#tab-poi').hidden;
     S.loading = true;
-    setState(S.data ? 'Mise à jour…' : 'Chargement des points d’intérêt…');
+    if (!quiet) setState(S.data ? 'Mise à jour…' : 'Chargement des points d’intérêt…');
     try {
       const res = await app().api('poi_list', { token: app().token() });
       S.data = { points: res.points || [], listes: res.listes || { caracs: [], secteurs: [] }, droits: res.droits || null, maj: res.maj || new Date().toISOString() };
       S.loadedAt = Date.now();
       save();
-      setState('');
+      if (!quiet || !$('#tab-poi').hidden) setState('');
       buildFilters();
       render();
     } catch (err) {
       if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
+      if (quiet && $('#tab-poi').hidden) return;          // nouvel essai à la prochaine synchronisation
       const d = S.data;
       const maj = d && d.maj ? new Date(d.maj).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '';
       setState(err instanceof app().NetworkError
@@ -670,5 +682,5 @@
     $('#poi-f-photo-note').textContent = S.edit && S.edit.photo ? 'La photo sera retirée à l’enregistrement.' : '';
   });
 
-  window.SMPM_POI = { open, reset, refresh: () => { S.loadedAt = 0; if (!$('#tab-poi').hidden) load(); } };
+  window.SMPM_POI = { open, prefetch, reset, refresh: () => { S.loadedAt = 0; return load(true); } };
 })();
