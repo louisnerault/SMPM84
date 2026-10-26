@@ -178,7 +178,7 @@
     // Liste « IMP3 responsable » : personnel actif titulaire de l'IMP3, d'après la liste du personnel
     // gardée sur l'appareil (avec le formulaire, à défaut l'annuaire). Sans cette information, on garde
     // les choix du Google Form. Le serveur ajoute au formulaire un IMP3 qui n'y figure pas encore.
-    const isImp3Item = it => (it.type === 'list' || it.type === 'radio') && /imp\s*3/i.test(it.title);
+    const isImp3Item = it => (it.type === 'list' || it.type === 'radio') && (C.imp3Re || /imp\s*3/i).test(it.title);
     function imp3Names() {
       const pers = S.personnes || {};
       const noms = Object.keys(pers);
@@ -193,6 +193,9 @@
     function imp3Choices(choices) {
       const noms = imp3Names();
       if (!noms.length) return choices;
+      // seulement pour une liste de noms (pas une question OUI / NON dont le titre parlerait du chef d'unité)
+      const connus = new Set(Object.keys(S.personnes || {}).concat(noms));
+      if ((choices || []).length && !choices.some(c => connus.has(norm(c.v)))) return choices;
       const go = {};
       (choices || []).forEach(c => { go[norm(c.v)] = c.go; });
       return Array.from(new Set(noms)).sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }))
@@ -1598,6 +1601,7 @@
 
   window.SMPM_ITV = createDeclarer({
     p: 'itv', page: 'interv-new', navDot: '#nav-interv .pending-dot', gps: true,
+    imp3List: true, imp3Re: /chef d.?unit|imp\s*3/i,   // liste « Chef d'unité » = IMP3 actifs du personnel
     keys: { form: 'smpm_itv_form', draft: 'smpm_itv_draft', outbox: 'smpm_itv_outbox' },
     api: { form: 'itv_form', submit: 'itv_submit', get: 'itv_get', update: 'itv_update' },
     rec: {
