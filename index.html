@@ -105,7 +105,13 @@
     </div>
     <div id="nav-sec-cs" class="nav-section" hidden>
       <p class="nav-sep">Chefs de section</p>
-      <button data-page="cs-heures"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12.5" r="8.5"/><path d="M12 7.5v5l3.2 2"/></svg>Heures chefs de sections</button>
+      <div id="nav-csh" class="nav-group">
+        <button type="button" class="nav-group-btn" aria-expanded="false" aria-controls="nav-csh-sub"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12.5" r="8.5"/><path d="M12 7.5v5l3.2 2"/></svg>Heures chefs de section<svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg><span class="pending-dot" title="Journée en attente d'envoi" hidden></span></button>
+        <div id="nav-csh-sub" class="nav-sub" hidden>
+          <button data-page="cs-heures"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>Mes heures</button>
+          <button data-page="cs-heures-toutes" id="nav-csh-all" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>Toutes les heures</button>
+        </div>
+      </div>
       <button data-page="cs-tableau"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="9" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="5" rx="1.5"/><rect x="13.5" y="11.5" width="7" height="9" rx="1.5"/><rect x="3.5" y="15.5" width="7" height="5" rx="1.5"/></svg>Tableau de bord</button>
       <button data-page="cs-specialistes"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/><path d="M17.5 3.5l1 2 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5 2.2-.3z"/></svg>Mes spécialistes</button>
     </div>
@@ -606,18 +612,18 @@
         <button type="submit" class="primary" id="btn-bug">Envoyer le signalement</button>
       </form>
     </div>
-    <!-- Heures chefs de section (csh.js, backend/Heures.gs) -->
+    <!-- Heures chefs de section (csh.js, backend/Heures.gs) : « Mes heures » et « Toutes les heures » -->
     <div id="tab-cs-heures" hidden>
-      <div class="poi-head">
-        <h1>Heures chefs de sections</h1>
-        <select id="csh-annee" aria-label="Année"></select>
+      <div class="livret-head">
+        <h1 id="csh-title">Mes heures</h1>
+        <label class="year-pick">Année <select id="csh-annee"></select></label>
       </div>
       <p id="csh-state" class="muted small" role="status"></p>
       <div id="csh-outbox"></div>
       <section id="csh-moi" hidden>
-        <div class="csh-card" id="csh-moi-card"></div>
+        <div id="csh-counter" class="counters" aria-label="Compteur d'heures chef de section"></div>
         <form id="csh-form" class="csh-form" novalidate>
-          <h2 class="section-title">Déclarer une journée</h2>
+          <h2 class="section-title" id="csh-form-title">Déclarer une journée</h2>
           <label for="csh-date">Journée <span class="req">*</span></label>
           <input type="date" id="csh-date" name="date" required>
           <label for="csh-heures">Heures effectuées <span class="req">*</span></label>
@@ -628,10 +634,14 @@
           <textarea id="csh-detail" name="detail" rows="3" maxlength="1000" required placeholder="Réunion, reconnaissance, préparation…"></textarea>
           <p class="error" role="alert"></p>
           <p class="ok" role="status"></p>
-          <button type="submit" class="primary" id="csh-send">Déclarer</button>
+          <div class="csh-actions">
+            <button type="submit" class="primary" id="csh-send">Déclarer</button>
+            <button type="button" class="link" id="csh-cancel" hidden>Annuler la modification</button>
+          </div>
         </form>
+        <h2 class="section-title">Mes journées</h2>
       </section>
-      <h2 class="section-title">Tous les chefs de section</h2>
+      <p id="csh-none" class="muted" hidden></p>
       <ul id="csh-list" class="csh-list"></ul>
     </div>
     <div id="tab-cs-tableau" hidden>
