@@ -5,7 +5,7 @@
 // - Fiches techniques : cache dédié (smpm84-fiches) rempli par fiches.js ; lecture hors ligne.
 // - Carte hors ligne : cache dédié (smpm84-carte) rempli par carte-hors-ligne.js à la demande ; jamais rempli ici.
 // Les données personnelles ne passent jamais par ce cache (elles sont dans localStorage).
-const CACHE = 'smpm84-shell-v70';
+const CACHE = 'smpm84-shell-v71';
 const FICHES_CACHE = 'smpm84-fiches';
 const CARTE_CACHE = 'smpm84-carte';
 const SHELL = [
@@ -75,6 +75,8 @@ self.addEventListener('fetch', e => {
     return;
   }
   if (url.origin !== location.origin) return;     // l'API Apps Script n'est jamais mise en cache
+  // Test du réseau (app.js, hasNetwork) : toujours le réseau, jamais le cache
+  if (url.pathname.endsWith('/ping.txt')) { e.respondWith(fetch(req, { cache: 'no-store' })); return; }
 
   if (url.pathname.includes('/fiches/')) {
     // Synchronisation explicite (no-store) : toujours le réseau

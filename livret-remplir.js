@@ -74,8 +74,8 @@
       if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
       if (err instanceof app().NetworkError) {
         setState(S.def
-          ? 'Hors ligne : formulaire enregistré sur cet appareil. Vous pouvez saisir vos thèmes, l’envoi se fera une fois en ligne.'
-          : 'Hors ligne : le formulaire n’a encore jamais été chargé sur cet appareil.', !S.def);
+          ? app().netLabel() + ' : formulaire enregistré sur cet appareil. Vous pouvez saisir vos thèmes, l’envoi se fera une fois en ligne.'
+          : app().netLabel() + ' : le formulaire n’a encore jamais été chargé sur cet appareil.', !S.def);
       } else if (err.message === 'Action inconnue') {
         setState('La saisie des thèmes n’est pas encore activée sur le serveur.', true);
       } else {

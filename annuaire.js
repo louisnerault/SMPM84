@@ -78,7 +78,7 @@
       const d = S.data;
       const maj = d && d.maj ? new Date(d.maj).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '';
       setState(err instanceof app().NetworkError
-        ? (d ? `Hors ligne : annuaire du ${maj}.` : 'Hors ligne : annuaire indisponible sur cet appareil. Ouvrez-le une fois avec du réseau pour le garder hors ligne.')
+        ? (d ? `${app().netLabel()} : annuaire du ${maj}.` : app().netLabel() + ' : annuaire indisponible sur cet appareil. Ouvrez-le une fois avec du réseau pour le garder hors ligne.')
         : err.message === 'Action inconnue' ? 'L’annuaire n’est pas encore activé sur le serveur (Annuaire.gs).' : err.message, !d);
     } finally { S.loading = false; }
   }
@@ -226,7 +226,7 @@
       setState(n ? `Notification envoyée à ${cible.prenom} ${cible.nom}.` : `${cible.prenom} ${cible.nom} n’a plus d’appareil abonné : notification non distribuée.`);
     } catch (err) {
       if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
-      $('#ann-push-error').textContent = err instanceof app().NetworkError ? 'Hors ligne : envoi impossible. Utilisez SMS ou appel.' : err.message;
+      $('#ann-push-error').textContent = err instanceof app().NetworkError ? app().netLabel() + ' : envoi impossible. Utilisez SMS ou appel.' : err.message;
     } finally { btn.disabled = false; }
   });
 

@@ -60,7 +60,7 @@
       if (silent) return;
       const maj = S.data && S.data.maj ? new Date(S.data.maj).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '';
       setState(err instanceof app().NetworkError
-        ? (S.data ? `Hors ligne : liste du ${maj}. Valider ou rejeter nécessite le réseau.` : 'Hors ligne : liste indisponible sur cet appareil.')
+        ? (S.data ? `${app().netLabel()} : liste du ${maj}. Valider ou rejeter nécessite le réseau.` : app().netLabel() + ' : liste indisponible sur cet appareil.')
         : err.message === 'Action inconnue' ? 'La validation des thèmes n’est pas encore activée sur le serveur.' : err.message, !S.data);
     } finally { S.loading = false; }
   }
@@ -290,7 +290,7 @@
       delete S.busy[d.id];
       if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
       msg.className = 'fmpa-msg error';
-      msg.textContent = err instanceof app().NetworkError ? 'Hors ligne : réessayez au retour du réseau.' : err.message;
+      msg.textContent = err instanceof app().NetworkError ? app().netLabel() + ' : réessayez au retour du réseau.' : err.message;
       msg.closest('li').querySelectorAll('button, textarea').forEach(b => { b.disabled = false; });
       if (/introuvable|déjà été traitée/.test(err.message)) load(true);
     }

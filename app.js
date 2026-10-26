@@ -369,22 +369,58 @@
   // Bandeau « hors ligne » : tant qu'il est affiché, on retente la connexion en arrière-plan.
   // Sans cela, un échec ponctuel d'appel réseau (le téléphone étant pourtant en ligne) laissait le bandeau
   // jusqu'à un événement « online » qui ne vient pas si la connexion n'a jamais été coupée.
+  // « Hors ligne » seulement si le téléphone n'a réellement pas de réseau.
+  // Un serveur lent ou occupé (Apps Script) n'est pas une absence de réseau : les données de
+  // l'appareil restent affichées, sans bandeau, et une nouvelle tentative est faite chaque minute.
   let retryTimer = null;
+  let serverBusy = false;
+  function updateRetryTimer() {
+    const need = !$('#offline-banner').hidden || serverBusy;
+    if (need && !retryTimer) retryTimer = setInterval(retryOnline, 60000);
+    if (!need && retryTimer) { clearInterval(retryTimer); retryTimer = null; }
+  }
   function setOffline(flag) {
     $('#offline-banner').hidden = !flag;
-    if (flag && !retryTimer) retryTimer = setInterval(retryOnline, 60000);
-    if (!flag && retryTimer) { clearInterval(retryTimer); retryTimer = null; }
+    if (flag) serverBusy = false;
+    updateRetryTimer();
+  }
+  function setServerBusy(flag) {
+    serverBusy = flag;
+    updateRetryTimer();
+  }
+  // Test du réseau indépendant du serveur : petit fichier du site, jamais servi par le cache (voir sw.js)
+  async function hasNetwork() {
+    if (!navigator.onLine) return false;
+    const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), 8000) : null;
+    try {
+      await fetch('ping.txt?t=' + Date.now(), { cache: 'no-store', signal: ctrl ? ctrl.signal : undefined });
+      return true;
+    } catch (e) {
+      return false;
+    } finally { clearTimeout(timer); }
+  }
+  // Après un échec d'appel au serveur : bandeau si pas de réseau, sinon simple nouvel essai plus tard
+  async function onServerUnreachable() {
+    if (await hasNetwork()) { setOffline(false); setServerBusy(true); return 'busy'; }
+    setOffline(true);
+    return 'offline';
   }
   async function retryOnline() {
     const token = store.get(KEY_TOKEN);
     const cached = store.getJSON(KEY_CACHE);
     if (!token || !cached || !cached.data || !navigator.onLine) return;
-    if ($('#offline-banner').hidden) return;
-    // Un seul appel léger pour tester la connexion ; le profil n'est rechargé qu'ensuite
+    if ($('#offline-banner').hidden && !serverBusy) return;
+    // Un seul appel léger pour tester le serveur ; le profil n'est rechargé qu'ensuite
     try { await api('session', { token }); }
-    catch (e) { if (AUTH_ERRORS.includes(e.message)) return logout(); return; }
+    catch (e) {
+      if (AUTH_ERRORS.includes(e.message)) return logout();
+      if (e instanceof NetworkError) await onServerUnreachable();
+      return;
+    }
     await refreshProfile(token, cached);
-    if ($('#offline-banner').hidden) {                  // de retour en ligne : envoi des saisies en attente
+    if ($('#offline-banner').hidden && !serverBusy) {   // serveur joignable : livret et saisies en attente
+      loadLivret();
       if (window.SMPM_FMPA) window.SMPM_FMPA.flush();
       if (window.SMPM_ITV) window.SMPM_ITV.flush();
       if (window.SMPM_THEMES) window.SMPM_THEMES.flush();
@@ -489,6 +525,7 @@
       state.data = data;
       state.options = options;
       setOffline(false);
+      setServerBusy(false);
       const form = $('#form-profil');
       // ne pas écraser une saisie en cours dans « Mes informations »
       if (!(form && form.contains(document.activeElement))) renderApp();
@@ -497,7 +534,7 @@
       if (state.page && !allowedPage(state.page, data.session)) gotoPage(isIntervention() ? 'accueil' : 'livret');
     } catch (e) {
       if (AUTH_ERRORS.includes(e.message)) { logout(); return; }
-      if (e instanceof NetworkError) setOffline(true);
+      if (e instanceof NetworkError) await onServerUnreachable();
     } finally {
       document.body.classList.remove('profile-syncing');
     }
@@ -573,9 +610,14 @@
       state.livret = res.livret;
       store.set(KEY_LIVRET, JSON.stringify(res.livret));
       renderLivret('ok');
+      setServerBusy(false);
     } catch (err) {
       if (AUTH_ERRORS.includes(err.message)) return logout();
-      if (err instanceof NetworkError) return renderLivret(state.livret ? 'offline' : 'error', 'Réseau indisponible.');
+      if (err instanceof NetworkError) {
+        const why = await onServerUnreachable();
+        if (why === 'busy') return renderLivret(state.livret ? 'busy' : 'error', 'Serveur occupé, nouvel essai automatique.');
+        return renderLivret(state.livret ? 'offline' : 'error', 'Réseau indisponible.');
+      }
       if (err.message === 'Action inconnue') return renderLivret('error', "Le livret n'est pas encore activé sur le serveur.");
       renderLivret('error', err.message);
     }
@@ -597,6 +639,7 @@
       status === 'loading' ? 'Chargement du livret…' :
       status === 'refreshing' ? 'Mise à jour…' :
       status === 'offline' ? (L ? `Hors ligne : données du ${majTxt}.` : 'Hors ligne : livret indisponible sur cet appareil.') :
+      status === 'busy' ? `Serveur occupé : données du ${majTxt}. Nouvel essai automatique.` :
       status === 'error' ? (message || 'Livret indisponible.') + (L ? ` Données du ${majTxt}.` : '') : '';
 
     const formations = (L && L.formations) || [];
@@ -1099,6 +1142,8 @@
   // Accès partagé pour les rubriques chargées à part (fmpa.js)
   window.SMPM_APP = {
     api, token: () => store.get(KEY_TOKEN), NetworkError, AUTH_ERRORS, logout,
+    // Libellé d'un échec réseau : « Hors ligne » seulement sans réseau, sinon le serveur est en cause
+    netLabel: () => (!navigator.onLine || !$('#offline-banner').hidden) ? 'Hors ligne' : 'Serveur occupé',
     livret: () => state.livret,
     goto: name => gotoPage(name),
     home: () => (isIntervention() ? 'accueil' : 'livret'),
