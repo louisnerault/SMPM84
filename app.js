@@ -7,6 +7,7 @@
   const KEY_EMAIL = 'smpm_last_email';
   const KEY_LIVRET = 'smpm_livret';
   const KEY_MODE = 'smpm_mode';
+  const KEY_THEME = 'smpm_theme';   // préférence de l'appareil : conservée à la déconnexion
   const AUTH_ERRORS = ['Session invalide', 'Session expirée', 'Accès révoqué', 'Compte inactif'];
   // Fonction affichée sous le nom. Une personne qui cumule plusieurs casquettes
   // se voit attribuer la plus haute : c'est le rôle renvoyé par session.role.
@@ -476,8 +477,39 @@
     $('#btn-intervention').setAttribute('aria-pressed', String(on));
     $('#btn-intervention').title = on ? 'Quitter le mode intervention' : 'Activer le mode intervention';
     $('#drawer [data-page="accueil"]').hidden = !on;
+    updateMetaTheme();
+  }
+
+  // ---------- thème clair / sombre ----------
+  // auto : suit le téléphone (prefers-color-scheme) ; light / dark : forcé via data-theme sur <html>.
+  // Le bandeau passe sur la scène de nuit en sombre (source <picture> #banner-night).
+  const darkMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  const themeChoice = () => { const t = store.get(KEY_THEME); return t === 'light' || t === 'dark' ? t : 'auto'; };
+  const isDark = () => { const t = themeChoice(); return t === 'dark' || (t === 'auto' && !!(darkMQ && darkMQ.matches)); };
+  function updateMetaTheme() {
     const meta = $('#meta-theme');
-    if (meta) meta.setAttribute('content', on ? '#b3132b' : '#1d4f91');
+    if (!meta) return;
+    const dark = isDark();
+    meta.setAttribute('content', isIntervention() ? (dark ? '#3d0812' : '#b3132b') : (dark ? '#060914' : '#1d4f91'));
+  }
+  function applyTheme(choice) {
+    if (choice === 'light' || choice === 'dark') {
+      store.set(KEY_THEME, choice);
+      document.documentElement.setAttribute('data-theme', choice);
+    } else {
+      store.del(KEY_THEME);
+      document.documentElement.removeAttribute('data-theme');
+    }
+    const night = $('#banner-night');
+    if (night) night.media = choice === 'dark' ? 'all' : choice === 'light' ? 'not all' : '(prefers-color-scheme: dark)';
+    $$('#theme-seg [data-theme-choice]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themeChoice === themeChoice())));
+    updateMetaTheme();
+  }
+  applyTheme(themeChoice());
+  $$('#theme-seg [data-theme-choice]').forEach(b => b.addEventListener('click', () => applyTheme(b.dataset.themeChoice)));
+  if (darkMQ) {
+    if (darkMQ.addEventListener) darkMQ.addEventListener('change', updateMetaTheme);
+    else if (darkMQ.addListener) darkMQ.addListener(updateMetaTheme);
   }
   function toggleMode() {
     const on = !isIntervention();
