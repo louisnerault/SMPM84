@@ -98,7 +98,9 @@
     if (st.options.length <= 1) st.innerHTML = '<option value="">Choisir…</option>' + data.statuts.map(s => `<option>${esc(s)}</option>`).join('');
 
     if (!toutes()) {
-      const moi = data.chefs[0];
+      // Toujours SA fiche (data.moi), jamais la première de la liste : un serveur pas encore à jour
+      // renvoie tous les chefs, dans l'ordre de l'onglet DATA.
+      const moi = data.moi ? data.chefs.find(c => c.nom === data.moi) : null;
       $('#csh-moi').hidden = !moi;
       if (!moi) {
         none.hidden = false;
@@ -140,11 +142,14 @@
   async function load() {
     const cache = ls.get(KEY_CACHE, {});
     data = cache[cacheKey()] || null;
+    if (data && !toutes()) data.chefs = (data.chefs || []).filter(c => data.moi && c.nom === data.moi);
     render();
     if (!app() || !app().token()) return;
     state('Chargement…');
     try {
       const r = await app().api('cs_heures_list', { token: app().token(), annee, tous: toutes() });
+      // « Mes heures » : ne garder que ses propres journées, quelle que soit la version du serveur
+      if (!toutes()) r.chefs = (r.chefs || []).filter(c => r.moi && c.nom === r.moi);
       data = r; annee = r.annee;
       cache[cacheKey()] = r; ls.set(KEY_CACHE, cache);
       state('');
