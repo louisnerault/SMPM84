@@ -64,12 +64,15 @@
   const FMPA_LISTS = ['fmpa-mes', 'fmpa-toutes'];
   // Rubriques réservées aux chefs de section (et CTD, administrateurs) — à garder cohérent avec backend/Heures.gs
   const CS_PAGES = ['cs-heures', 'cs-tableau', 'cs-specialistes'];
+  // Heures chefs de section : « Mes heures » (chefs de section, CTD, admin), « Toutes les heures » (CTD, admin)
+  const canAllCsHeures = session => !!session && (session.is_admin === true || ['ctd', 'admin'].includes(session.role));
   function allowedPage(name, session) {
     if (name === 'fmpa') return canDeclare(session) && canEncadrer(state.data);
     if (name === 'fmpa-fiche' || name === 'fmpa-mes' || name === 'fmpa-valid') return canDeclare(session);
     if (name === 'fmpa-toutes') return canAllFmpa(session);
     if (name === 'interv-toutes') return canAllInterv(session);
     if (name.startsWith('interv-')) return canIntervene(session);
+    if (name === 'cs-heures-toutes') return canAllCsHeures(session);
     if (CS_PAGES.includes(name)) return canAllFmpa(session);
     return true;
   }
@@ -331,6 +334,7 @@
     $('#tab-fiches').hidden = name !== 'fiches';
     $('#tab-notices').hidden = name !== 'notices';
     CS_PAGES.forEach(p => { $('#tab-' + p).hidden = name !== p; });
+    if (name === 'cs-heures-toutes') $('#tab-cs-heures').hidden = false;
     $('#tab-bug').hidden = name !== 'bug';
     $('#tab-accueil').hidden = name !== 'accueil';
     $('#tab-annuaire').hidden = name !== 'annuaire';
@@ -349,7 +353,8 @@
     if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
     if (name === 'annuaire' && window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.open();
     if (name === 'poi' && window.SMPM_POI) window.SMPM_POI.open();
-    if (name === 'cs-heures' && window.SMPM_CSH) window.SMPM_CSH.open();
+    if (name.startsWith('cs-heures')) setCshGroup(true);
+    if (name.startsWith('cs-heures') && window.SMPM_CSH) window.SMPM_CSH.open(name);
     if (name === 'livret-remplir' && window.SMPM_THEMES) window.SMPM_THEMES.open();
     if (name === 'livret-themes' && window.SMPM_THEMES_VUS) window.SMPM_THEMES_VUS.open();
     if (name === 'fmpa' && window.SMPM_FMPA) window.SMPM_FMPA.open();
@@ -377,6 +382,12 @@
   function setLivretGroup(open) {
     $('#nav-livret .nav-group-btn').setAttribute('aria-expanded', String(open));
     $('#nav-livret-sub').hidden = !open;
+  }
+
+  // Sous-menu Heures chefs de section (repliable) : Mes heures, Toutes les heures
+  function setCshGroup(open) {
+    $('#nav-csh .nav-group-btn').setAttribute('aria-expanded', String(open));
+    $('#nav-csh-sub').hidden = !open;
   }
 
   // Sous-menu Documentation (repliable) : FTE et Notices
@@ -1033,6 +1044,7 @@
     $('#nav-fmpa-all').hidden = !canAllFmpa(session);
     $('#nav-interv').hidden = !canIntervene(session);
     $('#nav-interv-all').hidden = !canAllInterv(session);
+    $('#nav-csh-all').hidden = !canAllCsHeures(session);
     $('#home-interv-new').hidden = !canIntervene(session);
 
     const form = $('#form-profil');
@@ -1133,6 +1145,9 @@
   });
   $('#nav-livret .nav-group-btn').addEventListener('click', e => {
     setLivretGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
+  });
+  $('#nav-csh .nav-group-btn').addEventListener('click', e => {
+    setCshGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
   });
   $('#nav-doc .nav-group-btn').addEventListener('click', e => {
     setDocGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
@@ -1252,6 +1267,8 @@
       return String((f && f.sections && f.sections[0]) || state.data.session.section || state.data.me.secteur || '');
     },
     canEditAll: () => !!state.data && canEditAllFmpa(state.data.session),
+    pieChart: (pct, full) => pieChart(pct, full),
+    animateCounters: box => animateCounters(box),
     poiDroits: () => ({ creer: !!state.data && canPoiCreate(state.data.session), modifier: !!state.data && canPoiEdit(state.data.session) }),
   };
 
