@@ -50,6 +50,10 @@
   // Toutes les interventions : conseillers techniques et administrateurs
   const canAllInterv = session => !!session && (session.is_admin === true || ['ctd', 'admin'].includes(session.role));
   const canIntervene = session => !!session && (session.is_admin === true || ['chef_unite', 'chef_section', 'ctd', 'admin'].includes(session.role));
+  // Points d'intérêt (à garder cohérent avec backend/Poi.gs) : consultation par tous, selon le cloisonnement
+  // des secteurs ; création : chef d'unité et au-delà ; modification et suppression : chef de section, CTD, administrateur
+  const canPoiCreate = session => !!session && (session.is_admin === true || ['chef_unite', 'chef_section', 'ctd', 'admin'].includes(session.role));
+  const canPoiEdit = session => !!session && (session.is_admin === true || ['chef_section', 'ctd', 'admin'].includes(session.role));
   // Encadrer (déclarer) une FMPA : qualification IMP 3 (fonction renvoyée par le serveur), ou administrateur
   const canEncadrer = data => {
     if (!data || !data.session) return false;
@@ -330,6 +334,7 @@
     $('#tab-bug').hidden = name !== 'bug';
     $('#tab-accueil').hidden = name !== 'accueil';
     $('#tab-annuaire').hidden = name !== 'annuaire';
+    $('#tab-poi').hidden = name !== 'poi';
     $('#tab-fmpa').hidden = !(name === 'fmpa' || name === 'fmpa-fiche');
     $('#tab-fmpa-list').hidden = !FMPA_LISTS.includes(name);
     $('#tab-fmpa-valid').hidden = name !== 'fmpa-valid';
@@ -343,6 +348,7 @@
     if (name === 'bug' && window.SMPM_BUGS) window.SMPM_BUGS.open(state.prevPage);
     if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
     if (name === 'annuaire' && window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.open();
+    if (name === 'poi' && window.SMPM_POI) window.SMPM_POI.open();
     if (name === 'livret-remplir' && window.SMPM_THEMES) window.SMPM_THEMES.open();
     if (name === 'livret-themes' && window.SMPM_THEMES_VUS) window.SMPM_THEMES_VUS.open();
     if (name === 'fmpa' && window.SMPM_FMPA) window.SMPM_FMPA.open();
@@ -447,7 +453,7 @@
 
   // ---------- mode intervention ----------
   // Bascule toujours visible ; en intervention, les couleurs passent au rouge
-  // et l'accueil propose annuaire des spécialistes, listes des POI, fiches techniques.
+  // et l'accueil propose annuaire des spécialistes, points d'intérêt, fiches techniques.
   const isIntervention = () => document.body.classList.contains('mode-intervention');
   function applyMode(on) {
     document.body.classList.toggle('mode-intervention', on);
@@ -477,6 +483,7 @@
     if (window.SMPM_ITV) window.SMPM_ITV.reset(explicit === true);
     if (window.SMPM_ITV_LIST) window.SMPM_ITV_LIST.reset();
     if (window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.reset();
+    if (window.SMPM_POI) window.SMPM_POI.reset();
     if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.reset();
     if (window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.reset();
     if (window.SMPM_THEMES) window.SMPM_THEMES.reset(explicit === true);
@@ -1241,6 +1248,7 @@
       return String((f && f.sections && f.sections[0]) || state.data.session.section || state.data.me.secteur || '');
     },
     canEditAll: () => !!state.data && canEditAllFmpa(state.data.session),
+    poiDroits: () => ({ creer: !!state.data && canPoiCreate(state.data.session), modifier: !!state.data && canPoiEdit(state.data.session) }),
   };
 
   // ---------- synchronisation manuelle (icône du bandeau) ----------

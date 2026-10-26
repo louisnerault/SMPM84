@@ -69,6 +69,7 @@
     </div>
     
     <button data-page="annuaire"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.3c2.1.7 3.5 2.6 3.5 5.7"/></svg>Annuaire des spécialistes</button>
+    <button data-page="poi"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>Points d'intérêt</button>
     <div id="nav-doc" class="nav-group">
       <button type="button" class="nav-group-btn" aria-expanded="false" aria-controls="nav-doc-sub"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M2 5.5c3.2-1.2 6.4-1.2 10 1 3.6-2.2 6.8-2.2 10-1v13c-3.2-1.2-6.4-1.2-10 1-3.6-2.2-6.8-2.2-10-1z"/><path d="M12 6.5v13"/></svg>Documentation<svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
       <div id="nav-doc-sub" class="nav-sub" hidden>
@@ -217,9 +218,9 @@
           <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.4c1.9.8 3 2.8 3 5.6"/></svg>
           <span>Annuaire des spécialistes</span>
         </button>
-        <button type="button" class="home-btn" data-go="poi" disabled>
+        <button type="button" class="home-btn" data-go="poi">
           <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>
-          <span>Listes des POI <span class="wip">En cours d'élaboration</span></span>
+          <span>Points d'intérêt <small class="home-sub">Parkings, accès, lieux-dits…</small></span>
         </button>
         <button type="button" class="home-btn" data-go="fiches">
           <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M2 5.5c3.2-1.2 6.4-1.2 10 1 3.6-2.2 6.8-2.2 10-1v13c-3.2-1.2-6.4-1.2-10 1-3.6-2.2-6.8-2.2-10-1z"/><path d="M12 6.5v13"/></svg>
@@ -266,6 +267,87 @@
           </div>
         </form>
       </dialog>
+    </div>
+
+    <!-- Points d'intérêt : base partagée de points GPS (poi.js, backend/Poi.gs) -->
+    <div id="tab-poi" hidden>
+      <div class="sub-head only-intervention"><button type="button" class="link" data-go="accueil">← Accueil intervention</button></div>
+      <div id="poi-main">
+        <div class="poi-head">
+          <h1>Points d'intérêt</h1>
+          <button type="button" class="pill poi-add" id="poi-add" hidden>＋ Nouveau point</button>
+        </div>
+        <p class="muted small">Points GPS partagés : parkings, accès, lieux-dits, codes de cadenas… Gardés sur l'appareil pour une consultation hors ligne.</p>
+        <p id="poi-state" class="muted small" role="status"></p>
+        <div class="ann-tools" id="poi-tools">
+          <input type="search" id="poi-search" placeholder="Nom, commentaire, caractéristique…" autocomplete="off" aria-label="Rechercher un point">
+          <div class="ann-qualifs" id="poi-secteurs" role="group" aria-label="Secteurs"></div>
+          <div class="ann-filters">
+            <select id="poi-carac" aria-label="Caractéristique"><option value="">Toutes les caractéristiques</option></select>
+            <select id="poi-tri" aria-label="Tri">
+              <option value="nom">Tri : nom</option>
+              <option value="distance">Tri : les plus proches</option>
+              <option value="recent">Tri : les plus récents</option>
+            </select>
+          </div>
+          <div class="ann-foot">
+            <div class="poi-view" role="group" aria-label="Affichage">
+              <button type="button" class="pill" data-view="liste" aria-pressed="true">Liste</button>
+              <button type="button" class="pill" data-view="carte" aria-pressed="false">Carte</button>
+            </div>
+            <button type="button" class="link" id="poi-reset" hidden>Effacer les filtres</button>
+            <span id="poi-count"></span>
+          </div>
+        </div>
+        <div id="poi-map" class="gps-map poi-map" hidden></div>
+        <p id="poi-map-note" class="muted small" role="status"></p>
+        <p id="poi-empty" class="muted center" hidden></p>
+        <ul id="poi-list" class="ann-list"></ul>
+      </div>
+
+      <form id="poi-form" class="poi-form" hidden novalidate>
+        <h1 id="poi-form-title">Nouveau point d'intérêt</h1>
+        <label>Nom <span class="req">*</span>
+          <input type="text" name="nom" maxlength="80" required placeholder="Ex. : Parking de la combe de Fontaube">
+        </label>
+        <label for="poi-f-gps">Coordonnées GPS <span class="req">*</span></label>
+        <div class="gps">
+          <div class="gps-row"><input type="text" id="poi-f-gps" name="gps" inputmode="decimal" placeholder="ex. 44.174130, 5.278690" autocomplete="off" required></div>
+          <div class="gps-actions">
+            <button type="button" class="pill" id="poi-f-loc">Ma position</button>
+            <button type="button" class="pill" id="poi-f-pick" aria-expanded="false">Pointer sur la carte</button>
+          </div>
+          <p id="poi-f-gps-note" class="muted small gps-note" role="status"></p>
+          <div id="poi-f-map" class="gps-map" hidden></div>
+        </div>
+        <fieldset class="poi-fs">
+          <legend>Secteurs <span class="req">*</span> <span class="muted small">(au moins un)</span></legend>
+          <div class="ann-qualifs" id="poi-f-secteurs"></div>
+          <p class="muted small" id="poi-f-secteurs-note"></p>
+        </fieldset>
+        <fieldset class="poi-fs">
+          <legend>Caractéristiques</legend>
+          <div class="ann-qualifs" id="poi-f-caracs"></div>
+        </fieldset>
+        <label>Commentaire
+          <textarea name="commentaire" rows="3" maxlength="1000" placeholder="Ex. : code cadenas 1234, clé triangle, barrière fermée l'hiver…"></textarea>
+        </label>
+        <fieldset class="poi-fs">
+          <legend>Photo</legend>
+          <img id="poi-f-preview" class="poi-photo" alt="Photo du point" hidden>
+          <div class="gps-actions">
+            <label class="pill poi-file">Prendre ou choisir une photo<input type="file" id="poi-f-photo" accept="image/*"></label>
+            <button type="button" class="link" id="poi-f-photo-del" hidden>Retirer la photo</button>
+          </div>
+          <p class="muted small" id="poi-f-photo-note"></p>
+        </fieldset>
+        <p class="error" id="poi-f-error" role="alert"></p>
+        <div class="poi-form-btns">
+          <button type="button" id="poi-f-cancel">Annuler</button>
+          <button type="submit" class="primary" id="poi-f-save">Enregistrer</button>
+        </div>
+        <p class="center"><button type="button" class="link poi-del" id="poi-f-delete" hidden>Supprimer ce point</button></p>
+      </form>
     </div>
 
     <!-- Intervention : chefs d'unité, chefs de section, conseillers techniques, administrateurs -->
@@ -502,7 +584,7 @@
         <label>Rubrique concernée
           <select name="rubrique">
             <option>Mon livret</option><option>FMPA</option><option>Validation des livrets</option><option>Intervention</option>
-            <option>Mode intervention / annuaire</option><option>Fiches techniques (FTE)</option><option>Notices</option><option>Mon profil</option><option>Annuaire des spécialistes</option><option>Rubriques chefs de section</option>
+            <option>Mode intervention / annuaire</option><option>Points d'intérêt</option><option>Fiches techniques (FTE)</option><option>Notices</option><option>Mon profil</option><option>Annuaire des spécialistes</option><option>Rubriques chefs de section</option>
             <option>Notifications</option><option>Connexion</option><option selected>Autre</option>
           </select>
         </label>
@@ -558,6 +640,7 @@
 <script src="fmpa-list.js"></script>
 <script src="intervention-list.js"></script>
 <script src="annuaire.js"></script>
+<script src="poi.js"></script>
 <script src="fmpa-valid.js"></script>
 <script src="livret-remplir.js"></script>
 <script src="livret-themes.js"></script>
