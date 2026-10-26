@@ -98,7 +98,8 @@
   // Délai maximal d'une requête : sur un réseau très lent, on bascule sur les données
   // de l'appareil au lieu d'attendre indéfiniment. Les envois (déclarations, décisions)
   // ont un délai plus long : ils portent un identifiant qui évite les doublons au renvoi.
-  const API_TIMEOUT = 20000;
+  // 40 s : le serveur Apps Script met souvent 20 s à répondre lorsque plusieurs requêtes arrivent ensemble
+  const API_TIMEOUT = 40000;
   const API_TIMEOUT_LONG = 60000;
   const LONG_ACTIONS = /(_submit|_update|_decide|^itv_list$|^itv_get$|^itv_form$|^update_me$|^login$|^verify_code$|^request_code$|^livret_pdf$)/;
 
@@ -371,7 +372,7 @@
   let retryTimer = null;
   function setOffline(flag) {
     $('#offline-banner').hidden = !flag;
-    if (flag && !retryTimer) retryTimer = setInterval(retryOnline, 30000);
+    if (flag && !retryTimer) retryTimer = setInterval(retryOnline, 60000);
     if (!flag && retryTimer) { clearInterval(retryTimer); retryTimer = null; }
   }
   async function retryOnline() {
@@ -379,6 +380,9 @@
     const cached = store.getJSON(KEY_CACHE);
     if (!token || !cached || !cached.data || !navigator.onLine) return;
     if ($('#offline-banner').hidden) return;
+    // Un seul appel léger pour tester la connexion ; le profil n'est rechargé qu'ensuite
+    try { await api('session', { token }); }
+    catch (e) { if (AUTH_ERRORS.includes(e.message)) return logout(); return; }
     await refreshProfile(token, cached);
     if ($('#offline-banner').hidden) {                  // de retour en ligne : envoi des saisies en attente
       if (window.SMPM_FMPA) window.SMPM_FMPA.flush();
