@@ -17,7 +17,7 @@
     'interv-new': 'Intervention', 'interv-fiche': 'Intervention', 'interv-mes': 'Intervention', 'interv-toutes': 'Intervention',
     accueil: 'Mode intervention / annuaire', annuaire: 'Annuaire des spécialistes',
     fiches: 'Fiches techniques (FTE)', notices: 'Notices', infos: 'Mon profil',
-    'cs-heures': 'Rubriques chefs de section', 'cs-heures-toutes': 'Rubriques chefs de section', 'cs-tableau': 'Rubriques chefs de section', 'cs-specialistes': 'Rubriques chefs de section',
+    'cs-heures': 'Rubriques chefs de section', 'cs-heures-toutes': 'Rubriques chefs de section', 'cs-tableau': 'Rubriques chefs de section', 'cs-specialistes': 'Mes spécialistes (gestion du personnel)',
   };
   let prev = '';
   let busy = false;
