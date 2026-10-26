@@ -77,7 +77,7 @@
       const d = S.data[scope];
       const maj = d && d.maj ? new Date(d.maj).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '';
       setState(err instanceof app().NetworkError
-        ? (d ? `Hors ligne : liste du ${maj}.` : 'Hors ligne : liste indisponible sur cet appareil.')
+        ? (d ? `${app().netLabel()} : liste du ${maj}.` : app().netLabel() + ' : liste indisponible sur cet appareil.')
         : err.message === 'Action inconnue' ? 'La liste des FMPA n’est pas encore activée sur le serveur.' : err.message, !d);
     }
   }
