@@ -193,6 +193,9 @@
     function imp3Choices(choices) {
       const noms = imp3Names();
       if (!noms.length) return choices;
+      // La personne qui remplit est toujours proposée (et présélectionnée), même sans l'IMP3 :
+      // c'est son rôle (chef de section, CT, administrateur) qui l'autorise à déclarer
+      if (S.moi && S.moi.nom) noms.push(norm(S.moi.nom));
       // seulement pour une liste de noms (pas une question OUI / NON dont le titre parlerait du chef d'unité)
       const connus = new Set(Object.keys(S.personnes || {}).concat(noms));
       if ((choices || []).length && !choices.some(c => connus.has(norm(c.v)))) return choices;
@@ -220,6 +223,12 @@
         S.answers = draft.answers;
         S.sid = draft.sid || newSid();
         S.draftAt = draft.ts;
+        // Chef d'unité laissé vide dans le brouillon : l'utilisateur est présélectionné
+        if (C.imp3List && S.moi && S.moi.nom) items().forEach(it => {
+          if (isImp3Item(it) && !S.answers[it.id] && (it.choices || []).some(c => norm(c.v) === norm(S.moi.nom))) {
+            S.answers[it.id] = it.choices.find(c => norm(c.v) === norm(S.moi.nom)).v;
+          }
+        });
       } else {
         S.answers = {};
         S.sid = newSid();
