@@ -6,7 +6,7 @@
 // - Carte hors ligne : cache dédié (smpm84-carte) rempli par carte-hors-ligne.js à la demande ; jamais rempli ici.
 // - Photos des points d'intérêt : cache dédié (smpm84-poi) rempli par poi.js ; jamais rempli ici.
 // Les données personnelles ne passent jamais par ce cache (elles sont dans localStorage).
-const CACHE = 'smpm84-shell-v85';
+const CACHE = 'smpm84-shell-v86';
 const FICHES_CACHE = 'smpm84-fiches';
 const CARTE_CACHE = 'smpm84-carte';
 const POI_CACHE = 'smpm84-poi';         // photos des points d'intérêt consultées (poi.js)
