@@ -353,6 +353,7 @@
     if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
     if (name === 'annuaire' && window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.open();
     if (name === 'poi' && window.SMPM_POI) window.SMPM_POI.open();
+    if (name === 'livret' && window.SMPM_CSH) window.SMPM_CSH.home(state.year);
     if (name.startsWith('cs-heures')) setCshGroup(true);
     if (name.startsWith('cs-heures') && window.SMPM_CSH) window.SMPM_CSH.open(name);
     if (name === 'livret-remplir' && window.SMPM_THEMES) window.SMPM_THEMES.open();
@@ -710,6 +711,7 @@
     const year = state.year;
     const list = ((L && L.formations) || []).filter(f => f.date.startsWith(String(year)));
     renderCounters(L, list, year);
+    if (window.SMPM_CSH) window.SMPM_CSH.home(year);
     renderValidations(L, year);
     renderFormations(L, list, year);
   }
@@ -1114,6 +1116,7 @@
     $('#verify-submit').textContent = reset ? 'Changer le mot de passe' : 'Activer';
   }
 
+  $('#livret-csh-go').addEventListener('click', () => gotoPage('cs-heures'));
   $('#livret-year').addEventListener('change', e => {
     state.year = Number(e.target.value);
     renderLivretYear();
@@ -1269,6 +1272,7 @@
     canEditAll: () => !!state.data && canEditAllFmpa(state.data.session),
     pieChart: (pct, full) => pieChart(pct, full),
     animateCounters: box => animateCounters(box),
+    csAccess: () => !!state.data && canAllFmpa(state.data.session),
     poiDroits: () => ({ creer: !!state.data && canPoiCreate(state.data.session), modifier: !!state.data && canPoiEdit(state.data.session) }),
   };
 

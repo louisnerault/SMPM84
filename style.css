@@ -1317,3 +1317,7 @@ label.poi-file input { position: absolute; width: 1px; height: 1px; opacity: 0; 
 .csh-detail { font-size: .9rem; color: var(--muted); margin-top: 2px; white-space: pre-wrap; }
 .csh-inline { margin: 8px 0 4px; padding: 10px; border-radius: 8px; background: var(--card); }
 .csh-inline label { margin-top: 8px; }
+
+#livret-csh { margin-top: 10px; }
+#livret-csh .counters { margin-top: 0; }
+.csh-home-link { display: block; margin-left: auto; font-weight: 600; }

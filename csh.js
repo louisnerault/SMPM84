@@ -30,6 +30,7 @@
   let edition = null;                     // clé de la journée en cours de modification
   const ouverts = new Set();
   let busy = false;
+  const homeVu = {};                     // dernier chargement du compteur d'accueil, par année
 
   const toutes = () => mode === 'cs-heures-toutes';
   const cacheKey = () => (toutes() ? 'T' : 'M') + annee;
@@ -38,8 +39,7 @@
   function catch401(e) { if ((app().AUTH_ERRORS || []).includes(e.message)) { app().logout(); return true; } return false; }
 
   // ---------- compteur récapitulatif (même présentation que les compteurs du livret, en violet) ----------
-  function compteur(c) {
-    const box = $('#csh-counter');
+  function compteur(c, box = $('#csh-counter'), an = annee) {
     const done = c.total || 0, q = Number(c.quota) || 0;
     const level = !q ? '' : done >= q ? ' full' : done >= q * 0.8 ? ' warn' : '';
     const pct = q ? Math.round(done / q * 100) : 0;
@@ -50,7 +50,7 @@
 
     const card = document.createElement('article');
     card.className = 'counter csh-counter' + level + (q ? '' : ' no-quota');
-    card.innerHTML = `<div class="counter-head"><strong>Heures chef de section</strong><span>${esc(c.fonctions.join(' / ') || annee)}</span></div>
+    card.innerHTML = `<div class="counter-head"><strong>Heures chef de section</strong><span>${esc(c.fonctions.join(' / ') || an)}</span></div>
       <p class="counter-value"><span class="big" data-to="${done}">0</span><span class="unit">${q ? ` / ${nf.format(q)} h` : ' h'}</span></p>`;
     if (q) {
       const fig = document.createElement('div');
@@ -152,6 +152,7 @@
       if (!toutes()) r.chefs = (r.chefs || []).filter(c => r.moi && c.nom === r.moi);
       data = r; annee = r.annee;
       cache[cacheKey()] = r; ls.set(KEY_CACHE, cache);
+      homeVu[annee] = 0;
       state('');
       render();
     } catch (e) {
@@ -276,6 +277,30 @@
     });
   }
 
+  // ---------- écran d'accueil (Mon livret › Mes heures) : compteur personnel du chef de section ----------
+  function homeRender(r, an) {
+    const sec = $('#livret-csh');
+    const moi = r && r.moi ? (r.chefs || []).find(c => c.nom === r.moi) : null;
+    sec.hidden = !moi;
+    if (moi) compteur(moi, $('#livret-csh-counter'), an);
+  }
+  async function home(an) {
+    const sec = $('#livret-csh');
+    if (!sec) return;
+    if (!app() || !app().csAccess || !app().csAccess()) { sec.hidden = true; return; }
+    an = Number(an) || new Date().getFullYear();
+    const cache = ls.get(KEY_CACHE, {});
+    homeRender(cache['M' + an], an);
+    if (!app().token() || !navigator.onLine || Date.now() - (homeVu[an] || 0) < 60000) return;
+    homeVu[an] = Date.now();
+    try {
+      const r = await app().api('cs_heures_list', { token: app().token(), annee: an, tous: false });
+      r.chefs = (r.chefs || []).filter(c => r.moi && c.nom === r.moi);
+      const c2 = ls.get(KEY_CACHE, {}); c2['M' + an] = r; ls.set(KEY_CACHE, c2);
+      homeRender(r, an);
+    } catch (e) { homeVu[an] = 0; }
+  }
+
   function open(page) {
     const neuf = page && page !== mode;
     mode = page === 'cs-heures-toutes' ? 'cs-heures-toutes' : 'cs-heures';
@@ -319,5 +344,5 @@
   window.addEventListener('online', () => setTimeout(flush, 3000));
   setTimeout(flush, 5000);
 
-  window.SMPM_CSH = { open, flush };
+  window.SMPM_CSH = { open, flush, home };
 })();
