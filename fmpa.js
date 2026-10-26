@@ -170,8 +170,33 @@
       // Personnel inactif retiré des listes de choix (une réponse déjà enregistrée reste affichée)
       (S.def.sections || []).forEach(sec => sec.items.forEach(it => {
         if (it.choices) it.choices = it.choices.filter(c => !isInactiveName(c.v));
+        if (C.imp3List && isImp3Item(it)) it.choices = imp3Choices(it.choices);
       }));
       return changed;
+    }
+
+    // Liste « IMP3 responsable » : personnel actif titulaire de l'IMP3, d'après la liste du personnel
+    // gardée sur l'appareil (avec le formulaire, à défaut l'annuaire). Sans cette information, on garde
+    // les choix du Google Form. Le serveur ajoute au formulaire un IMP3 qui n'y figure pas encore.
+    const isImp3Item = it => (it.type === 'list' || it.type === 'radio') && /imp\s*3/i.test(it.title);
+    function imp3Names() {
+      const pers = S.personnes || {};
+      const noms = Object.keys(pers);
+      if (noms.some(n => typeof pers[n].imp3 === 'boolean')) {
+        return noms.filter(n => pers[n].imp3 && pers[n].actif !== false);
+      }
+      const ann = store.getJSON('smpm_annuaire');
+      const list = (ann && ann.personnes) || [];
+      return list.filter(p => (p.qualifs || []).some(q => norm(q).replace(/\s/g, '') === 'IMP3') && p.actif !== false)
+        .map(p => norm(p.nom)).filter(Boolean);
+    }
+    function imp3Choices(choices) {
+      const noms = imp3Names();
+      if (!noms.length) return choices;
+      const go = {};
+      (choices || []).forEach(c => { go[norm(c.v)] = c.go; });
+      return Array.from(new Set(noms)).sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }))
+        .map(n => ({ v: n, go: go[n] === undefined ? null : go[n] }));
     }
 
     function apply(res) {
@@ -1539,7 +1564,7 @@
   }
 
   window.SMPM_FMPA = createDeclarer({
-    p: 'fmpa', page: 'fmpa', navDot: '#nav-fmpa .pending-dot', risk: true,
+    p: 'fmpa', page: 'fmpa', navDot: '#nav-fmpa .pending-dot', risk: true, imp3List: true,
     keys: { form: 'smpm_fmpa_form', draft: 'smpm_fmpa_draft', outbox: 'smpm_fmpa_outbox' },
     api: { form: 'fmpa_form', submit: 'fmpa_submit', get: 'fmpa_get', update: 'fmpa_update' },
     rec: {
