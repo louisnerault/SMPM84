@@ -785,12 +785,56 @@
     return svg;
   }
 
+  // Position RH d'une FMPA : repos, temps de travail (TT) ou non renseignée
+  function positionRH(p) {
+    const s = String(p || '').toLowerCase();
+    if (/repos/.test(s)) return 'repos';
+    if (/travail|\btt\b/.test(s)) return 'tt';
+    return 'autre';
+  }
+
+  /** Barre Repos / TT sous un compteur, avec légende (heures et %). */
+  function repartitionRH(r, total) {
+    r = r || { repos: 0, tt: 0, autre: 0 };
+    const pct = h => Math.round(h / total * 100);
+    const parts = [['repos', 'Repos'], ['tt', 'TT'], ['autre', 'Non renseigné']].filter(([k]) => r[k] > 0);
+    const wrap = document.createElement('div');
+    wrap.className = 'rh';
+    wrap.setAttribute('role', 'img');
+    wrap.setAttribute('aria-label', 'Répartition : ' + parts.map(([k, l]) => `${l} ${fmtH(r[k])} (${pct(r[k])} %)`).join(', '));
+    const bar = document.createElement('div');
+    bar.className = 'rh-bar';
+    parts.forEach(([k]) => {
+      const s = document.createElement('span');
+      s.className = 'rh-' + k;
+      s.style.width = (r[k] / total * 100) + '%';
+      bar.append(s);
+    });
+    const leg = document.createElement('p');
+    leg.className = 'rh-legend';
+    parts.forEach(([k, l]) => {
+      const i = document.createElement('span');
+      const dot = document.createElement('i');
+      dot.className = 'rh-' + k;
+      i.append(dot, document.createTextNode(`${l} ${fmtH(r[k])} · ${pct(r[k])} %`));
+      leg.append(i);
+    });
+    wrap.append(bar, leg);
+    return wrap;
+  }
+
   function renderCounters(L, list, year) {
     const box = $('#livret-counters');
     if (!L) { box.replaceChildren(); return; }
     const quotas = L.quotas || {};
     const hours = {};
-    list.forEach(f => { const c = catOf(f.secteur); hours[c] = (hours[c] || 0) + (Number(f.heures) || 0); });
+    const rh = {};                       // heures par catégorie et position RH : { SMPM: { repos, tt, autre } }
+    list.forEach(f => {
+      const c = catOf(f.secteur), h = Number(f.heures) || 0;
+      hours[c] = (hours[c] || 0) + h;
+      const r = rh[c] || (rh[c] = { repos: 0, tt: 0, autre: 0 });
+      r[positionRH(f.position)] += h;
+    });
 
     const cards = CATS.filter(c => {
       if (c.key === 'SMPM') return true;
@@ -848,6 +892,7 @@
         note.textContent = 'Hors quota';
         card.append(note);
       }
+      if (done > 0) card.append(repartitionRH(rh[c.key], done));
       return card;
     });
     box.replaceChildren(...cards);
@@ -914,7 +959,16 @@
       tag.className = 'tag tag-' + cat.toLowerCase();
       tag.textContent = cat === 'SMPM' && f.secteur ? `SMPM ${f.secteur.charAt(0) + f.secteur.slice(1).toLowerCase()}` : (f.secteur || '—');
       meta.append(tag);
-      const extra = [f.position, f.cu ? `CU ${f.cu}` : ''].filter(Boolean).join(' · ');
+      // Position RH : étiquette Repos / TT
+      const pos = positionRH(f.position);
+      if (pos !== 'autre') {
+        const t = document.createElement('span');
+        t.className = 'tag tag-rh tag-rh-' + pos;
+        t.textContent = pos === 'repos' ? 'Repos' : 'TT';
+        t.title = pos === 'repos' ? 'Sur repos' : 'Sur temps de travail';
+        meta.append(document.createTextNode(' '), t);
+      }
+      const extra = [pos === 'autre' ? f.position : '', f.cu ? `CU ${f.cu}` : ''].filter(Boolean).join(' · ');
       if (extra) meta.append(document.createTextNode(' ' + extra));
       body.append(lieu, meta);
 

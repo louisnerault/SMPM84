@@ -1217,3 +1217,20 @@ button.ann-btn { width: 100%; padding: 0; cursor: pointer; font: inherit; }
 .ann-dialog-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
 .ann-dialog-btns button { margin: 0; width: auto; min-height: 44px; padding: 0 18px; border-radius: 10px; }
 #ann-push-cancel { background: none; border: 1px solid var(--line); color: var(--ink); }
+
+/* ---------- Mes heures : répartition Repos / temps de travail ---------- */
+:root { --rh-repos: #2e8b57; --rh-tt: #e08a00; --rh-autre: #9aa6b6; }
+@media (prefers-color-scheme: dark) { :root { --rh-repos: #4cc27a; --rh-tt: #f5a524; --rh-autre: #5f7390; } }
+.rh { margin-top: 8px; }
+.rh-bar { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: var(--line); }
+.rh-bar span { display: block; height: 100%; }
+.rh-legend { display: flex; flex-wrap: wrap; gap: 2px 10px; margin: 5px 0 0; font-size: .72rem; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+.rh-legend span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.rh-legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.rh-repos { background: var(--rh-repos); }
+.rh-tt { background: var(--rh-tt); }
+.rh-autre { background: var(--rh-autre); }
+.tag-rh { color: #fff; }
+.tag.tag-rh-repos { background: var(--rh-repos); color: #fff; }
+.tag.tag-rh-tt { background: var(--rh-tt); color: #fff; }
+@media (prefers-color-scheme: dark) { .tag.tag-rh-repos, .tag.tag-rh-tt { color: #0b1726; } }
