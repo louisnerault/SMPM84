@@ -853,6 +853,7 @@ body:not(.mode-intervention) .only-intervention { display: none; }
 }
 .burger .pending-dot { position: absolute; bottom: 4px; right: 4px; box-shadow: 0 0 0 2px var(--primary); }
 .nav-group-btn .pending-dot { margin-left: 8px; }
+.drawer-nav > button > .pending-dot { margin-left: 8px; }
 .outbox {
   margin: 10px 0 4px; padding: 10px 12px; border-radius: 10px;
   background: #fff3cd; color: #5c4400; font-size: .85rem;
