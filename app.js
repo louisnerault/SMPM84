@@ -58,12 +58,15 @@
     return (data.qualifications || []).some(q => String(q.code).replace(/\s/g, '') === 'IMP3' && q.acquis);
   };
   const FMPA_LISTS = ['fmpa-mes', 'fmpa-toutes'];
+  // Rubriques réservées aux chefs de section (et CTD, administrateurs) — en construction
+  const CS_PAGES = ['cs-heures', 'cs-tableau', 'cs-specialistes'];
   function allowedPage(name, session) {
     if (name === 'fmpa') return canDeclare(session) && canEncadrer(state.data);
     if (name === 'fmpa-fiche' || name === 'fmpa-mes' || name === 'fmpa-valid') return canDeclare(session);
     if (name === 'fmpa-toutes') return canAllFmpa(session);
     if (name === 'interv-toutes') return canAllInterv(session);
     if (name.startsWith('interv-')) return canIntervene(session);
+    if (CS_PAGES.includes(name)) return canAllFmpa(session);
     return true;
   }
 
@@ -323,6 +326,7 @@
     $('#tab-profil').hidden = name !== 'infos';
     $('#tab-fiches').hidden = name !== 'fiches';
     $('#tab-notices').hidden = name !== 'notices';
+    CS_PAGES.forEach(p => { $('#tab-' + p).hidden = name !== p; });
     $('#tab-bug').hidden = name !== 'bug';
     $('#tab-accueil').hidden = name !== 'accueil';
     $('#tab-annuaire').hidden = name !== 'annuaire';
@@ -1011,6 +1015,8 @@
     const { me, session, qualifications, fonction } = state.data;
     setIdentity(`${me.prenom} ${me.nom}`, roleLabel(session, me, qualifications, fonction));
     $('#info-secteur').textContent = me.secteur || '—';
+    $('#nav-sec-cu').hidden = !(canDeclare(session) || canIntervene(session));
+    $('#nav-sec-cs').hidden = !canAllFmpa(session);
     $('#nav-fmpa').hidden = !canDeclare(session);
     $$('[data-page="fmpa"]').forEach(b => { b.hidden = !canEncadrer(state.data); });
     $('#nav-fmpa-all').hidden = !canAllFmpa(session);

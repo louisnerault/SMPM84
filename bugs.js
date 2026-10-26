@@ -15,8 +15,9 @@
     livret: 'Mon livret', 'livret-remplir': 'Mon livret', 'livret-themes': 'Mon livret',
     fmpa: 'FMPA', 'fmpa-fiche': 'FMPA', 'fmpa-mes': 'FMPA', 'fmpa-toutes': 'FMPA', 'fmpa-valid': 'Validation des livrets',
     'interv-new': 'Intervention', 'interv-fiche': 'Intervention', 'interv-mes': 'Intervention', 'interv-toutes': 'Intervention',
-    accueil: 'Mode intervention / annuaire', annuaire: 'Mode intervention / annuaire',
+    accueil: 'Mode intervention / annuaire', annuaire: 'Annuaire des spécialistes',
     fiches: 'Fiches techniques (FTE)', notices: 'Notices', infos: 'Mon profil',
+    'cs-heures': 'Rubriques chefs de section', 'cs-tableau': 'Rubriques chefs de section', 'cs-specialistes': 'Rubriques chefs de section',
   };
   let prev = '';
   let busy = false;
