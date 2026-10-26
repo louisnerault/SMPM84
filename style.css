@@ -147,7 +147,7 @@ button.brand > * { max-width: 100%; }
   background: transparent; border: 0; color: #fff; font-size: 1.8rem; line-height: 1;
   width: 40px; height: 40px; border-radius: 8px; cursor: pointer;
 }
-.drawer-nav { display: grid; padding: 8px; gap: 2px; }
+.drawer-nav { display: grid; align-content: start; padding: 8px; gap: 2px; flex: 1; min-height: 0; overflow-y: auto; }
 .drawer-nav button {
   display: flex; align-items: center; gap: 12px;
   text-align: left; padding: 12px 14px; font: inherit; font-weight: 600;
@@ -159,7 +159,8 @@ button.brand > * { max-width: 100%; }
 @media (prefers-color-scheme: dark) {
   .drawer-nav button[aria-current="page"] { color: #cfe2fb; }
 }
-.drawer-foot { margin-top: auto; padding: 12px 16px calc(16px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+.drawer-foot { margin-top: auto; padding: 8px 16px calc(16px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+.drawer-foot .drawer-nav-foot { flex: none; overflow: visible; padding: 0 0 8px; margin: 0 -8px; }
 .logout {
   width: 100%; padding: 12px; font: inherit; font-weight: 600;
   background: transparent; color: var(--danger); border: 1px solid var(--line); border-radius: 8px; cursor: pointer;

@@ -1,4 +1,4 @@
-// Notifications push (Firebase Cloud Messaging), encart « Notifications » de « Mes informations ».
+// Notifications push (Firebase Cloud Messaging), encart « Notifications » de « Mon profil ».
 // - Chaque membre peut activer les notifications sur son téléphone : l'appareil reçoit un jeton FCM,
 //   enregistré côté serveur (action push_register) avec son nom, sa fonction et son secteur.
 // - Le serveur (backend/Push.gs) envoie ensuite les messages : nouvelle demande de validation au chef

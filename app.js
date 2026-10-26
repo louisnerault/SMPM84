@@ -18,7 +18,7 @@
   };
   const SECTIONS = { NORD: 'Nord', SUD: 'Sud', CENTRE: 'Centre', NEIGE: 'Neige', ISS: 'ISS', SSSM: 'SSSM' };
 
-  // Liste complète des grades proposés dans « Mes informations » (ordre hiérarchique).
+  // Liste complète des grades proposés dans « Mon profil » (ordre hiérarchique).
   // « Exp » est gardé tel que dans la liste du personnel (sans intitulé).
   const GRADES_ALL = [
     ['Sap', 'Sapeur'], ['Cpl', 'Caporal'], ['Cch', 'Caporal-chef'],
@@ -232,9 +232,9 @@
     $('#btn-logout').hidden = name !== 'app';
     $('#btn-menu').hidden = name !== 'app';
     $('#btn-sync').hidden = name !== 'app';
-    // Le nom ne mène à « Mes informations » qu'une fois connecté
+    // Le nom ne mène à « Mon profil » qu'une fois connecté
     $('#btn-identity').disabled = name !== 'app';
-    $('#btn-identity').title = name === 'app' ? 'Mes informations' : '';
+    $('#btn-identity').title = name === 'app' ? 'Mon profil' : '';
     $('#mode-bar').hidden = name !== 'app';
     if (name !== 'app') {
       closeMenu();
@@ -322,6 +322,7 @@
     $('#tab-livret-themes').hidden = name !== 'livret-themes';
     $('#tab-profil').hidden = name !== 'infos';
     $('#tab-fiches').hidden = name !== 'fiches';
+    $('#tab-notices').hidden = name !== 'notices';
     $('#tab-bug').hidden = name !== 'bug';
     $('#tab-accueil').hidden = name !== 'accueil';
     $('#tab-annuaire').hidden = name !== 'annuaire';
@@ -333,6 +334,7 @@
     if (name.startsWith('fmpa')) setFmpaGroup(true);
     if (name.startsWith('interv-')) setIntervGroup(true);
     if (name.startsWith('livret')) setLivretGroup(true);
+    if (name === 'fiches' || name === 'notices') setDocGroup(true);
     window.scrollTo(0, 0);
     if (name === 'bug' && window.SMPM_BUGS) window.SMPM_BUGS.open(state.prevPage);
     if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
@@ -364,6 +366,12 @@
   function setLivretGroup(open) {
     $('#nav-livret .nav-group-btn').setAttribute('aria-expanded', String(open));
     $('#nav-livret-sub').hidden = !open;
+  }
+
+  // Sous-menu Documentation (repliable) : FTE et Notices
+  function setDocGroup(open) {
+    $('#nav-doc .nav-group-btn').setAttribute('aria-expanded', String(open));
+    $('#nav-doc-sub').hidden = !open;
   }
 
   // Bandeau « hors ligne » : tant qu'il est affiché, on retente la connexion en arrière-plan.
@@ -543,7 +551,7 @@
       setOffline(false);
       setServerBusy(false);
       const form = $('#form-profil');
-      // ne pas écraser une saisie en cours dans « Mes informations »
+      // ne pas écraser une saisie en cours dans « Mon profil »
       if (!(form && form.contains(document.activeElement))) renderApp();
       if (window.SMPM_CARTE) window.SMPM_CARTE.setAllowed(canDeclare(data.session));
       if (window.SMPM_PUSH) window.SMPM_PUSH.setSession(data.session);
@@ -1108,6 +1116,9 @@
   });
   $('#nav-livret .nav-group-btn').addEventListener('click', e => {
     setLivretGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
+  });
+  $('#nav-doc .nav-group-btn').addEventListener('click', e => {
+    setDocGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
   });
 
   $('#form-login').addEventListener('submit', async e => {

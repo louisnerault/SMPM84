@@ -1,4 +1,4 @@
-// Signaler un bug (menu, tous les membres). Envoi au serveur (backend/Bugs.gs, action bug_report) :
+// Signaler un problème (menu, tous les membres). Envoi au serveur (backend/Bugs.gs, action bug_report) :
 // ligne dans le classeur de suivi, mail et notification push à l'administrateur.
 // Sans réseau : le signalement est gardé sur l'appareil et envoyé au retour de la connexion.
 (() => {
@@ -16,7 +16,7 @@
     fmpa: 'FMPA', 'fmpa-fiche': 'FMPA', 'fmpa-mes': 'FMPA', 'fmpa-toutes': 'FMPA', 'fmpa-valid': 'Validation des livrets',
     'interv-new': 'Intervention', 'interv-fiche': 'Intervention', 'interv-mes': 'Intervention', 'interv-toutes': 'Intervention',
     accueil: 'Mode intervention / annuaire', annuaire: 'Mode intervention / annuaire',
-    fiches: 'Fiches techniques', infos: 'Mes informations',
+    fiches: 'Fiches techniques (FTE)', notices: 'Notices', infos: 'Mon profil',
   };
   let prev = '';
   let busy = false;
