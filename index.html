@@ -13,6 +13,8 @@
 <link rel="icon" href="assets/icon-192.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="stylesheet" href="style.css">
+<!-- Thème choisi dans « Mon profil » : appliqué avant l'affichage (pas de flash clair) -->
+<script>(function(){var t;try{t=localStorage.getItem('smpm_theme')}catch(e){}if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)})();</script>
 </head>
 <body>
 <div id="progress" class="progress" role="progressbar" aria-label="Chargement des données" aria-hidden="true"><div class="progress-fill"></div></div>
@@ -41,7 +43,12 @@
 
 <!-- Bannière : mont Ventoux, équipe SMPM, hélicoptère et civière sur tyrolienne -->
 <div class="landscape" aria-hidden="true">
-  <img src="assets/banniere.jpg" srcset="assets/banniere-700.jpg 700w, assets/banniere-1000.jpg 1000w, assets/banniere-1400.jpg 1400w, assets/banniere.jpg 2000w" sizes="100vw" alt="" decoding="async" fetchpriority="high">
+  <picture>
+    <!-- thème sombre : même scène de nuit (voie lactée, feux de l'hélicoptère, frontales, balise du Ventoux) -->
+    <source id="banner-night" media="(prefers-color-scheme: dark)" srcset="assets/banniere-nuit-700.jpg 700w, assets/banniere-nuit-1000.jpg 1000w, assets/banniere-nuit-1400.jpg 1400w, assets/banniere-nuit.jpg 2000w" sizes="100vw">
+    <img src="assets/banniere.jpg" srcset="assets/banniere-700.jpg 700w, assets/banniere-1000.jpg 1000w, assets/banniere-1400.jpg 1400w, assets/banniere.jpg 2000w" sizes="100vw" alt="" decoding="async" fetchpriority="high">
+  </picture>
+  <script>(function(){var t=document.documentElement.getAttribute('data-theme'),s=document.getElementById('banner-night');if(t==='dark')s.media='all';else if(t==='light')s.media='not all'})();</script>
   <span id="app-version" class="app-version" hidden></span>
 </div>
 
@@ -572,6 +579,15 @@
             <button type="submit" class="primary" id="btn-push-send">Envoyer</button>
           </form>
         </div>
+      </section>
+      <section class="theme-card" aria-labelledby="theme-title">
+        <h2 class="section-title" id="theme-title">Affichage</h2>
+        <div class="seg" id="theme-seg" role="group" aria-label="Thème de l'application">
+          <button type="button" data-theme-choice="auto" aria-pressed="true">Automatique</button>
+          <button type="button" data-theme-choice="light" aria-pressed="false">Clair</button>
+          <button type="button" data-theme-choice="dark" aria-pressed="false">Sombre</button>
+        </div>
+        <p class="muted small">« Automatique » suit le réglage du téléphone. Choix enregistré sur cet appareil.</p>
       </section>
       <h2 class="section-title">Qualifications</h2>
       <ul id="list-qualifs" class="qualifs"></ul>
