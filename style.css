@@ -520,6 +520,7 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
   font-size: .72rem; font-weight: 700; background: var(--line); color: var(--muted);
 }
 .sub-head { margin-bottom: 6px; }
+body:not(.mode-intervention) .only-intervention { display: none; }
 
 /* ---------- Intervention : coordonnées GPS pointées sur la carte ---------- */
 .gps { display: grid; gap: 8px; }
