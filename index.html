@@ -606,9 +606,33 @@
         <button type="submit" class="primary" id="btn-bug">Envoyer le signalement</button>
       </form>
     </div>
+    <!-- Heures chefs de section (csh.js, backend/Heures.gs) -->
     <div id="tab-cs-heures" hidden>
-      <h1>Heures chefs de sections</h1>
-      <p class="muted">Rubrique en construction : elle sera bientôt disponible.</p>
+      <div class="poi-head">
+        <h1>Heures chefs de sections</h1>
+        <select id="csh-annee" aria-label="Année"></select>
+      </div>
+      <p id="csh-state" class="muted small" role="status"></p>
+      <div id="csh-outbox"></div>
+      <section id="csh-moi" hidden>
+        <div class="csh-card" id="csh-moi-card"></div>
+        <form id="csh-form" class="csh-form" novalidate>
+          <h2 class="section-title">Déclarer une journée</h2>
+          <label for="csh-date">Journée <span class="req">*</span></label>
+          <input type="date" id="csh-date" name="date" required>
+          <label for="csh-heures">Heures effectuées <span class="req">*</span></label>
+          <input type="number" id="csh-heures" name="heures" min="0.5" max="24" step="0.5" value="7" inputmode="decimal" required>
+          <label for="csh-statut">Je déclare la journée <span class="req">*</span></label>
+          <select id="csh-statut" name="statut" required></select>
+          <label for="csh-detail">Détail de ma journée <span class="req">*</span></label>
+          <textarea id="csh-detail" name="detail" rows="3" maxlength="1000" required placeholder="Réunion, reconnaissance, préparation…"></textarea>
+          <p class="error" role="alert"></p>
+          <p class="ok" role="status"></p>
+          <button type="submit" class="primary" id="csh-send">Déclarer</button>
+        </form>
+      </section>
+      <h2 class="section-title">Tous les chefs de section</h2>
+      <ul id="csh-list" class="csh-list"></ul>
     </div>
     <div id="tab-cs-tableau" hidden>
       <h1>Tableau de bord</h1>
@@ -648,6 +672,7 @@
 <script src="carte-hors-ligne.js"></script>
 <script src="push.js"></script>
 <script src="bugs.js"></script>
+<script src="csh.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

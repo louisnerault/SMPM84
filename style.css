@@ -1282,3 +1282,23 @@ label.poi-file input { position: absolute; width: 1px; height: 1px; opacity: 0; 
 .poi-form-btns > button:first-child { background: var(--card); border: 1px solid var(--line); color: var(--ink); }
 .poi-del { color: var(--danger); }
 .sr-copy { position: fixed; left: -9999px; top: 0; }
+
+/* ---------- Heures chefs de section (csh.js) ---------- */
+#csh-annee { width: auto; margin: 0; }
+.csh-card { background: var(--primary-soft); border-radius: var(--radius); padding: 12px 14px; margin: 10px 0; }
+.csh-card p { margin: 0 0 6px; }
+.csh-form textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); }
+.csh-form .req { color: var(--danger); }
+.csh-tot { margin: 6px 0 4px; }
+.bar.csh-over span { background: var(--danger); }
+.csh-list, .csh-lines { list-style: none; margin: 0; padding: 0; }
+.csh-chef { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin: 0 0 10px; }
+.csh-chef.csh-me { border-color: var(--primary); }
+.csh-chef-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.csh-lines { margin-top: 8px; border-top: 1px solid var(--line); }
+.csh-line { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.csh-line:last-child { border-bottom: 0; }
+.csh-line-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.csh-badge { font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--primary-soft); color: var(--primary-dark); }
+.csh-del { margin-left: auto; padding: 4px; font-size: .85rem; color: var(--danger); }
+.csh-detail { font-size: .9rem; color: var(--muted); margin-top: 2px; white-space: pre-wrap; }

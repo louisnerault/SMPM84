@@ -62,7 +62,7 @@
     return (data.qualifications || []).some(q => String(q.code).replace(/\s/g, '') === 'IMP3' && q.acquis);
   };
   const FMPA_LISTS = ['fmpa-mes', 'fmpa-toutes'];
-  // Rubriques réservées aux chefs de section (et CTD, administrateurs) — en construction
+  // Rubriques réservées aux chefs de section (et CTD, administrateurs) — à garder cohérent avec backend/Heures.gs
   const CS_PAGES = ['cs-heures', 'cs-tableau', 'cs-specialistes'];
   function allowedPage(name, session) {
     if (name === 'fmpa') return canDeclare(session) && canEncadrer(state.data);
@@ -349,6 +349,7 @@
     if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
     if (name === 'annuaire' && window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.open();
     if (name === 'poi' && window.SMPM_POI) window.SMPM_POI.open();
+    if (name === 'cs-heures' && window.SMPM_CSH) window.SMPM_CSH.open();
     if (name === 'livret-remplir' && window.SMPM_THEMES) window.SMPM_THEMES.open();
     if (name === 'livret-themes' && window.SMPM_THEMES_VUS) window.SMPM_THEMES_VUS.open();
     if (name === 'fmpa' && window.SMPM_FMPA) window.SMPM_FMPA.open();
