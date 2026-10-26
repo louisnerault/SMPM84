@@ -1439,7 +1439,7 @@
         S.sending = true;
         btn.disabled = true;
         btn.textContent = 'Envoi en cours…';
-        const hide = savingOverlay('Enregistrement de l’' + C.txt.short.toLowerCase() + '…');
+        const hide = savingOverlay(C.txt.saving || ('Enregistrement de l’' + C.txt.short.toLowerCase() + '…'));
         try { await flush(); } finally {
           await hide();
           S.sending = false;
@@ -1449,6 +1449,8 @@
       }
       const left = outbox().find(e => e.sid === entry.sid);
       const status = !left ? 'sent' : left.status === 'error' ? 'error' : 'queued';
+      // Envoi immédiat : le message de retour suffit, pas de « déclaration en attente envoyée »
+      if (status === 'sent' && S.lastSent && S.lastSent.n === 1) { S.lastSent = null; renderPending(); }
       defaults();
       render();
       C.returnHome(status, left);
@@ -1548,8 +1550,21 @@
     },
     txt: {
       title: 'Nouvelle FMPA', short: 'FMPA', confirm: 'Envoyer la déclaration de FMPA ?',
+      saving: 'Enregistrement de la FMPA…',
       notActive: 'La déclaration de FMPA n’est pas encore activée sur le serveur.',
       sentNote: 'Elle est enregistrée dans le sheet FMPA, comme une saisie du formulaire.',
+    },
+    // Après l'envoi : retour automatique sur « Mes FMPA », avec un message selon le résultat
+    returnHome: (status, entry) => {
+      const a = window.SMPM_APP;
+      if (status === 'sent') {
+        a.flash({ kind: 'ok', text: 'FMPA envoyée. Vous pouvez la modifier pendant 24 h depuis cette liste.' });
+      } else if (status === 'queued') {
+        a.flash({ kind: 'info', text: 'FMPA enregistrée sur l’appareil : elle sera envoyée automatiquement dès le retour du réseau.' });
+      } else {
+        a.flash({ kind: 'error', text: `FMPA non envoyée : ${String((entry && entry.error) || 'refusée par le serveur').replace(/[.!]?\s*$/, '.')} Vous pouvez la reprendre ou la renvoyer depuis le bandeau ci-dessous.` });
+      }
+      a.goto('fmpa-mes');
     },
     onSent: () => { if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.invalidate(); },
   });
