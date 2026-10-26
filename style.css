@@ -1321,3 +1321,18 @@ label.poi-file input { position: absolute; width: 1px; height: 1px; opacity: 0; 
 #livret-csh { margin-top: 10px; }
 #livret-csh .counters { margin-top: 0; }
 .csh-home-link { display: block; margin-left: auto; font-weight: 600; }
+
+/* ---------- Gestion du personnel (Mes spécialistes, personnel.js) ---------- */
+#pers-state:empty, #pers-intro:empty { display: none; }
+#pers-state.error { color: var(--danger); }
+#pers-count { margin-left: auto; font-weight: 600; }
+.pers-inactif { opacity: .65; }
+.pers-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
+.pers-actions .link { min-height: 44px; padding: 0 4px; font-weight: 600; }
+.pers-dialog { width: min(94vw, 480px); max-height: 90vh; overflow-y: auto; }
+.pers-qualifs { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px 10px; margin: 12px 0 0; }
+.pers-qualifs legend { font-weight: 600; padding: 0 4px; }
+.pers-q { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; }
+.pers-q .ann-check { margin: 0; font-weight: 600; }
+.pers-q input[type="number"] { width: 6.5em; margin: 0; }
+.pers-q input[type="number"]:disabled { opacity: .45; }

@@ -356,6 +356,7 @@
     if (name === 'livret' && window.SMPM_CSH) window.SMPM_CSH.home(state.year);
     if (name.startsWith('cs-heures')) setCshGroup(true);
     if (name.startsWith('cs-heures') && window.SMPM_CSH) window.SMPM_CSH.open(name);
+    if (name === 'cs-specialistes' && window.SMPM_PERSONNEL) window.SMPM_PERSONNEL.open();
     if (name === 'livret-remplir' && window.SMPM_THEMES) window.SMPM_THEMES.open();
     if (name === 'livret-themes' && window.SMPM_THEMES_VUS) window.SMPM_THEMES_VUS.open();
     if (name === 'fmpa' && window.SMPM_FMPA) window.SMPM_FMPA.open();
@@ -497,6 +498,7 @@
     if (window.SMPM_ITV) window.SMPM_ITV.reset(explicit === true);
     if (window.SMPM_ITV_LIST) window.SMPM_ITV_LIST.reset();
     if (window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.reset();
+    if (window.SMPM_PERSONNEL) window.SMPM_PERSONNEL.reset();
     if (window.SMPM_POI) window.SMPM_POI.reset(explicit === true);
     if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.reset();
     if (window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.reset();
@@ -1273,6 +1275,9 @@
     pieChart: (pct, full) => pieChart(pct, full),
     animateCounters: box => animateCounters(box),
     csAccess: () => !!state.data && canAllFmpa(state.data.session),
+    // Gestion du personnel (personnel.js) : grades proposés et centres d'affectation connus
+    gradeChoices: current => gradeChoices(state.options && state.options.grades, current),
+    affectations: () => (state.options && state.options.affectations) || [],
     poiDroits: () => ({ creer: !!state.data && canPoiCreate(state.data.session), modifier: !!state.data && canPoiEdit(state.data.session) }),
   };
 

@@ -653,9 +653,62 @@
       <h1>Tableau de bord</h1>
       <p class="muted">Rubrique en construction : elle sera bientôt disponible.</p>
     </div>
+    <!-- Gestion du personnel (personnel.js, backend/Personnel.gs) -->
     <div id="tab-cs-specialistes" hidden>
       <h1>Mes spécialistes</h1>
-      <p class="muted">Rubrique en construction : elle sera bientôt disponible.</p>
+      <p class="muted small" id="pers-intro"></p>
+      <p id="pers-state" class="muted small" role="status"></p>
+      <div class="ann-tools">
+        <input type="search" id="pers-search" placeholder="Nom, prénom, centre, grade…" autocomplete="off" aria-label="Rechercher">
+        <div class="ann-filters">
+          <select id="pers-secteur" aria-label="Secteur"><option value="">Tous les secteurs</option></select>
+        </div>
+        <div class="ann-foot">
+          <label class="ann-check" id="pers-inactifs-wrap" hidden><input type="checkbox" id="pers-inactifs"> Afficher les inactifs</label>
+          <span id="pers-count"></span>
+        </div>
+      </div>
+      <p id="pers-empty" class="muted center" hidden></p>
+      <ul id="pers-list" class="ann-list"></ul>
+      <dialog id="pers-dialog" class="ann-dialog pers-dialog" aria-labelledby="pers-dialog-title">
+        <form id="pers-form" method="dialog">
+          <h2 id="pers-dialog-title"></h2>
+          <label>Grade
+            <select name="grade" required></select>
+          </label>
+          <label>Centre d'affectation
+            <input type="text" name="affectation" list="pers-affectations" maxlength="40" required>
+            <datalist id="pers-affectations"></datalist>
+          </label>
+          <label>Adresse e-mail
+            <input type="email" name="email" required>
+          </label>
+          <label>Téléphone portable
+            <input type="tel" name="telephone" placeholder="06 12 34 56 78">
+          </label>
+          <p class="muted small" id="pers-tel-note" hidden>Téléphone : à saisir dans la liste du personnel tant que le compte n'est pas activé.</p>
+          <label id="pers-secteur-field" hidden>Secteur SMPM
+            <select name="secteur"><option value="NORD">Nord</option><option value="CENTRE">Centre</option><option value="SUD">Sud</option></select>
+          </label>
+          <fieldset class="pers-qualifs">
+            <legend>Qualifications</legend>
+            <div id="pers-qualifs"></div>
+          </fieldset>
+          <div class="switch-row" id="pers-actif-field" hidden>
+            <label class="switch">
+              <input type="checkbox" name="actif" role="switch">
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-text">Personnel actif</span>
+            </label>
+            <p class="muted small">Inactif : retiré des listes de l'application et déconnecté à la prochaine ouverture.</p>
+          </div>
+          <p class="error small" id="pers-error" role="alert"></p>
+          <div class="ann-dialog-btns">
+            <button type="button" id="pers-cancel">Annuler</button>
+            <button type="submit" class="primary" id="pers-save">Enregistrer</button>
+          </div>
+        </form>
+      </dialog>
     </div>
     <div id="tab-notices" hidden>
       <h1>Notices</h1>
@@ -688,6 +741,7 @@
 <script src="push.js"></script>
 <script src="bugs.js"></script>
 <script src="csh.js"></script>
+<script src="personnel.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
