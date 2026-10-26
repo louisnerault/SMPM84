@@ -442,6 +442,7 @@
       if (window.SMPM_FMPA) window.SMPM_FMPA.flush();
       if (window.SMPM_ITV) window.SMPM_ITV.flush();
       if (window.SMPM_THEMES) window.SMPM_THEMES.flush();
+      if (window.SMPM_POI) window.SMPM_POI.prefetch();
     }
   }
 
@@ -618,6 +619,8 @@
     }
     // thèmes saisis hors ligne (Remplir mon livret) : envoi dès que possible
     if (!offline && window.SMPM_THEMES) window.SMPM_THEMES.flush();
+    // points d'intérêt : liste gardée sur l'appareil pour une consultation hors ligne
+    if (!offline && window.SMPM_POI) window.SMPM_POI.prefetch();
     // demandes de validation des thèmes en attente : compteur du menu
     // (compteur affiché tout de suite depuis l'appareil, puis rafraîchi : menu, bouton ☰ et icône de l'application)
     if (canDeclare(data.session) && window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.refresh();
@@ -1252,7 +1255,7 @@
   };
 
   // ---------- synchronisation manuelle (icône du bandeau) ----------
-  // Envoie les FMPA en attente, recharge le livret et met à jour les fiches techniques.
+  // Envoie les FMPA en attente, recharge le livret, les points d'intérêt et met à jour les fiches techniques.
   let syncBusy = false;
   function setSyncBusy(on) {
     syncBusy = on;
@@ -1268,6 +1271,7 @@
       if (window.SMPM_ITV) await window.SMPM_ITV.flush();
       if (window.SMPM_THEMES) await window.SMPM_THEMES.flush();
       await loadLivret();
+      if (window.SMPM_POI) await window.SMPM_POI.refresh();
       if (window.SMPM_FICHES) await window.SMPM_FICHES.sync();
     } finally {
       setSyncBusy(false);
