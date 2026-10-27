@@ -794,6 +794,11 @@ body:not(.mode-intervention) .only-intervention { display: none; }
 .fmpa-choices .choice.bilan-dcd:has(input:checked) { background: #000000; color: #ffffff; border-color: #000000; }
 .fmpa-choices .choice.bilan-bv:has(input:checked) input, .fmpa-choices .choice.bilan-br:has(input:checked) input,
 .fmpa-choices .choice.bilan-dcd:has(input:checked) input { accent-color: #ffffff; }
+/* même code couleur dans la grille « Bilans victimes » */
+.seg button[aria-pressed="true"][data-bilan="nb"] { background: #ffffff; color: #111111; box-shadow: inset 0 0 0 2px #6b6b6b; }
+.seg button[aria-pressed="true"][data-bilan="bv"] { background: #2e9d4f; color: #ffffff; }
+.seg button[aria-pressed="true"][data-bilan="br"] { background: #d62b2b; color: #ffffff; }
+.seg button[aria-pressed="true"][data-bilan="dcd"] { background: #000000; color: #ffffff; }
 .fmpa-choices .fmpa-other { padding: 4px; grid-column: 1 / -1; }
 .fmpa-choices .fmpa-other input { margin: 0; }
 
