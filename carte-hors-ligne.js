@@ -58,11 +58,24 @@
   let busy = false;
   let stopRequested = false;
 
-  async function countCached(urls) {
+  // Nombre d'images présentes dans le cache et poids total (octets)
+  async function cacheStats(urls) {
     const cache = await caches.open(CACHE);
     let n = 0;
-    for (const u of urls) if (await cache.match(u)) n++;
-    return n;
+    let bytes = 0;
+    for (const u of urls) {
+      const res = await cache.match(u);
+      if (!res) continue;
+      n++;
+      const len = Number(res.headers.get('content-length'));
+      bytes += len > 0 ? len : (await res.blob()).size;
+    }
+    return { n, bytes };
+  }
+
+  function formatMo(bytes) {
+    const mo = bytes / (1024 * 1024);
+    return `${mo.toFixed(1).replace('.', ',')} Mo`;
   }
 
   async function hasRoomFor() {
@@ -89,9 +102,20 @@
     if (!meta) {
       showStatus('Carte non téléchargée sur cet appareil.');
     } else {
-      showStatus(`Téléchargée le ${formatWhen(meta.at)} (${meta.count} images).`,
+      showStatus(`Téléchargée le ${formatWhen(meta.at)} (${meta.count} images, calcul du poids…).`,
         meta.missing ? `${meta.missing} images n’ont pas pu être téléchargées : relancez le téléchargement.` : '');
+      refreshSize(meta);
     }
+  }
+
+  // Calcule le poids réel occupé dans le cache et met à jour le statut
+  async function refreshSize(meta) {
+    try {
+      const { n, bytes } = await cacheStats(allTileUrls());
+      if (busy || readMeta()?.at !== meta.at) return;
+      showStatus(`Téléchargée le ${formatWhen(meta.at)} (${n} images, ${formatMo(bytes)} sur l’appareil).`,
+        meta.missing ? `${meta.missing} images n’ont pas pu être téléchargées : relancez le téléchargement.` : '');
+    } catch (e) { /* cache indisponible : on garde le statut sans poids */ }
   }
 
   async function download() {
@@ -136,7 +160,7 @@
       render();
       return;
     }
-    const count = await countCached(urls);
+    const { n: count } = await cacheStats(urls);
     writeMeta({ at: new Date().toISOString(), count, missing: urls.length - count });
     render();
   }
