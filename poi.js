@@ -149,6 +149,7 @@
 
   function open() {
     if (!S.data) S.data = store.getJSON(KEY);
+    renderNavPref();
     renderPending();
     flush();
     showForm(false);
@@ -270,7 +271,60 @@
     photo: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>',
   };
 
+  // ---------- itinéraire : choix de l'application de navigation ----------
+  // Une application web ne peut pas savoir quelles applications sont installées : on propose celles qui existent
+  // pour le système du téléphone. Plans : iPhone/iPad seulement. Roole et les autres GPS : Android, par le lien « geo: »
+  // qui ouvre le sélecteur du téléphone (Roole n'a pas de lien direct public).
+  const KEY_NAV = 'smpm_poi_nav';
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const NAV_APPS = [
+    { id: 'plans', nom: 'Plans (Apple)', ok: isIOS, url: (la, lo) => `https://maps.apple.com/?daddr=${la},${lo}&dirflg=d` },
+    { id: 'waze', nom: 'Waze', ok: true, url: (la, lo) => `https://waze.com/ul?ll=${la},${lo}&navigate=yes` },
+    { id: 'gmaps', nom: 'Google Maps', ok: true, url: (la, lo) => `https://www.google.com/maps/dir/?api=1&destination=${la},${lo}&travelmode=driving` },
+    { id: 'geo', nom: 'Roole ou autre GPS du téléphone', ok: isAndroid, url: (la, lo, nom) => `geo:${la},${lo}?q=${la},${lo}(${encodeURIComponent(nom || 'Point')})` },
+  ];
+  const navApps = () => NAV_APPS.filter(a => a.ok);
+  const navPref = () => { const id = store.getJSON(KEY_NAV); return navApps().find(a => a.id === id) || null; };
   const routeUrl = p => `https://www.google.com/maps/dir/?api=1&destination=${p.lat.toFixed(6)},${p.lng.toFixed(6)}`;
+  function launchNav(a, p) {
+    const u = a.url(p.lat.toFixed(6), p.lng.toFixed(6), p.nom);
+    if (u.startsWith('geo:')) location.href = u; else window.open(u, '_blank', 'noopener');
+  }
+  function openRoute(p) {
+    const pref = navPref();
+    if (pref) return launchNav(pref, p);
+    chooseNav(p);
+  }
+  // p absent : simple changement de l'application mémorisée
+  function chooseNav(p) {
+    const d = $('#poi-nav');
+    const keep = $('#poi-nav-keep');
+    keep.checked = !p || !!navPref();
+    $('#poi-nav-title').textContent = p ? `Itinéraire vers « ${p.nom} »` : 'Application de navigation';
+    $('#poi-nav-keep-row').hidden = !p;
+    $('#poi-nav-note').textContent = isIOS ? 'Roole n’est pas proposé sur iPhone : il ne peut pas être ouvert depuis une application web.'
+      : isAndroid ? '« Roole ou autre GPS » ouvre le choix des applications de navigation installées sur le téléphone.' : '';
+    const cur = navPref();
+    $('#poi-nav-list').replaceChildren(...navApps().map(a => el('button', {
+      type: 'button', class: 'poi-nav-app' + (cur && cur.id === a.id ? ' is-cur' : ''), text: a.nom,
+      onclick: () => {
+        if (!p || keep.checked) store.set(KEY_NAV, JSON.stringify(a.id)); else store.del(KEY_NAV);
+        d.close ? d.close() : d.removeAttribute('open');
+        renderNavPref();
+        if (p) launchNav(a, p);
+      },
+    })), !p && cur ? el('button', { type: 'button', class: 'link', text: 'Toujours me demander',
+      onclick: () => { store.del(KEY_NAV); d.close ? d.close() : d.removeAttribute('open'); renderNavPref(); } }) : '');
+    if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
+  }
+  function renderNavPref() {
+    const box = $('#poi-nav-pref');
+    if (!box) return;
+    const a = navPref();
+    box.replaceChildren('Itinéraire : ', el('strong', { text: a ? a.nom : 'choix à chaque fois' }), ' · ',
+      el('button', { type: 'button', class: 'link', text: 'changer', onclick: () => chooseNav(null) }));
+  }
 
   function card(p) {
     const dist = S.pos ? distanceKm(S.pos, [p.lat, p.lng]) : null;
@@ -292,7 +346,7 @@
       el('p', { class: 'ann-num poi-gps', text: gps }),
       photoBox,
       el('div', { class: 'ann-actions' },
-        el('a', { class: 'ann-btn', href: routeUrl(p), target: '_blank', rel: 'noopener', title: 'Itinéraire', 'aria-label': `Itinéraire vers ${p.nom}`, html: ICONS.route }),
+        el('button', { type: 'button', class: 'ann-btn', title: 'Itinéraire', 'aria-label': `Itinéraire vers ${p.nom}`, html: ICONS.route, onclick: () => openRoute(p) }),
         el('button', { type: 'button', class: 'ann-btn', title: 'Voir sur la carte', 'aria-label': `Voir ${p.nom} sur la carte`, html: ICONS.map, onclick: () => showOnMap(p) }),
         el('button', { type: 'button', class: 'ann-btn', title: 'Copier les coordonnées', 'aria-label': `Copier les coordonnées de ${p.nom}`, html: ICONS.copy, onclick: e => copyGps(gps, e.currentTarget) }),
         btnPhoto),
@@ -417,7 +471,7 @@
         el('strong', { text: p.nom }),
         el('div', { class: 'small', text: p.secteurs.map(c => '#' + c).join(' ') + (p.caracs.length ? ' · ' + p.caracs.join(', ') : '') }),
         p.commentaire ? el('div', { class: 'small poi-comment', text: p.commentaire }) : null,
-        el('div', { class: 'small' }, el('a', { href: routeUrl(p), target: '_blank', rel: 'noopener', text: 'Itinéraire' }), ' · ',
+        el('div', { class: 'small' }, el('button', { type: 'button', class: 'link', text: 'Itinéraire', onclick: () => openRoute(p) }), ' · ',
           el('button', { type: 'button', class: 'link', text: 'Fiche', onclick: () => showInList(p) })));
       const icon = L.divIcon({ className: 'poi-pin', html: pinPoint(p), iconSize: [25, 34], iconAnchor: [12.5, 34], popupAnchor: [0, -30] });
       const m = L.marker([p.lat, p.lng], { title: p.nom, icon }).bindPopup(pop);
@@ -775,6 +829,7 @@
   }
 
   $('#poi-gerer').addEventListener('click', openAdmin);
+  $('#poi-nav-cancel').addEventListener('click', () => { const d = $('#poi-nav'); d.close ? d.close() : d.removeAttribute('open'); });
   $('#poi-adm-cancel').addEventListener('click', closeAdmin);
   $('#poi-adm-save').addEventListener('click', saveAdmin);
   $('#poi-adm-type-add').addEventListener('click', () => { A.types.forEach(x => { x.choix = false; }); A.types.push({ libelle: '', ancien: '', icone: 'etoile', choix: true }); renderAdmin(); const ins = document.querySelectorAll('#poi-adm-types input'); if (ins.length) ins[ins.length - 1].focus(); });

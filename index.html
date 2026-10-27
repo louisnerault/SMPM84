@@ -326,6 +326,15 @@
         <div id="poi-legend" class="poi-legend" hidden></div>
         <p id="poi-empty" class="muted center" hidden></p>
         <ul id="poi-list" class="ann-list"></ul>
+        <p id="poi-nav-pref" class="muted small poi-nav-pref"></p>
+        <dialog id="poi-nav" class="ann-dialog" aria-labelledby="poi-nav-title">
+          <h2 id="poi-nav-title">Itinéraire</h2>
+          <p class="muted small">Ouvrir avec :</p>
+          <div id="poi-nav-list" class="poi-nav-list"></div>
+          <label class="ann-check" id="poi-nav-keep-row"><input type="checkbox" id="poi-nav-keep"> Mémoriser mon choix sur ce téléphone</label>
+          <p class="muted small" id="poi-nav-note"></p>
+          <div class="ann-dialog-btns"><button type="button" id="poi-nav-cancel">Annuler</button></div>
+        </dialog>
       </div>
 
       <!-- Gestion des listes (CTD, administrateurs) : types de points avec icône, secteurs avec couleur -->

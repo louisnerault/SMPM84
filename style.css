@@ -1512,3 +1512,11 @@ label.poi-file input { position: absolute; width: 1px; height: 1px; opacity: 0; 
 .poi-adm-apercu { display: flex; flex-wrap: wrap; gap: 14px; margin: 6px 0 4px; }
 .poi-apercu { margin: 0; display: grid; justify-items: center; gap: 2px; font-size: .75rem; color: var(--muted); }
 .poi-apercu svg { filter: drop-shadow(0 2px 2px rgba(0,0,0,.3)); }
+
+/* Points d'intérêt : choix de l'application de navigation */
+.poi-nav-list { display: grid; gap: 8px; margin: 8px 0 12px; }
+.poi-nav-app { min-height: 48px; padding: 0 14px; text-align: left; font-weight: 700; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+.poi-nav-app.is-cur { border-color: var(--primary); background: var(--primary-soft); }
+.poi-nav-list .link { justify-self: start; padding: 4px 0; }
+.poi-nav-pref .link { padding: 0; font: inherit; }
+.poi-nav-pref:empty { display: none; }
