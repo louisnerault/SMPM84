@@ -507,10 +507,7 @@
     updateSky();
   }
 
-  // Soleil / lune posé dans le ciel du bandeau : interrupteur clair ↔ sombre.
-  // Il suit un point fixe de l'image (SKY_X, SKY_Y en fraction de la photo), quel que soit le recadrage
-  // (object-fit: cover et object-position variables selon la largeur d'écran).
-  const SKY_X = 0.585, SKY_Y = 0.28;
+  // Soleil / lune dans le ciel du bandeau, sous le menu : interrupteur clair ↔ sombre.
   function updateSky() {
     const b = $('#btn-sky');
     if (!b) return;
@@ -520,27 +517,9 @@
     b.setAttribute('aria-label', label);
     b.title = label;
   }
-  function placeSky() {
-    const b = $('#btn-sky'), img = $('.landscape img');
-    if (!b || !img) return;
-    const cw = img.clientWidth, ch = img.clientHeight;
-    if (!cw || !ch) return;
-    const iw = img.naturalWidth || 2000, ih = img.naturalHeight || 649;
-    const cs = getComputedStyle(img);
-    let dw = cw, dh = ch, ox = 0, oy = 0;
-    if (cs.objectFit === 'cover') {
-      const k = Math.max(cw / iw, ch / ih);
-      dw = iw * k; dh = ih * k;
-      const pos = (cs.objectPosition || '50% 50%').split(/\s+/).map(v => /%$/.test(v) ? parseFloat(v) / 100 : 0.5);
-      ox = (cw - dw) * pos[0]; oy = (ch - dh) * (pos[1] == null ? 0.5 : pos[1]);
-    }
-    b.style.left = (img.offsetLeft + ox + SKY_X * dw).toFixed(1) + 'px';
-    b.style.top = (img.offsetTop + oy + SKY_Y * dh).toFixed(1) + 'px';
-    b.style.setProperty('--sky-size', Math.round(Math.min(64, Math.max(36, dw * 0.034))) + 'px');
-  }
   // fondu jour ↔ nuit : copie de l'image affichée, effacée une fois la nouvelle image chargée
   function skyCrossfade(change) {
-    const img = $('.landscape img');
+    const img = $('.landscape picture img');
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!img || !img.currentSrc || reduce) { change(); return; }
     const cs = getComputedStyle(img);
@@ -554,7 +533,7 @@
       objectFit: cs.objectFit, objectPosition: cs.objectPosition, filter: cs.filter,
       webkitMaskImage: cs.webkitMaskImage || '', maskImage: cs.maskImage || '',
     });
-    img.closest('.landscape').insertBefore(ghost, $('#btn-sky'));
+    img.closest('.landscape').insertBefore(ghost, $('#btn-sky'));  // sous le soleil / la lune
     let done = false;
     const fade = () => {
       if (done) return;
@@ -574,11 +553,6 @@
       const next = isDark() ? 'light' : 'dark';
       skyCrossfade(() => applyTheme(next));
     });
-    const img = $('.landscape img');
-    placeSky();
-    if (img) img.addEventListener('load', placeSky);
-    if (window.ResizeObserver && img) new ResizeObserver(placeSky).observe(img);
-    else window.addEventListener('resize', placeSky);
   }
   if (darkMQ) {
     const onScheme = () => { updateMetaTheme(); updateSky(); };
