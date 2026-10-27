@@ -583,7 +583,8 @@ body:not(.mode-intervention) .only-intervention { display: none; }
 .gps { display: grid; gap: 8px; }
 .gps-row input { width: 100%; font-variant-numeric: tabular-nums; }
 .gps-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.gps-note:empty, .gps-links:empty { display: none; }
+.gps-note:empty, .gps-links:empty, .gps-place:empty { display: none; }
+.gps-place { margin: 0; font-weight: 600; color: var(--primary-dark); }
 .gps-note, .gps-links { margin: 0; }
 .gps-map {
   height: min(60vh, 420px); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;

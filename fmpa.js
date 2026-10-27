@@ -172,6 +172,7 @@
         if (it.choices) it.choices = it.choices.filter(c => !isInactiveName(c.v));
         if (C.imp3List && isImp3Item(it)) it.choices = imp3Choices(it.choices);
       }));
+      if (C.gps) gpsFirst();
       return changed;
     }
 
@@ -649,7 +650,7 @@
             it.help ? el('p', { class: 'muted small', text: it.help }) : null);
 
         case 'text':
-          if (C.gps && isGpsItem(it)) return field(it, gpsWidget(v, val => setAnswer(it, val)));
+          if (C.gps && isGpsItem(it)) return field(it, gpsWidget(v, val => { setAnswer(it, val); placeFromGps(val); }));
           return field(it, el('input', {
             type: 'text',
             inputmode: /dur[ée]e|nombre|heures?|num[ée]ro/i.test(it.title) ? 'decimal' : null,
@@ -896,6 +897,69 @@
     }
     const fmtLatLng = (lat, lng) => `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
+    // ---------- localisation : GPS d'abord, puis département et commune déduits ----------
+    const DEPT_RE = /d[ée]partement/i, COMMUNE_RE = /commune/i;
+    const isPlaceItem = it => it.choices && (DEPT_RE.test(it.title) || COMMUNE_RE.test(it.title));
+    // Affichage seulement : la question GPS est placée juste avant le département / la commune
+    function gpsFirst() {
+      const secs = S.def.sections || [];
+      let gps = null, from = null;
+      secs.forEach(sec => sec.items.forEach(it => { if (!gps && isGpsItem(it)) { gps = it; from = sec; } }));
+      if (!gps) return;
+      for (const sec of secs) {
+        const i = sec.items.findIndex(isPlaceItem);
+        if (i < 0) continue;
+        const j = from.items.indexOf(gps);
+        if (sec === from && j < i) return;
+        from.items.splice(j, 1);
+        sec.items.splice(sec === from ? i - (j < i ? 1 : 0) : i, 0, gps);
+        return;
+      }
+    }
+    // Choix du formulaire correspondant au nom renvoyé (casse, accents, tirets ignorés),
+    // ou contenant le numéro du département (ex. « 84 - Vaucluse »)
+    function matchChoice(it, name, code) {
+      const f = fold(name);
+      const c = it.choices.map(x => x.v);
+      return c.find(v => fold(v) === f)
+        || c.find(v => fold(v).replace(/^\d+[ab]?\s*/, '').replace(/\s*\(?\d+[ab]?\)?$/, '').trim() === f)
+        || (code ? c.find(v => new RegExp('(^|\\D)' + code + '(\\D|$)').test(v) && fold(v).includes(f)) : null)
+        || (code ? c.find(v => new RegExp('(^|\\D)' + code + '(\\D|$)').test(v)) : null)
+        || null;
+    }
+    let placeTimer = null, placeSeq = 0;
+    function placeFromGps(val) {
+      clearTimeout(placeTimer);
+      const ll = parseLatLng(val);
+      if (!ll) return;
+      placeTimer = setTimeout(async () => {
+        const seq = ++placeSeq;
+        const its = items().filter(isPlaceItem);
+        if (!its.length) return;
+        const say = t => { const n = document.querySelector(FORM_SEL + ' .gps-place'); if (n) n.textContent = t; };
+        if (!navigator.onLine) { say('Hors ligne : choisissez le département et la commune.'); return; }
+        say('Recherche de la commune…');
+        try {
+          const r = await fetch(`https://geo.api.gouv.fr/communes?lat=${ll[0]}&lon=${ll[1]}&fields=nom,code,departement&format=json`);
+          const data = r.ok ? await r.json() : [];
+          if (seq !== placeSeq) return;
+          const c = data[0];
+          if (!c) { say('Aucune commune française à ce point : choisissez le département et la commune.'); return; }
+          const dep = c.departement || {};
+          const missed = [];
+          its.forEach(it => {
+            const isDept = DEPT_RE.test(it.title) && !COMMUNE_RE.test(it.title);
+            const v = isDept ? matchChoice(it, dep.nom || '', dep.code) : matchChoice(it, c.nom, null);
+            if (v) { setAnswer(it, v); rerenderItem(it); } else missed.push(isDept ? 'département' : 'commune');
+          });
+          say(`${c.nom} (${dep.nom || ''}${dep.code ? ' ' + dep.code : ''})` +
+            (missed.length ? ` — absent de la liste du formulaire : choisissez ${missed.join(' et ')} à la main.` : ' : département et commune remplis.'));
+        } catch (e) {
+          if (seq === placeSeq) say('Commune introuvable (réseau) : choisissez le département et la commune.');
+        }
+      }, 600);
+    }
+
     function gpsWidget(value, onChange) {
       const box = el('div', { class: 'gps' });
       const input = el('input', {
@@ -903,6 +967,7 @@
         'aria-label': 'Coordonnées GPS (latitude, longitude)', autocomplete: 'off',
       });
       const note = el('p', { class: 'muted small gps-note', role: 'status' });
+      const place = el('p', { class: 'small gps-place', role: 'status' });
       const links = el('p', { class: 'small gps-links' });
       const mapBox = el('div', { class: 'gps-map', hidden: !S.mapOpen });
       const btnMap = el('button', { type: 'button', class: 'pill', 'aria-expanded': String(!!S.mapOpen), text: S.mapOpen ? 'Masquer la carte' : 'Pointer sur la carte' });
@@ -999,7 +1064,7 @@
       });
       input.addEventListener('blur', () => { const ll = parseLatLng(input.value); if (ll) set(ll, 'clear-input'); });
 
-      box.append(el('div', { class: 'gps-row' }, input), el('div', { class: 'gps-actions' }, btnMap, btnLoc, btnClr), note, mapBox, links);
+      box.append(el('div', { class: 'gps-row' }, input), el('div', { class: 'gps-actions' }, btnMap, btnLoc, btnClr), note, place, mapBox, links);
       paintLinks(parseLatLng(value));
       if (S.mapOpen) setTimeout(openMap, 0);
       return box;
