@@ -938,11 +938,26 @@
         if (!its.length) return;
         const say = t => { const n = document.querySelector(FORM_SEL + ' .gps-place'); if (n) n.textContent = t; };
         if (!navigator.onLine) { say('Hors ligne : choisissez le département et la commune.'); return; }
+        // En attente : sablier animé et champs département / commune grisés
+        const busy = on => {
+          const n = document.querySelector(FORM_SEL + ' .gps-place');
+          if (n) n.classList.toggle('gps-busy', on);
+          its.forEach(it => {
+            const q = document.querySelector(`${FORM_SEL} .fmpa-q[data-q="${it.id}"]`);
+            if (!q) return;
+            q.classList.toggle('awaiting', on);
+            q.querySelectorAll('input, select, button').forEach(x => { x.disabled = on; });
+          });
+        };
         say('Recherche de la commune…');
+        busy(true);
+        const ctl = new AbortController();
+        const stop = setTimeout(() => ctl.abort(), 12000);
         try {
-          const r = await fetch(`https://geo.api.gouv.fr/communes?lat=${ll[0]}&lon=${ll[1]}&fields=nom,code,departement&format=json`);
+          const r = await fetch(`https://geo.api.gouv.fr/communes?lat=${ll[0]}&lon=${ll[1]}&fields=nom,code,departement&format=json`, { signal: ctl.signal });
           const data = r.ok ? await r.json() : [];
           if (seq !== placeSeq) return;
+          busy(false);
           const c = data[0];
           if (!c) { say('Aucune commune française à ce point : choisissez le département et la commune.'); return; }
           const dep = c.departement || {};
@@ -955,7 +970,9 @@
           say(`${c.nom} (${dep.nom || ''}${dep.code ? ' ' + dep.code : ''})` +
             (missed.length ? ` — absent de la liste du formulaire : choisissez ${missed.join(' et ')} à la main.` : ' : département et commune remplis.'));
         } catch (e) {
-          if (seq === placeSeq) say('Commune introuvable (réseau) : choisissez le département et la commune.');
+          if (seq === placeSeq) { busy(false); say('Commune introuvable (réseau) : choisissez le département et la commune.'); }
+        } finally {
+          clearTimeout(stop);
         }
       }, 600);
     }
