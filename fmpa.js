@@ -1148,6 +1148,7 @@
         const seg = el('div', { class: 'seg', role: multi ? 'group' : 'radiogroup', 'aria-label': r.label });
         it.cols.forEach(c => seg.append(el('button', {
           type: 'button', 'data-col': c, 'aria-label': `${r.label} : ${c}`, title: c, text: shortLabel(c),
+          'data-bilan': bilanCode(it, c) || null,
           onclick: () => toggleCell(it, r.i, c, li),
         })));
         li.append(who, seg);
