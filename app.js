@@ -504,12 +504,86 @@
     if (night) night.media = choice === 'dark' ? 'all' : choice === 'light' ? 'not all' : '(prefers-color-scheme: dark)';
     $$('#theme-seg [data-theme-choice]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themeChoice === themeChoice())));
     updateMetaTheme();
+    updateSky();
+  }
+
+  // Soleil / lune posé dans le ciel du bandeau : interrupteur clair ↔ sombre.
+  // Il suit un point fixe de l'image (SKY_X, SKY_Y en fraction de la photo), quel que soit le recadrage
+  // (object-fit: cover et object-position variables selon la largeur d'écran).
+  const SKY_X = 0.585, SKY_Y = 0.28;
+  function updateSky() {
+    const b = $('#btn-sky');
+    if (!b) return;
+    const dark = isDark();
+    const label = dark ? 'Passer en thème clair' : 'Passer en thème sombre';
+    b.setAttribute('aria-pressed', String(dark));
+    b.setAttribute('aria-label', label);
+    b.title = label;
+  }
+  function placeSky() {
+    const b = $('#btn-sky'), img = $('.landscape img');
+    if (!b || !img) return;
+    const cw = img.clientWidth, ch = img.clientHeight;
+    if (!cw || !ch) return;
+    const iw = img.naturalWidth || 2000, ih = img.naturalHeight || 649;
+    const cs = getComputedStyle(img);
+    let dw = cw, dh = ch, ox = 0, oy = 0;
+    if (cs.objectFit === 'cover') {
+      const k = Math.max(cw / iw, ch / ih);
+      dw = iw * k; dh = ih * k;
+      const pos = (cs.objectPosition || '50% 50%').split(/\s+/).map(v => /%$/.test(v) ? parseFloat(v) / 100 : 0.5);
+      ox = (cw - dw) * pos[0]; oy = (ch - dh) * (pos[1] == null ? 0.5 : pos[1]);
+    }
+    b.style.left = (img.offsetLeft + ox + SKY_X * dw).toFixed(1) + 'px';
+    b.style.top = (img.offsetTop + oy + SKY_Y * dh).toFixed(1) + 'px';
+    b.style.setProperty('--sky-size', Math.round(Math.min(64, Math.max(36, dw * 0.034))) + 'px');
+  }
+  // fondu jour ↔ nuit : copie de l'image affichée, effacée une fois la nouvelle image chargée
+  function skyCrossfade(change) {
+    const img = $('.landscape img');
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!img || !img.currentSrc || reduce) { change(); return; }
+    const cs = getComputedStyle(img);
+    const old = img.currentSrc;
+    const ghost = document.createElement('img');
+    ghost.className = 'sky-fade';
+    ghost.alt = '';
+    ghost.src = old;
+    Object.assign(ghost.style, {
+      left: img.offsetLeft + 'px', top: img.offsetTop + 'px', width: img.clientWidth + 'px', height: img.clientHeight + 'px',
+      objectFit: cs.objectFit, objectPosition: cs.objectPosition, filter: cs.filter,
+      webkitMaskImage: cs.webkitMaskImage || '', maskImage: cs.maskImage || '',
+    });
+    img.closest('.landscape').insertBefore(ghost, $('#btn-sky'));
+    let done = false;
+    const fade = () => {
+      if (done) return;
+      done = true;
+      requestAnimationFrame(() => { ghost.style.opacity = '0'; });
+      setTimeout(() => ghost.remove(), 900);
+    };
+    change();
+    if (img.currentSrc === old || img.complete) setTimeout(fade, 30);
+    img.addEventListener('load', fade, { once: true });
+    setTimeout(fade, 3000);
   }
   applyTheme(themeChoice());
   $$('#theme-seg [data-theme-choice]').forEach(b => b.addEventListener('click', () => applyTheme(b.dataset.themeChoice)));
+  if ($('#btn-sky')) {
+    $('#btn-sky').addEventListener('click', () => {
+      const next = isDark() ? 'light' : 'dark';
+      skyCrossfade(() => applyTheme(next));
+    });
+    const img = $('.landscape img');
+    placeSky();
+    if (img) img.addEventListener('load', placeSky);
+    if (window.ResizeObserver && img) new ResizeObserver(placeSky).observe(img);
+    else window.addEventListener('resize', placeSky);
+  }
   if (darkMQ) {
-    if (darkMQ.addEventListener) darkMQ.addEventListener('change', updateMetaTheme);
-    else if (darkMQ.addListener) darkMQ.addListener(updateMetaTheme);
+    const onScheme = () => { updateMetaTheme(); updateSky(); };
+    if (darkMQ.addEventListener) darkMQ.addEventListener('change', onScheme);
+    else if (darkMQ.addListener) darkMQ.addListener(onScheme);
   }
   function toggleMode() {
     const on = !isIntervention();

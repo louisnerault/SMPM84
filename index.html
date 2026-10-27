@@ -42,13 +42,43 @@
 </header>
 
 <!-- Bannière : mont Ventoux, équipe SMPM, hélicoptère et civière sur tyrolienne -->
-<div class="landscape" aria-hidden="true">
-  <picture>
+<div class="landscape">
+  <picture aria-hidden="true">
     <!-- thème sombre : même scène de nuit (voie lactée, feux de l'hélicoptère, frontales, balise du Ventoux) -->
     <source id="banner-night" media="(prefers-color-scheme: dark)" srcset="assets/banniere-nuit-700.jpg 700w, assets/banniere-nuit-1000.jpg 1000w, assets/banniere-nuit-1400.jpg 1400w, assets/banniere-nuit.jpg 2000w" sizes="100vw">
     <img src="assets/banniere.jpg" srcset="assets/banniere-700.jpg 700w, assets/banniere-1000.jpg 1000w, assets/banniere-1400.jpg 1400w, assets/banniere.jpg 2000w" sizes="100vw" alt="" decoding="async" fetchpriority="high">
   </picture>
   <script>(function(){var t=document.documentElement.getAttribute('data-theme'),s=document.getElementById('banner-night');if(t==='dark')s.media='all';else if(t==='light')s.media='not all'})();</script>
+  <!-- Interrupteur clair / sombre intégré au paysage : soleil le jour, lune la nuit (placé par app.js sur un point du ciel) -->
+  <button type="button" id="btn-sky" class="sky-toggle" aria-label="Passer en thème sombre" title="Passer en thème sombre" aria-pressed="false">
+    <svg class="sky-sun" viewBox="-50 -50 100 100" aria-hidden="true">
+      <defs>
+        <radialGradient id="sun-core" cx="40%" cy="38%" r="65%"><stop offset="0" stop-color="#fffbe6"/><stop offset=".45" stop-color="#ffe27a"/><stop offset="1" stop-color="#ffb627"/></radialGradient>
+        <radialGradient id="sun-halo"><stop offset=".35" stop-color="#fff3b0" stop-opacity=".75"/><stop offset="1" stop-color="#fff3b0" stop-opacity="0"/></radialGradient>
+      </defs>
+      <circle r="50" fill="url(#sun-halo)"/>
+      <g class="sky-rays" fill="#ffd34d">
+        <path d="M0-45 3.2-31h-6.4zM0 45l3.2-14h-6.4zM-45 0l14 3.2v-6.4zM45 0 31 3.2v-6.4z"/>
+        <path d="M0-45 3.2-31h-6.4zM0 45l3.2-14h-6.4zM-45 0l14 3.2v-6.4zM45 0 31 3.2v-6.4z" transform="rotate(30)"/>
+        <path d="M0-45 3.2-31h-6.4zM0 45l3.2-14h-6.4zM-45 0l14 3.2v-6.4zM45 0 31 3.2v-6.4z" transform="rotate(60)"/>
+      </g>
+      <circle r="22" fill="url(#sun-core)"/>
+    </svg>
+    <svg class="sky-moon" viewBox="-50 -50 100 100" aria-hidden="true">
+      <defs>
+        <radialGradient id="moon-halo"><stop offset=".3" stop-color="#cfe0ff" stop-opacity=".55"/><stop offset="1" stop-color="#cfe0ff" stop-opacity="0"/></radialGradient>
+        <radialGradient id="moon-face" cx="35%" cy="35%" r="75%"><stop offset="0" stop-color="#fffdf4"/><stop offset=".7" stop-color="#e9e6d8"/><stop offset="1" stop-color="#c9c6b6"/></radialGradient>
+        <mask id="moon-cut"><rect x="-50" y="-50" width="100" height="100" fill="#fff"/><circle cx="12" cy="-9" r="19" fill="#000"/></mask>
+      </defs>
+      <circle r="46" fill="url(#moon-halo)"/>
+      <g mask="url(#moon-cut)" transform="rotate(-18)">
+        <circle r="21" fill="url(#moon-face)"/>
+        <circle cx="-9" cy="6" r="3.4" fill="#cbc7b5" opacity=".7"/>
+        <circle cx="-3" cy="13" r="2.2" fill="#cbc7b5" opacity=".6"/>
+        <circle cx="-13" cy="-4" r="1.8" fill="#cbc7b5" opacity=".6"/>
+      </g>
+    </svg>
+  </button>
   <span id="app-version" class="app-version" hidden></span>
 </div>
 
