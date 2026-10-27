@@ -67,7 +67,7 @@
     setState(S.data ? 'Mise à jour…' : 'Chargement de l’annuaire…');
     try {
       const res = await app().api('annuaire', { token: app().token() });
-      S.data = { personnes: res.personnes || [], maj: res.maj || new Date().toISOString() };
+      S.data = { personnes: res.personnes || [], pushEtat: res.push_etat || '', maj: res.maj || new Date().toISOString() };
       S.fresh = true;
       store.set(KEY, JSON.stringify(S.data));
       setState('');
@@ -177,6 +177,14 @@
     return el('a', { class: `ann-btn ann-${kind}`, href, 'aria-label': `${label} ${name}`, target: kind === 'wa' ? '_blank' : null, rel: kind === 'wa' ? 'noopener' : null, html: ICONS[kind] });
   }
 
+  // Cloche active si la personne est abonnée ; aussi quand le serveur ne sait pas le dire
+  // (ancienne version d'Annuaire.gs ou abonnements illisibles) : l'envoi indiquera alors si rien n'est parti.
+  function pushOk(p) {
+    const etat = S.data && S.data.pushEtat;
+    if (etat !== 'ok' || typeof p.push !== 'boolean') return true;
+    return p.push;
+  }
+
   function card(p) {
     const tel = digits(p.tel) ? String(p.tel).replace(/[^\d+]/g, '') : '';
     const wa = intl(p.tel);
@@ -194,7 +202,7 @@
         action('tel', 'Appeler', tel && `tel:${tel}`, p),
         action('sms', 'SMS', tel && `sms:${tel}`, p),
         action('wa', 'WhatsApp', wa && `https://wa.me/${wa}`, p),
-        p.push
+        pushOk(p)
           ? el('button', { type: 'button', class: 'ann-btn ann-push', 'aria-label': `Notification à ${p.prenom} ${p.nom}`, title: 'Envoyer une notification', html: ICONS.push, onclick: () => openPush(p) })
           : el('span', { class: 'ann-btn ann-push is-off', 'aria-disabled': 'true', title: 'Notifications non activées par cette personne', 'aria-label': 'Notification : non activée par cette personne', html: ICONS.push })));
   }
