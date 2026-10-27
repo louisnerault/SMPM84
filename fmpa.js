@@ -807,6 +807,19 @@
       return box;
     }
 
+    // Bilan victime (intervention) : code couleur de la case sélectionnée.
+    // NB = blanc, BV = vert, BR = rouge, DCD = noir. Ne s'applique qu'aux questions dont le titre
+    // mentionne « bilan » ou « victime », et seulement aux 4 libellés attendus.
+    function bilanCode(it, val) {
+      if (!/bilan|victime/i.test(it.title || '')) return '';
+      const s = String(val || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+      if (/^nb$|non bless/.test(s)) return 'nb';
+      if (/^bv$|bilan vert|^vert$/.test(s)) return 'bv';
+      if (/^br$|bilan rouge|^rouge$/.test(s)) return 'br';
+      if (/^dcd$|deced/.test(s)) return 'dcd';
+      return '';
+    }
+
     // Choix unique (radio) ou multiple (cases) : grandes zones tactiles
     function renderChoices(it, multi) {
       const v = S.answers[it.id];
@@ -842,7 +855,8 @@
           input.addEventListener('pointerdown', e => { e.target.dataset.was = e.target.checked ? '1' : '0'; });
           input.addEventListener('keydown', e => { e.target.dataset.was = '0'; });
         }
-        box.append(el('label', { class: 'choice' }, input, el('span', { text: c.v })));
+        const bilan = !multi ? bilanCode(it, c.v) : '';
+        box.append(el('label', { class: 'choice' + (bilan ? ' bilan-' + bilan : '') }, input, el('span', { text: c.v })));
       });
 
       if (it.other) {

@@ -777,6 +777,13 @@ body:not(.mode-intervention) .only-intervention { display: none; }
   flex: none; width: 20px; height: 20px; margin: 0; padding: 0; accent-color: var(--primary);
 }
 .fmpa-choices .choice:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); font-weight: 700; }
+/* Bilan victime : couleur de la case sélectionnée (NB blanc, BV vert, BR rouge, DCD noir) */
+.fmpa-choices .choice.bilan-nb:has(input:checked) { background: #ffffff; color: #111111; border-color: #6b6b6b; }
+.fmpa-choices .choice.bilan-bv:has(input:checked) { background: #2e9d4f; color: #ffffff; border-color: #1f7a3a; }
+.fmpa-choices .choice.bilan-br:has(input:checked) { background: #d62b2b; color: #ffffff; border-color: #a51d1d; }
+.fmpa-choices .choice.bilan-dcd:has(input:checked) { background: #000000; color: #ffffff; border-color: #000000; }
+.fmpa-choices .choice.bilan-bv:has(input:checked) input, .fmpa-choices .choice.bilan-br:has(input:checked) input,
+.fmpa-choices .choice.bilan-dcd:has(input:checked) input { accent-color: #ffffff; }
 .fmpa-choices .fmpa-other { padding: 4px; grid-column: 1 / -1; }
 .fmpa-choices .fmpa-other input { margin: 0; }
 
