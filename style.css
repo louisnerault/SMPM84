@@ -1432,34 +1432,30 @@ label.poi-file input { position: absolute; width: 1px; height: 1px; opacity: 0; 
 .theme-card .seg { display: inline-flex; margin-top: 4px; }
 .theme-card .seg button { min-width: 0; padding: 0 14px; cursor: pointer; }
 
-/* ---------- interrupteur clair / sombre dans le paysage : soleil ↔ lune ---------- */
-/* position (left/top) calculée par app.js pour suivre un point fixe du ciel de l'image */
+/* ---------- interrupteur clair / sombre dans le ciel, sous le burger : soleil ↔ lune ---------- */
+/* images sur fond noir fusionnées en « screen » : le noir disparaît, le halo éclaire le ciel */
 .sky-toggle {
-  position: absolute; left: 58%; top: 38%; z-index: 11;
-  width: var(--sky-size, 52px); height: var(--sky-size, 52px); padding: 0;
-  transform: translate(-50%, -50%);
+  position: absolute; z-index: 11;
+  left: 12px; top: calc(62px + env(safe-area-inset-top));
+  width: 44px; height: 44px; padding: 0;
   border: 0; border-radius: 50%; background: none; cursor: pointer;
+  mix-blend-mode: screen;
   -webkit-tap-highlight-color: transparent;
 }
-.sky-toggle svg {
-  position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible;
+.sky-toggle img {
+  position: absolute; left: 50%; top: 50%; width: 104px; height: 104px; max-width: none;
+  margin: -52px 0 0 -52px; pointer-events: none;
   transition: transform .7s cubic-bezier(.3,.7,.3,1), opacity .5s ease;
 }
-.sky-toggle .sky-sun { filter: drop-shadow(0 0 6px rgba(255,214,90,.75)); }
-.sky-toggle .sky-moon { filter: drop-shadow(0 0 5px rgba(200,220,255,.6)); opacity: 0; transform: translateY(35%) scale(.5) rotate(-40deg); }
-.sky-toggle .sky-rays { transform-origin: 0 0; animation: sky-spin 40s linear infinite; }
-@keyframes sky-spin { to { transform: rotate(360deg); } }
+.sky-toggle .sky-moon { opacity: 0; transform: translateY(40%) scale(.5); }
 /* nuit : le soleil se couche, la lune se lève */
-.sky-toggle[aria-pressed="true"] .sky-sun { opacity: 0; transform: translateY(35%) scale(.5); }
+.sky-toggle[aria-pressed="true"] .sky-sun { opacity: 0; transform: translateY(40%) scale(.5); }
 .sky-toggle[aria-pressed="true"] .sky-moon { opacity: 1; transform: none; }
-@media (hover: hover) {
-  .sky-toggle:hover svg { scale: 1.12; }
-}
-.sky-toggle:active svg { scale: .92; }
-.sky-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (hover: hover) { .sky-toggle:hover img { scale: 1.1; } }
+.sky-toggle:active img { scale: .92; }
+.sky-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; mix-blend-mode: normal; }
 /* fondu entre l'image de jour et celle de nuit */
 .landscape .sky-fade { position: absolute; z-index: 0; pointer-events: none; transition: opacity .7s ease; }
 @media (prefers-reduced-motion: reduce) {
-  .sky-toggle .sky-rays { animation: none; }
-  .sky-toggle svg, .landscape .sky-fade { transition: none; }
+  .sky-toggle img, .landscape .sky-fade { transition: none; }
 }
