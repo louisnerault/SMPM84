@@ -55,6 +55,8 @@
   // des secteurs ; création : chef d'unité et au-delà ; modification et suppression : chef de section, CTD, administrateur
   const canPoiCreate = session => !!session && (session.is_admin === true || ['chef_unite', 'chef_section', 'ctd', 'admin'].includes(session.role));
   const canPoiEdit = session => !!session && (session.is_admin === true || ['chef_section', 'ctd', 'admin'].includes(session.role));
+  // Gestion des listes des points d'intérêt (types et icônes, secteurs et couleurs) : CTD et administrateurs (Poi.gs : POI.ADMIN)
+  const canPoiAdmin = session => !!session && (session.is_admin === true || ['ctd', 'admin'].includes(session.role));
   // Encadrer (déclarer) une FMPA : qualification IMP 3 (fonction renvoyée par le serveur), ou administrateur
   const canEncadrer = data => {
     if (!data || !data.session) return false;
@@ -1358,7 +1360,7 @@
     // Gestion du personnel (personnel.js) : grades proposés et centres d'affectation connus
     gradeChoices: current => gradeChoices(state.options && state.options.grades, current),
     affectations: () => (state.options && state.options.affectations) || [],
-    poiDroits: () => ({ creer: !!state.data && canPoiCreate(state.data.session), modifier: !!state.data && canPoiEdit(state.data.session) }),
+    poiDroits: () => ({ creer: !!state.data && canPoiCreate(state.data.session), modifier: !!state.data && canPoiEdit(state.data.session), gerer: !!state.data && canPoiAdmin(state.data.session) }),
   };
 
   // ---------- synchronisation manuelle (icône du bandeau) ----------

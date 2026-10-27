@@ -293,7 +293,10 @@
       <div id="poi-main">
         <div class="poi-head">
           <h1>Points d'intérêt</h1>
-          <button type="button" class="pill poi-add" id="poi-add" hidden>＋ Nouveau point</button>
+          <div class="poi-head-btns">
+            <button type="button" class="pill" id="poi-gerer" hidden>Gérer les types et secteurs</button>
+            <button type="button" class="pill poi-add" id="poi-add" hidden>＋ Nouveau point</button>
+          </div>
         </div>
         <p class="muted small">Points GPS partagés : parkings, accès, lieux-dits, codes de cadenas… Gardés sur l'appareil pour une consultation hors ligne.</p>
         <div id="poi-outbox"></div>
@@ -320,8 +323,30 @@
         </div>
         <div id="poi-map" class="gps-map poi-map" hidden></div>
         <p id="poi-map-note" class="muted small" role="status"></p>
+        <div id="poi-legend" class="poi-legend" hidden></div>
         <p id="poi-empty" class="muted center" hidden></p>
         <ul id="poi-list" class="ann-list"></ul>
+      </div>
+
+      <!-- Gestion des listes (CTD, administrateurs) : types de points avec icône, secteurs avec couleur -->
+      <div id="poi-admin" class="poi-admin" hidden>
+        <h1>Types et secteurs</h1>
+        <p class="muted small">Ces listes sont communes à tous les membres. Les modifications s'appliquent à l'enregistrement (réseau nécessaire).</p>
+        <h2 class="section-title">Types de points</h2>
+        <p class="muted small">Touchez l'icône pour la changer. L'icône du premier type d'un point s'affiche au centre de son épingle. Renommer un type le renomme sur tous les points ; le supprimer le retire des points.</p>
+        <ul id="poi-adm-types" class="poi-adm-list"></ul>
+        <button type="button" class="pill" id="poi-adm-type-add">＋ Ajouter un type</button>
+        <h2 class="section-title">Secteurs</h2>
+        <p class="muted small">Couleur de l'épingle, libellé et accès. Un secteur « réservé » n'est visible que des personnels qualifiés (ex. ISS pour #SPELEO). L'ordre de la liste est celui des bandes de couleur d'une épingle à plusieurs secteurs. Un secteur utilisé par des points ne peut pas être supprimé.</p>
+        <ul id="poi-adm-secteurs" class="poi-adm-list"></ul>
+        <button type="button" class="pill" id="poi-adm-sect-add">＋ Ajouter un secteur</button>
+        <h2 class="section-title">Aperçu des épingles</h2>
+        <div id="poi-adm-apercu" class="poi-adm-apercu"></div>
+        <p class="error" id="poi-adm-error" role="alert"></p>
+        <div class="poi-form-btns">
+          <button type="button" id="poi-adm-cancel">Annuler</button>
+          <button type="button" class="primary" id="poi-adm-save">Enregistrer</button>
+        </div>
       </div>
 
       <form id="poi-form" class="poi-form" hidden novalidate>

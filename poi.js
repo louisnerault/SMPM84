@@ -80,9 +80,61 @@
   // ---------- droits ----------
   function droits() {
     const d = S.data && S.data.droits;
-    const local = app().poiDroits ? app().poiDroits() : { creer: false, modifier: false };
-    return d ? { creer: !!d.creer && local.creer, modifier: !!d.modifier && local.modifier } : local;
+    const local = app().poiDroits ? app().poiDroits() : { creer: false, modifier: false, gerer: false };
+    return d ? { creer: !!d.creer && local.creer, modifier: !!d.modifier && local.modifier, gerer: !!d.gerer && !!local.gerer } : local;
   }
+  // ---------- icônes des types, couleurs des secteurs, épingles ----------
+  // Icônes (traits 24×24) proposées pour les types de points ; la clé est enregistrée dans le classeur.
+  const POI_ICONES = {
+    parking: ['Parking', '<rect x="4" y="3" width="16" height="18" rx="3"/><path d="M10 17V7h3.2a3 3 0 0 1 0 6H10"/>'],
+    lieudit: ['Lieu-dit', '<path d="M12 3v18"/><path d="M5 6h11l3 2.5-3 2.5H5z"/><path d="M19 13H9l-3 2.5L9 18h10z"/>'],
+    acces: ['Accès / sentier', '<path d="M5 21c2-4 6-5 6-9s-3-5-2-9"/><path d="M15 21c-1-3 3-5 3-9s-2-4-1-7"/>'],
+    rdv: ['Rendez-vous', '<circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5"/><path d="M14 14.6c3.2-.6 7 .8 7 5.4"/>'],
+    helico: ['Hélicoptère', '<circle cx="12" cy="12" r="9"/><path d="M8.5 7.5v9M15.5 7.5v9M8.5 12h7"/>'],
+    cadenas: ['Cadenas / barrière', '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><path d="M12 14.5v2.5"/>'],
+    eau: ["Point d'eau", '<path d="M12 3s6 6.8 6 11a6 6 0 0 1-12 0c0-4.2 6-11 6-11z"/>'],
+    grotte: ['Grotte / cavité', '<path d="M2 20h20"/><path d="M4 20c0-8 3.6-13 8-13s8 5 8 13"/><path d="M9 20c0-3.5 1.3-6 3-6s3 2.5 3 6"/>'],
+    sommet: ['Sommet', '<path d="M2 20l7-12 4 6 2.5-3.5L22 20z"/>'],
+    refuge: ['Refuge / bâtiment', '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>'],
+    cascade: ['Cascade / canyon', '<path d="M4 4h16"/><path d="M7 4v9M12 4v12M17 4v9"/><path d="M3 19c2 0 2-1.5 4.5-1.5S10 19 12 19s2.5-1.5 4.5-1.5S19 19 21 19"/>'],
+    danger: ['Danger', '<path d="M12 3l10 18H2z"/><path d="M12 10v5"/><path d="M12 18h.01"/>'],
+    antenne: ['Réseau / antenne', '<path d="M12 10v11"/><circle cx="12" cy="8" r="1.6"/><path d="M8.5 4.5a5 5 0 0 0 0 7M15.5 4.5a5 5 0 0 1 0 7M5.5 2a9 9 0 0 0 0 12M18.5 2a9 9 0 0 1 0 12"/>'],
+    cle: ['Clé', '<circle cx="8" cy="8" r="4.5"/><path d="M11.2 11.2L20 20M16 16l2.5-2.5M18.5 18.5L21 16"/>'],
+    foret: ['Forêt / arbre', '<path d="M12 3l6 9h-3l4 6H5l4-6H6z"/><path d="M12 18v3"/>'],
+    pont: ['Pont / passerelle', '<path d="M2 15h20"/><path d="M3 15c3-6 15-6 18 0"/><path d="M8 15v5M16 15v5"/>'],
+    drapeau: ['Repère', '<path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/>'],
+    etoile: ['Autre', '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>'],
+  };
+  const icoSvg = (key, size = 18) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${(POI_ICONES[key] || POI_ICONES.etoile)[1]}</svg>`;
+  const caracIcone = c => ((S.data && S.data.listes && S.data.listes.icones) || {})[c] || 'etoile';
+  const secteurCouleur = code => { const d = secteurDef(code); return (d && d.couleur) || '#5d6b7a'; };
+  // Secteurs d'un point dans l'ordre de la liste (géographiques d'abord, tels que rangés par l'administrateur)
+  function secteursOrdonnes(codes) {
+    const ordre = ((S.data && S.data.listes && S.data.listes.secteurs) || []).map(s => s.code);
+    return codes.slice().sort((a, b) => (ordre.indexOf(a) < 0 ? 99 : ordre.indexOf(a)) - (ordre.indexOf(b) < 0 ? 99 : ordre.indexOf(b)));
+  }
+  // Épingle : une bande verticale par secteur (1 secteur = couleur pleine, 2 = moitié/moitié, 3 = tiers…),
+  // pastille blanche au centre avec l'icône du premier type du point.
+  let pinSeq = 0;
+  function pinSvg(couleurs, icone, size = 34) {
+    const id = 'pc' + (++pinSeq);
+    const cols = couleurs.length ? couleurs.slice(0, 4) : ['#5d6b7a'];
+    const w = 32 / cols.length;
+    const bands = cols.map((c, i) => `<rect x="${i * w}" y="0" width="${w + 0.2}" height="44" fill="${c}"/>`).join('');
+    const shape = 'M16 1C8 1 2 7 2 15c0 10.5 14 27 14 27s14-16.5 14-27C30 7 24 1 16 1z';
+    const ico = (POI_ICONES[icone] || POI_ICONES.etoile)[1];
+    return `<svg viewBox="0 0 32 44" width="${size * 32 / 44}" height="${size}" aria-hidden="true">
+      <defs><clipPath id="${id}"><path d="${shape}"/></clipPath></defs>
+      <g clip-path="url(#${id})">${bands}</g>
+      <path d="${shape}" fill="none" stroke="rgba(0,0,0,.45)" stroke-width="1.5"/>
+      <circle cx="16" cy="15" r="9.5" fill="#fff"/>
+      <g transform="translate(9.4 8.4) scale(.55)" fill="none" stroke="#1d2733" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${ico}</g>
+    </svg>`;
+  }
+  function pinPoint(p) {
+    return pinSvg(secteursOrdonnes(p.secteurs).map(secteurCouleur), p.caracs.length ? caracIcone(p.caracs[0]) : 'drapeau');
+  }
+
   const secteurDef = code => ((S.data && S.data.listes && S.data.listes.secteurs) || []).find(s => s.code === code);
   const secteurLib = code => { const d = secteurDef(code); return d ? d.libelle : code; };
 
@@ -145,7 +197,8 @@
     const presents = L.secteurs.filter(s => points.some(p => p.secteurs.includes(s.code))).map(s => s.code);
     S.f.secteurs = S.f.secteurs.filter(c => presents.includes(c));
     $('#poi-secteurs').replaceChildren(...presents.map(c => el('button', {
-      type: 'button', class: 'ann-qf', 'aria-pressed': String(S.f.secteurs.includes(c)), text: '#' + c, title: secteurLib(c),
+      type: 'button', class: 'ann-qf poi-qf', 'aria-pressed': String(S.f.secteurs.includes(c)), title: secteurLib(c),
+      html: `<i class="poi-dot" style="background:${secteurCouleur(c)}"></i>#${c}`,
       onclick: e => {
         const on = !S.f.secteurs.includes(c);
         S.f.secteurs = on ? [...S.f.secteurs, c] : S.f.secteurs.filter(x => x !== c);
@@ -162,6 +215,7 @@
     $('#poi-search').value = S.f.q;
     document.querySelectorAll('.poi-view [data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === S.f.vue)));
     $('#poi-add').hidden = !droits().creer;
+    $('#poi-gerer').hidden = !droits().gerer;
   }
 
   function changed() {
@@ -204,7 +258,7 @@
     const carte = f.vue === 'carte';
     $('#poi-list').hidden = carte;
     $('#poi-map').hidden = !carte;
-    if (!carte) $('#poi-map-note').textContent = '';
+    if (!carte) { $('#poi-map-note').textContent = ''; $('#poi-legend').hidden = true; }
     $('#poi-list').replaceChildren(...(carte ? [] : list.map(card)));
     if (carte) renderMap(list);
   }
@@ -230,10 +284,10 @@
     const modif = p.modifie_le ? ` · modifié${p.modifie_par ? ' par ' + p.modifie_par : ''} le ${fmtDate(p.modifie_le)}` : '';
     return el('li', { class: 'ann-card poi-card', 'data-id': p.id },
       el('div', { class: 'ann-head' },
-        el('p', { class: 'ann-name' }, el('strong', { text: p.nom })),
+        el('p', { class: 'ann-name poi-name' }, el('span', { class: 'poi-pin-mini', html: pinPoint(p) }), el('strong', { text: p.nom })),
         dist !== null ? el('span', { class: 'ann-fct', text: fmtKm(dist) }) : null),
-      el('ul', { class: 'chips poi-tags' }, ...p.secteurs.map(c => el('li', { class: 'poi-tag' + (secteurDef(c) && secteurDef(c).reserve ? ' poi-tag-res' : ''), text: '#' + c, title: secteurLib(c) }))),
-      p.caracs.length ? el('ul', { class: 'chips ann-chips' }, ...p.caracs.map(c => el('li', { text: c }))) : null,
+      el('ul', { class: 'chips poi-tags' }, ...secteursOrdonnes(p.secteurs).map(c => el('li', { class: 'poi-tag', style: `background:${secteurCouleur(c)}`, text: '#' + c, title: secteurLib(c) + (secteurDef(c) && secteurDef(c).reserve ? ` (réservé ${secteurDef(c).reserve})` : '') }))),
+      p.caracs.length ? el('ul', { class: 'chips ann-chips poi-types' }, ...p.caracs.map(c => el('li', { html: icoSvg(caracIcone(c), 14) }, c))) : null,
       p.commentaire ? el('p', { class: 'poi-comment', text: p.commentaire }) : null,
       el('p', { class: 'ann-num poi-gps', text: gps }),
       photoBox,
@@ -365,7 +419,8 @@
         p.commentaire ? el('div', { class: 'small poi-comment', text: p.commentaire }) : null,
         el('div', { class: 'small' }, el('a', { href: routeUrl(p), target: '_blank', rel: 'noopener', text: 'Itinéraire' }), ' · ',
           el('button', { type: 'button', class: 'link', text: 'Fiche', onclick: () => showInList(p) })));
-      const m = L.marker([p.lat, p.lng], { title: p.nom }).bindPopup(pop);
+      const icon = L.divIcon({ className: 'poi-pin', html: pinPoint(p), iconSize: [25, 34], iconAnchor: [12.5, 34], popupAnchor: [0, -30] });
+      const m = L.marker([p.lat, p.lng], { title: p.nom, icon }).bindPopup(pop);
       m.poiId = p.id;
       m.addTo(M.group);
     });
@@ -381,6 +436,20 @@
       }
     }, 50);
     note.textContent = list.length ? '' : 'Aucun point à afficher.';
+    renderLegend(list);
+  }
+
+  // Légende sous la carte : couleur de chaque secteur présent, icône de chaque type présent
+  function renderLegend(list) {
+    const box = $('#poi-legend');
+    if (!box) return;
+    const sect = secteursOrdonnes([...new Set(list.flatMap(p => p.secteurs))]);
+    const types = [...new Set(list.map(p => p.caracs[0]).filter(Boolean))];
+    box.replaceChildren(
+      ...sect.map(c => el('span', { class: 'poi-leg', html: `<i class="poi-dot" style="background:${secteurCouleur(c)}"></i>#${c}` })),
+      ...types.map(t => el('span', { class: 'poi-leg', html: icoSvg(caracIcone(t), 14) }, t)),
+      list.some(p => p.secteurs.length > 1) ? el('span', { class: 'poi-leg muted', text: 'Épingle à plusieurs bandes = plusieurs secteurs' }) : null);
+    box.hidden = !list.length;
   }
 
   async function showMe() {
@@ -421,6 +490,7 @@
   function showForm(on) {
     $('#poi-main').hidden = on;
     $('#poi-form').hidden = !on;
+    $('#poi-admin').hidden = true;
     window.scrollTo(0, 0);
   }
 
@@ -447,7 +517,7 @@
     const cur = p ? p.secteurs : [];
     $('#poi-f-secteurs').replaceChildren(...L.secteurs.filter(s => s.accessible || cur.includes(s.code)).map(s => el('button', {
       type: 'button', class: 'ann-qf', 'data-code': s.code, 'aria-pressed': String(cur.includes(s.code)),
-      disabled: !s.accessible, text: '#' + s.code, title: s.libelle + (s.reserve ? ` (réservé ${s.reserve})` : ''),
+      disabled: !s.accessible, html: `<i class="poi-dot" style="background:${s.couleur || '#5d6b7a'}"></i>#${s.code}`, title: s.libelle + (s.reserve ? ` (réservé ${s.reserve})` : ''),
       onclick: e => e.currentTarget.setAttribute('aria-pressed', String(e.currentTarget.getAttribute('aria-pressed') !== 'true')),
     })));
     const res = L.secteurs.filter(s => s.accessible && s.reserve);
@@ -456,9 +526,9 @@
       : '';
     const curC = p ? p.caracs : [];
     $('#poi-f-caracs').replaceChildren(...L.caracs.map(c => el('button', {
-      type: 'button', class: 'ann-qf', 'data-v': c, 'aria-pressed': String(curC.includes(c)), text: c,
+      type: 'button', class: 'ann-qf poi-qf', 'data-v': c, 'aria-pressed': String(curC.includes(c)), html: icoSvg(caracIcone(c), 16),
       onclick: e => e.currentTarget.setAttribute('aria-pressed', String(e.currentTarget.getAttribute('aria-pressed') !== 'true')),
-    })));
+    }, c)));
 
     // photo existante
     const prev = $('#poi-f-preview');
@@ -595,6 +665,126 @@
       btn.textContent = 'Enregistrer';
     }
   }
+
+  // ---------- gestion des listes (CTD, administrateurs) ----------
+  const RESERVES = [['', 'Visible de tous'], ['ISS', 'Réservé ISS'], ['NEIGE', 'Réservé Neige'], ['CAN', 'Réservé Canyon'], ['SSH', 'Réservé SSH'], ['SSSM', 'Réservé SSSM'], ['IMP3', 'Réservé IMP 3']];
+  const A = { types: [], secteurs: [] };
+
+  function openAdmin() {
+    if (!droits().gerer || !S.data || !S.data.listes) return;
+    const L = S.data.listes;
+    const usage = code => ((S.data && S.data.points) || []).filter(p => p.secteurs.includes(code)).length;
+    A.types = L.caracs.map(c => ({ libelle: c, ancien: c, icone: caracIcone(c) }));
+    A.secteurs = L.secteurs.map(s => ({ code: s.code, libelle: s.libelle, reserve: s.reserve || '', couleur: s.couleur || '#5d6b7a', existant: true, usage: usage(s.code) }));
+    $('#poi-adm-error').textContent = '';
+    $('#poi-main').hidden = true;
+    $('#poi-form').hidden = true;
+    $('#poi-admin').hidden = false;
+    renderAdmin();
+    window.scrollTo(0, 0);
+  }
+  function closeAdmin() { $('#poi-admin').hidden = true; $('#poi-main').hidden = false; render(); }
+
+  function moveBtns(arr, i) {
+    return el('span', { class: 'poi-adm-move' },
+      el('button', { type: 'button', class: 'poi-adm-ico', title: 'Monter', 'aria-label': 'Monter', text: '↑', disabled: i === 0,
+        onclick: () => { [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]]; renderAdmin(); } }),
+      el('button', { type: 'button', class: 'poi-adm-ico', title: 'Descendre', 'aria-label': 'Descendre', text: '↓', disabled: i === arr.length - 1,
+        onclick: () => { [arr[i + 1], arr[i]] = [arr[i], arr[i + 1]]; renderAdmin(); } }));
+  }
+
+  function renderAdmin() {
+    $('#poi-adm-types').replaceChildren(...A.types.map((t, i) => {
+      const grid = el('div', { class: 'poi-ico-grid', hidden: !t.choix }, ...Object.keys(POI_ICONES).map(k => el('button', {
+        type: 'button', class: 'poi-ico-pick', 'aria-pressed': String(k === t.icone), title: POI_ICONES[k][0], 'aria-label': POI_ICONES[k][0], html: icoSvg(k, 22),
+        onclick: () => { t.icone = k; t.choix = false; renderAdmin(); },
+      })));
+      return el('li', { class: 'poi-adm-row' },
+        el('button', { type: 'button', class: 'poi-adm-icobtn', title: 'Changer l’icône', 'aria-label': `Icône de ${t.libelle || 'ce type'} : ${POI_ICONES[t.icone][0]}`, 'aria-expanded': String(!!t.choix), html: icoSvg(t.icone, 22),
+          onclick: () => { A.types.forEach(x => { if (x !== t) x.choix = false; }); t.choix = !t.choix; renderAdmin(); } }),
+        el('input', { type: 'text', value: t.libelle, maxlength: '40', placeholder: 'Nom du type', 'aria-label': 'Nom du type',
+          oninput: e => { t.libelle = e.target.value; } }),
+        moveBtns(A.types, i),
+        el('button', { type: 'button', class: 'poi-adm-ico danger', title: 'Supprimer', 'aria-label': `Supprimer ${t.libelle}`, text: '✕',
+          onclick: () => {
+            const n = t.ancien ? ((S.data && S.data.points) || []).filter(p => p.caracs.includes(t.ancien)).length : 0;
+            if (n && !confirm(`« ${t.ancien} » est utilisé par ${n} point${n > 1 ? 's' : ''} : il en sera retiré. Supprimer ce type ?`)) return;
+            A.types.splice(i, 1); renderAdmin();
+          } }),
+        grid);
+    }));
+    $('#poi-adm-secteurs').replaceChildren(...A.secteurs.map((s, i) => el('li', { class: 'poi-adm-row poi-adm-sect' },
+      el('input', { type: 'color', value: s.couleur, class: 'poi-adm-color', title: 'Couleur de l’épingle', 'aria-label': `Couleur de #${s.code || 'nouveau secteur'}`,
+        oninput: e => { s.couleur = e.target.value; renderApercu(); } }),
+      s.existant
+        ? el('strong', { class: 'poi-adm-code', text: '#' + s.code, title: 'Le code d’un secteur existant ne change pas' })
+        : el('input', { type: 'text', value: s.code, maxlength: '15', placeholder: 'CODE', class: 'poi-adm-codein', 'aria-label': 'Code du secteur (ex. MONTAGNE)',
+          oninput: e => { s.code = e.target.value.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z0-9]/g, ''); e.target.value = s.code; renderApercu(); } }),
+      el('input', { type: 'text', value: s.libelle, maxlength: '30', placeholder: 'Libellé', 'aria-label': 'Libellé du secteur', oninput: e => { s.libelle = e.target.value; } }),
+      (() => {
+        const sel = el('select', { 'aria-label': 'Accès', onchange: e => { s.reserve = e.target.value; } }, ...RESERVES.map(([v, l]) => el('option', { value: v, text: l })));
+        sel.value = RESERVES.some(r => r[0] === s.reserve) ? s.reserve : '';
+        return sel;
+      })(),
+      moveBtns(A.secteurs, i),
+      el('button', { type: 'button', class: 'poi-adm-ico danger', disabled: s.usage > 0,
+        title: s.usage ? `Utilisé par ${s.usage} point${s.usage > 1 ? 's' : ''} : suppression impossible` : 'Supprimer',
+        'aria-label': `Supprimer #${s.code}`, text: '✕', onclick: () => { A.secteurs.splice(i, 1); renderAdmin(); } }),
+      s.usage ? el('small', { class: 'muted poi-adm-usage', text: `${s.usage} point${s.usage > 1 ? 's' : ''}` }) : null)));
+    renderApercu();
+  }
+
+  function renderApercu() {
+    const sect = A.secteurs.filter(s => s.code);
+    const ico = (A.types[0] && A.types[0].icone) || 'etoile';
+    const items = sect.map(s => el('figure', { class: 'poi-apercu' }, el('span', { html: pinSvg([s.couleur], ico, 40) }), el('figcaption', { text: '#' + s.code })));
+    if (sect.length > 1) items.push(el('figure', { class: 'poi-apercu' }, el('span', { html: pinSvg([sect[0].couleur, sect[sect.length - 1].couleur], ico, 40) }),
+      el('figcaption', { text: `#${sect[0].code} + #${sect[sect.length - 1].code}` })));
+    if (sect.length > 2) items.push(el('figure', { class: 'poi-apercu' }, el('span', { html: pinSvg(sect.slice(0, 3).map(s => s.couleur), ico, 40) }),
+      el('figcaption', { text: '3 secteurs' })));
+    $('#poi-adm-apercu').replaceChildren(...items);
+  }
+
+  async function saveAdmin() {
+    const err = $('#poi-adm-error');
+    err.textContent = '';
+    const types = A.types.map(t => ({ libelle: t.libelle.trim(), icone: t.icone, ancien: t.ancien || '' })).filter(t => t.libelle);
+    const secteurs = A.secteurs.map(s => ({ code: s.code, libelle: s.libelle.trim(), reserve: s.reserve, couleur: s.couleur })).filter(s => s.code);
+    if (!types.length) { err.textContent = 'Gardez au moins un type de point.'; return; }
+    if (!secteurs.length) { err.textContent = 'Gardez au moins un secteur.'; return; }
+    const dbl = secteurs.map(s => s.code).find((c, i, t) => t.indexOf(c) !== i);
+    if (dbl) { err.textContent = `Le code #${dbl} est utilisé deux fois.`; return; }
+    if (!navigator.onLine) { err.textContent = 'Hors ligne : la gestion des listes demande le réseau.'; return; }
+    const btn = $('#poi-adm-save');
+    btn.disabled = true;
+    btn.textContent = 'Enregistrement…';
+    try {
+      const res = await app().api('poi_listes_save', { token: app().token(), listes: { caracs: types, secteurs } });
+      S.data = { points: res.points || [], listes: res.listes, droits: res.droits || null, maj: res.maj || new Date().toISOString() };
+      S.loadedAt = Date.now();
+      save();
+      closeAdmin();
+      buildFilters();
+      render();
+      setState('Types et secteurs enregistrés' + (res.modifies ? ` (${res.modifies} point${res.modifies > 1 ? 's' : ''} mis à jour).` : '.'));
+    } catch (e) {
+      if (app().AUTH_ERRORS.includes(e.message)) return app().logout();
+      err.textContent = e instanceof app().NetworkError ? app().netLabel() + ' : enregistrement impossible pour l’instant.'
+        : e.message === 'Action inconnue' ? 'Le serveur ne connaît pas encore cette action : mettez à jour Poi.gs (poi_listes_save).' : e.message;
+    } finally { btn.disabled = false; btn.textContent = 'Enregistrer'; }
+  }
+
+  $('#poi-gerer').addEventListener('click', openAdmin);
+  $('#poi-adm-cancel').addEventListener('click', closeAdmin);
+  $('#poi-adm-save').addEventListener('click', saveAdmin);
+  $('#poi-adm-type-add').addEventListener('click', () => { A.types.forEach(x => { x.choix = false; }); A.types.push({ libelle: '', ancien: '', icone: 'etoile', choix: true }); renderAdmin(); const ins = document.querySelectorAll('#poi-adm-types input'); if (ins.length) ins[ins.length - 1].focus(); });
+  $('#poi-adm-sect-add').addEventListener('click', () => {
+    const libres = ['#d4337a', '#5d6b7a', '#b8a000', '#0f766e', '#1f6fd1', '#2a9d3c', '#e07b00', '#7c3aed'];
+    const couleur = libres.find(c => !A.secteurs.some(s => s.couleur === c)) || '#5d6b7a';
+    A.secteurs.push({ code: '', libelle: '', reserve: '', couleur, existant: false, usage: 0 });
+    renderAdmin();
+    const ins = document.querySelectorAll('#poi-adm-secteurs .poi-adm-codein'); if (ins.length) ins[ins.length - 1].focus();
+  });
 
   // ---------- points créés hors ligne (file d'attente sur l'appareil) ----------
   const outbox = () => store.getJSON(KEY_OUTBOX) || [];
