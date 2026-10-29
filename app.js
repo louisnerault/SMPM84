@@ -40,27 +40,29 @@
     [...(serverGrades || []), current].forEach(g => { if (g && !codes.includes(g)) codes.push(g); });
     return codes.map(c => ({ code: c, label: known.get(c) ? `${c} — ${known.get(c)}` : c }));
   }
+  // Administrateur : le serveur envoie « admin » (Fmpa.gs, Poi.gs, Push.gs) ou « is_admin » : on accepte les deux
+  const isAdm = session => !!session && (session.is_admin === true || session.admin === true);
   // Déclaration de FMPA : chef d'unité ou supérieur, et administrateurs
   const FMPA_ROLES = ['chef_unite', 'chef_section', 'ctd', 'admin'];
-  const canDeclare = session => !!session && (session.is_admin === true || FMPA_ROLES.includes(session.role));
+  const canDeclare = session => !!session && (isAdm(session) || FMPA_ROLES.includes(session.role));
   // Toutes les FMPA : administrateurs, conseillers techniques (modification) et chefs de section
   // (consultation, modification de leur secteur)
-  const canAllFmpa = session => !!session && (session.is_admin === true || ['ctd', 'admin', 'chef_section'].includes(session.role));
-  const canEditAllFmpa = session => !!session && (session.is_admin === true || ['ctd', 'admin'].includes(session.role));
+  const canAllFmpa = session => !!session && (isAdm(session) || ['ctd', 'admin', 'chef_section'].includes(session.role));
+  const canEditAllFmpa = session => !!session && (isAdm(session) || ['ctd', 'admin'].includes(session.role));
   // Intervention : chefs d'unité, chefs de section, conseillers techniques et administrateurs
   // Toutes les interventions : conseillers techniques et administrateurs
-  const canAllInterv = session => !!session && (session.is_admin === true || ['ctd', 'admin'].includes(session.role));
-  const canIntervene = session => !!session && (session.is_admin === true || ['chef_unite', 'chef_section', 'ctd', 'admin'].includes(session.role));
+  const canAllInterv = session => !!session && (isAdm(session) || ['ctd', 'admin'].includes(session.role));
+  const canIntervene = session => !!session && (isAdm(session) || ['chef_unite', 'chef_section', 'ctd', 'admin'].includes(session.role));
   // Points d'intérêt (à garder cohérent avec backend/Poi.gs) : consultation par tous, selon le cloisonnement
   // des secteurs ; création : chef d'unité et au-delà ; modification et suppression : chef de section, CTD, administrateur
-  const canPoiCreate = session => !!session && (session.is_admin === true || ['chef_unite', 'chef_section', 'ctd', 'admin'].includes(session.role));
-  const canPoiEdit = session => !!session && (session.is_admin === true || ['chef_section', 'ctd', 'admin'].includes(session.role));
+  const canPoiCreate = session => !!session && (isAdm(session) || ['chef_unite', 'chef_section', 'ctd', 'admin'].includes(session.role));
+  const canPoiEdit = session => !!session && (isAdm(session) || ['chef_section', 'ctd', 'admin'].includes(session.role));
   // Gestion des listes des points d'intérêt (types et icônes, secteurs et couleurs) : CTD et administrateurs (Poi.gs : POI.ADMIN)
-  const canPoiAdmin = session => !!session && (session.is_admin === true || ['ctd', 'admin'].includes(session.role));
+  const canPoiAdmin = session => !!session && (isAdm(session) || ['ctd', 'admin'].includes(session.role));
   // Encadrer (déclarer) une FMPA : qualification IMP 3 (fonction renvoyée par le serveur), ou administrateur
   const canEncadrer = data => {
     if (!data || !data.session) return false;
-    if (data.session.is_admin === true) return true;
+    if (isAdm(data.session)) return true;
     if (data.fonction && typeof data.fonction.imp3 === 'boolean') return data.fonction.imp3;
     return (data.qualifications || []).some(q => String(q.code).replace(/\s/g, '') === 'IMP3' && q.acquis);
   };
@@ -68,7 +70,7 @@
   // Rubriques réservées aux chefs de section (et CTD, administrateurs) — à garder cohérent avec backend/Heures.gs
   const CS_PAGES = ['cs-heures', 'cs-tableau', 'cs-specialistes'];
   // Heures chefs de section : « Mes heures » (chefs de section, CTD, admin), « Toutes les heures » (CTD, admin)
-  const canAllCsHeures = session => !!session && (session.is_admin === true || ['ctd', 'admin'].includes(session.role));
+  const canAllCsHeures = session => !!session && (isAdm(session) || ['ctd', 'admin'].includes(session.role));
   function allowedPage(name, session) {
     if (name === 'fmpa') return canDeclare(session) && canEncadrer(state.data);
     if (name === 'fmpa-fiche' || name === 'fmpa-mes' || name === 'fmpa-valid') return canDeclare(session);
