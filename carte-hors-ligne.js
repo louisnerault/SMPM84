@@ -75,24 +75,35 @@
     return { n, bytes };
   }
 
-  // Récupère une tuile avec délai d'attente et nouvelles tentatives ; false si toutes échouent
+  // Récupère une tuile avec délai d'attente et nouvelles tentatives.
+  // Renvoie '' si réussi, sinon la raison de l'échec du dernier essai.
   async function fetchTile(cache, u) {
+    let why = 'erreur inconnue';
     for (let t = 1; t <= TRIES; t++) {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
       try {
         const res = await fetch(u, { signal: ctrl.signal });
-        if (!res.ok) throw new Error(String(res.status));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         await cache.put(u, res);
-        return true;
+        return '';
       } catch (e) {
-        if (stopRequested) return false;
+        why = e.name === 'AbortError' ? 'délai dépassé' : (e.message && e.message.startsWith('HTTP') ? e.message : 'réseau');
+        if (stopRequested) return 'arrêt';
         await new Promise(r => setTimeout(r, 1000 * t));   // pause avant nouvel essai
       } finally {
         clearTimeout(timer);
       }
     }
-    return false;
+    return why;
+  }
+
+  // Texte listant les tuiles manquantes et la raison (pour diagnostic)
+  function missingNote(meta) {
+    if (!meta.missing) return '';
+    const list = (meta.failed || []).map(f => `x${f.x} y${f.y} : ${f.why}`).join(' ; ');
+    return `${meta.missing} images n’ont pas pu être téléchargées : relancez le téléchargement.` +
+      (list ? ` Détail : ${list}.` : '');
   }
 
   function formatMo(bytes) {
@@ -124,8 +135,7 @@
     if (!meta) {
       showStatus('Carte non téléchargée sur cet appareil.');
     } else {
-      showStatus(`Téléchargée le ${formatWhen(meta.at)} (${meta.count} images, calcul du poids…).`,
-        meta.missing ? `${meta.missing} images n’ont pas pu être téléchargées : relancez le téléchargement.` : '');
+      showStatus(`Téléchargée le ${formatWhen(meta.at)} (${meta.count} images, calcul du poids…).`, missingNote(meta));
       refreshSize(meta);
     }
   }
@@ -135,8 +145,7 @@
     try {
       const { n, bytes } = await cacheStats(allTileUrls());
       if (busy || readMeta()?.at !== meta.at) return;
-      showStatus(`Téléchargée le ${formatWhen(meta.at)} (${n} images, ${formatMo(bytes)} sur l’appareil).`,
-        meta.missing ? `${meta.missing} images n’ont pas pu être téléchargées : relancez le téléchargement.` : '');
+      showStatus(`Téléchargée le ${formatWhen(meta.at)} (${n} images, ${formatMo(bytes)} sur l’appareil).`, missingNote(meta));
     } catch (e) { /* cache indisponible : on garde le statut sans poids */ }
   }
 
@@ -158,11 +167,19 @@
     const cache = await caches.open(CACHE);
     let done = 0;
     let missing = 0;
+    const failed = [];
     try {
       for (let i = 0; i < urls.length && !stopRequested; i += PARALLEL) {
         await Promise.all(urls.slice(i, i + PARALLEL).map(async u => {
           if (await cache.match(u)) return;                 // déjà présente : on ne la retélécharge pas
-          if (!(await fetchTile(cache, u))) missing++;
+          const why = await fetchTile(cache, u);
+          if (why) {
+            missing++;
+            if (failed.length < 10) {
+              const q = new URL(u).searchParams;
+              failed.push({ x: q.get('TILECOL'), y: q.get('TILEROW'), why });
+            }
+          }
         }));
         done = Math.min(i + PARALLEL, urls.length);
         showStatus(`Téléchargement : ${done} / ${urls.length} images…`);
@@ -177,7 +194,7 @@
       return;
     }
     const { n: count } = await cacheStats(urls);
-    writeMeta({ at: new Date().toISOString(), count, missing: urls.length - count });
+    writeMeta({ at: new Date().toISOString(), count, missing: urls.length - count, failed });
     render();
   }
 
