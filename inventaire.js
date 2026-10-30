@@ -983,6 +983,8 @@
 
   window.SMPM_INV = {
     open, flush, prefetch, refresh, reset, renderPending,
+    // notification d'alerte touchée : onglet Alertes à l'ouverture
+    ongletAlertes: () => { S.p.onglet = 'alertes'; S.vue = 'liste'; savePrefs(); },
     pending: () => outbox().length,
     // saisie en cours : pas de rechargement automatique de l'application (nouvelle version)
     busy: () => !$('#tab-inventaire').hidden && ['saisie', 'edit', 'usage', 'cedit'].includes(S.vue),
