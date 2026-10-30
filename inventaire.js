@@ -89,6 +89,7 @@
     close: 'M6 6l12 12M18 6L6 18',
     copy: 'M8 8h11v11H8zM5 15H4.5V4.5H15V5',
     alert: 'M12 3.5l9 16H3zM12 10v4.5M12 17.5h.01',
+    bell: 'M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0',
     back: 'M15 5l-7 7 7 7',
   };
   function ico(name) {
@@ -167,7 +168,7 @@
   function setData(res) {
     S.data = { vehicules: res.vehicules || [], contenants: res.contenants || [], cordes: res.cordes || [],
       familles: res.familles || [], droits: res.droits || {}, maj: res.maj || new Date().toISOString(),
-      alertes: res.alertes || [], cus: res.cus || [], moi: res.moi || '', contextes: res.contextes || CONTEXTES };
+      alertes: res.alertes || [], cus: res.cus || [], moi: res.moi || '', contextes: res.contextes || CONTEXTES, encadrement: res.encadrement || {} };
     if (!S.p.veh || !vehicules().some(v => v.code === S.p.veh)) S.p.veh = (vehicules()[0] || {}).code || '';
     save();
   }
@@ -285,6 +286,19 @@
   }
   const ligne = (k, v) => (v ? el('div', { class: 'inv-qq' }, el('span', { class: 'inv-qq-k', text: k }), el('span', { class: 'inv-qq-v' }, v)) : null);
 
+  // Liste des personnes notifiées : nom et rôle ; copie = clochette seule (administrateurs, monitorage)
+  function notifies(qui, titre, quand) {
+    const l = (qui || []).filter(Boolean);
+    if (!l.length) return el('p', { class: 'small muted inv-notif-vide', text: titre + ' : personne (aucun destinataire trouvé)' });
+    return el('div', { class: 'inv-notif' },
+      el('p', { class: 'inv-notif-titre', icon: 'bell' }, titre + (quand ? ` · ${dateCourte(quand)}` : '')),
+      el('ul', { class: 'inv-notif-list' }, l.map(o => el('li', { class: o.c ? 'is-copie' : '' },
+        el('strong', { text: o.nom }), el('span', { text: o.r + (o.c ? ' · copie' : '') })))));
+  }
+  const notifEtape = (x, e) => ((x.notifies || []).find(t => t.e === e) || null);
+  // qui serait notifié dans un secteur (chef de section, contrôleurs EPI, CTD si pas de chef de section)
+  const encadrementDe = sec => ((S.data && S.data.encadrement) || {})[sec] || [];
+
   function carteAlerte(x) {
     const e = x.etapes || {};
     const avecCu = x.type === 'inventaire' && (x.contexte === 'fmpa_fin' || x.contexte === 'intervention');
@@ -303,7 +317,8 @@
         ligne('Quoi', el('pre', { class: 'inv-anom', text: x.detail })),
         ligne('Où', x.libelle + (x.secteur ? ` · secteur ${SECT[x.secteur] || x.secteur}` : '')),
         ligne('Quand', `${dateCourte(x.date)} · ${occasion}`),
-        ligne('Qui', [e.par ? `Inventaire : ${e.par}` : '', x.cu ? `Chef d’unité : ${nomDe(x.cu)}` : ''].filter(Boolean).join(' · ')))));
+        ligne('Qui', [e.par ? `Inventaire : ${e.par}` : '', x.cu ? `Chef d’unité : ${nomDe(x.cu)}` : ''].filter(Boolean).join(' · '))),
+      notifEtape(x, 'signalement') ? notifies(notifEtape(x, 'signalement').qui, 'Notifiés', notifEtape(x, 'signalement').le) : null));
     if (avecCu) {
       // 2. Recherches du CU
       if (x.statut === 'cu') {
@@ -326,10 +341,13 @@
     const n = avecCu ? 3 : 2;
     const titreCs = avecCu ? 'Notification · chef de section, contrôleur EPI et CTD' : 'Chef de section et contrôleur EPI';
     if (x.statut === 'cu') {
-      etapes.push(etape(n, 'attente', titreCs, el('p', { class: 'small muted', text: `Prévenus seulement si le matériel n’est pas retrouvé ou sans réponse à l’échéance : ${dest}.` })));
+      etapes.push(etape(n, 'attente', titreCs,
+        el('p', { class: 'small muted', text: 'Prévenus seulement si le matériel n’est pas retrouvé ou sans réponse à l’échéance.' }),
+        notifies(encadrementDe(x.secteur).filter(o => !o.c).concat((x.ctd || []).map(k => ({ nom: nomDe(k), r: 'CTD' })))
+          .filter((o, i, t) => t.findIndex(y => y.nom === o.nom) === i), 'Seront notifiés')));
     } else if (x.statut === 'cs' && x.type === 'corde') {
       etapes.push(etape(n, 'encours', titreCs,
-        el('p', { class: 'small', text: `Notifiés : ${destCs}. Pour chaque corde : lever la surveillance, la laisser sous surveillance ou la réformer. L’alerte se clôt quand toutes les cordes sont traitées.` }),
+        el('p', { class: 'small', text: 'Pour chaque corde : lever la surveillance, la laisser sous surveillance ou la réformer. L’alerte se clôt quand toutes les cordes sont traitées.' }),
         el('ul', { class: 'inv-traiter' }, x.objet.split(',').map(id => {
           const c = cordes().find(o => o.id === id);
           const num = id.split('-').pop();
@@ -342,12 +360,17 @@
         }))));
     } else if (x.statut === 'cs') {
       etapes.push(etape(n, 'encours', titreCs,
-        el('p', { class: 'small', text: `Notifiés : ${avecCu ? dest : destCs}. Décision et clôture de l’alerte.` }),
+        notifEtape(x, 'transmission') ? notifies(notifEtape(x, 'transmission').qui, 'Notifiés à la transmission', notifEtape(x, 'transmission').le)
+          : avecCu ? el('p', { class: 'small', text: `Notifiés : ${dest}.` }) : null,
+        el('p', { class: 'small', text: 'Décision et clôture de l’alerte.' }),
         el('div', { class: 'inv-actions' }, bouton('clore', 'save', 'primary', 'Clore l’alerte'))));
     } else if (avecCu && e.cu && e.cu.action === 'retrouve') {
       etapes.push(etape(n, 'saute', titreCs, el('p', { class: 'small muted', text: 'Non nécessaire : matériel retrouvé.' })));
     } else {
-      etapes.push(etape(n, 'fait', titreCs, el('p', { class: 'small', text: e.cloture ? `Clos par ${e.cloture.par} · ${dateCourte(e.cloture.le)}${e.cloture.txt ? ' — « ' + e.cloture.txt + ' »' : ''}` : 'Clos' })));
+      etapes.push(etape(n, 'fait', titreCs,
+        notifEtape(x, 'transmission') ? notifies(notifEtape(x, 'transmission').qui, 'Notifiés à la transmission', notifEtape(x, 'transmission').le) : null,
+        el('p', { class: 'small', text: e.cloture ? `Clos par ${e.cloture.par} · ${dateCourte(e.cloture.le)}${e.cloture.txt ? ' — « ' + e.cloture.txt + ' »' : ''}` : 'Clos' }),
+        el('p', { class: 'small muted', text: 'Clôture : aucune notification envoyée.' })));
     }
     return el('div', { class: 'inv-card inv-alerte inv-al-' + x.statut },
       el('span', { class: 'inv-card-head' }, el('strong', { icon: 'alert', text: quoi }), el('span', { class: 'inv-badge', text: STATUT_AL[x.statut] || x.statut })),
@@ -666,7 +689,10 @@
           el('select', { onchange: e => { s.cu = e.target.value; } },
             el('option', { value: '' }, '— choisir —'),
             ((S.data && S.data.cus) || []).map(p => el('option', { value: p.cle, selected: p.cle === s.cu }, p.aff)))) : null,
-        el('p', { class: 'muted small', text: QUI[s.ctx] })),
+        el('p', { class: 'muted small', text: QUI[s.ctx] }),
+        s.ctx === 'fmpa_fin' || s.ctx === 'intervention'
+          ? notifies(s.cu ? [{ nom: nomDe(s.cu), r: 'Chef d’unité' }] : [], 'Notifié en cas de manque')
+          : notifies(encadrementDe((vehicules().find(v => v.code === c.vehicule) || {}).secteur), 'Notifiés en cas d’écart ou de remarque')),
       el('ul', { class: 'inv-rows' }, rows),
       el('label', null, 'Remarque générale (facultatif)',
         el('textarea', { rows: '2', maxlength: '1000', placeholder: 'Ex. : sac déchiré, marque d’usure…', oninput: e => { s.remarque = e.target.value; } }, s.remarque)),
@@ -1057,6 +1083,8 @@
         el('input', { type: 'text', maxlength: '500', placeholder: 'Usure, point dur… (pas de « RAS »)', value: u.rq[n] || '', 'aria-label': `Remarque corde ${n}`, oninput: e => { u.rq[n] = e.target.value; } }),
         el('label', { class: 'ann-check' }, el('input', { type: 'checkbox', checked: u.ref.includes(n), onchange: () => toggle(u.ref, n) }), 'À faire examiner pour réforme')))),
       u.nums.length ? el('p', { class: 'muted small', text: 'Une remarque (autre que « RAS » ou « OK ») ou la case « réforme » avertit le chef de section et le contrôleur EPI du secteur de la corde.' }) : null,
+      u.nums.length ? [...new Set(u.nums.map(n => (dispo.find(c => c.num === n) || {}).secteur || ''))].map(sec =>
+        notifies(encadrementDe(sec || ({ ISS: 'ISS', NEIGE: 'NEIGE' })[u.famille] || ''), `Notifiés si besoin${sec ? ' · secteur ' + (SECT[sec] || sec) : ''}`)) : null,
       el('p', { class: 'error', role: 'alert', text: u.err }),
       el('button', { type: 'button', icon: 'save', class: 'primary inv-submit', disabled: S.busy || !u.nums.length, text: 'Enregistrer', onclick: submitUsage }),
     ];

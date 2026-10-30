@@ -1805,3 +1805,13 @@ button.inv-card:hover { background: color-mix(in srgb, var(--st) 18%, var(--card
 .inv-traiter > li { padding: 6px 0; border-top: 1px solid var(--line); }
 .inv-traiter > li:first-child { border-top: 0; }
 .inv-traiter .inv-actions { margin-top: 4px; }
+
+/* personnes notifiées à chaque étape */
+.inv-notif { margin: 8px 0 2px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--primary) 7%, var(--card)); border: 1px solid color-mix(in srgb, var(--primary) 25%, var(--line)); }
+.inv-notif-titre { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; font-size: .78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--primary); }
+.inv-notif-titre .inv-ico { width: 16px; height: 16px; }
+.inv-notif-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.inv-notif-list li { display: flex; flex-direction: column; padding: 4px 10px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); font-size: .82rem; line-height: 1.2; }
+.inv-notif-list li span { font-size: .72rem; color: var(--muted); }
+.inv-notif-list li.is-copie { border-style: dashed; opacity: .8; }
+.inv-notif-vide { margin: 6px 0; }
