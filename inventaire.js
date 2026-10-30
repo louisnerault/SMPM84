@@ -28,7 +28,7 @@
     fmpa_fin: 'À faire en fin de journée. Le matériel manquant par rapport à l’inventaire du matin est signalé au chef d’unité responsable de la FMPA.',
     intervention: 'Le matériel manquant par rapport au dernier inventaire est signalé au chef d’unité de l’intervention.',
   };
-  const STATUT_AL = { cu: 'Recherches du chef d’unité', cs: 'Chef de section', close: 'Close' };
+  const STATUT_AL = { cu: 'Recherches en cours', cs: 'Chef de section', close: 'Close' };
 
   const $ = sel => document.querySelector(sel);
   const store = {
@@ -193,6 +193,7 @@
     const vues = { liste: vListe, contenant: vContenant, saisie: vSaisie, histo: vHisto, edit: vEdit,
       corde: vCorde, usage: vUsage, cedit: vCordeEdit, qr: vQr, listing: vListing };
     root.replaceChildren(...[].concat((vues[S.vue] || vListe)()).flat(Infinity).filter(x => x !== null && x !== undefined && x !== false));
+    if (root.querySelector('[data-echeance]')) demarrerComptes();
   }
 
   const retour = (text, onclick) => el('div', { class: 'sub-head' }, el('button', { type: 'button', class: 'link', text: '← ' + text, onclick }));
@@ -227,22 +228,102 @@
   function vAlertes() {
     const liste = alertes();
     const ouvertes = liste.filter(x => x.statut !== 'close'), closes = liste.filter(x => x.statut === 'close');
-    const carte = x => el('li', null, el('div', { class: 'inv-card inv-alerte inv-al-' + x.statut },
-      el('span', { class: 'inv-card-head' }, el('strong', { text: x.libelle }), el('span', { class: 'inv-badge', text: STATUT_AL[x.statut] || x.statut })),
-      el('span', { class: 'small muted', text: [new Date(x.date).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }),
-        x.type === 'corde' ? 'Corde' : x.type === 'remarque' ? 'Remarque · ' + (CONTEXTES[x.contexte] || '') : (CONTEXTES[x.contexte] || ''), x.cu ? 'CU : ' + ((((S.data && S.data.cus) || []).find(p => p.cle === x.cu) || {}).aff || x.cu) : '', x.secteur ? 'secteur ' + (SECT[x.secteur] || x.secteur) : ''].filter(Boolean).join(' · ') }),
-      el('pre', { class: 'inv-anom', text: x.detail }),
-      x.statut === 'cu' && x.echeance ? el('p', { class: 'small', text: `Sans réponse le ${new Date(x.echeance).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}, l’alerte sera transmise au chef de section, au CTD et aux administrateurs.` }) : null,
-      x.suivi ? el('details', { class: 'small' }, el('summary', { text: 'Suivi' }), el('pre', { class: 'inv-suivi', text: x.suivi })) : null,
-      x.peut.length ? el('div', { class: 'inv-actions' },
-        x.peut.includes('retrouve') ? el('button', { type: 'button', icon: 'save', class: 'primary', text: 'Retrouvé', disabled: S.busy, onclick: () => agir(x, 'retrouve') }) : null,
-        x.peut.includes('non_retrouve') ? el('button', { type: 'button', icon: 'alert', class: 'pill', text: 'Non retrouvé', disabled: S.busy, onclick: () => agir(x, 'non_retrouve') }) : null,
-        x.peut.includes('clore') ? el('button', { type: 'button', icon: 'save', class: 'pill', text: 'Clore', disabled: S.busy, onclick: () => agir(x, 'clore') }) : null) : null));
+    const carte = x => el('li', null, carteAlerte(x));
     return [
       el('p', { class: 'muted small', text: 'Inventaires non conformes et cordes à examiner. Le chef d’unité recherche le matériel manquant après une FMPA ou une intervention ; s’il n’est pas retrouvé, l’alerte passe au chef de section, au CTD et aux administrateurs.' }),
       ouvertes.length ? el('ul', { class: 'inv-list' }, ouvertes.map(carte)) : el('p', { class: 'muted center', text: 'Aucune alerte en cours.' }),
       closes.length ? el('details', { class: 'inv-closes' }, el('summary', { text: `Alertes closes (30 derniers jours) : ${closes.length}` }), el('ul', { class: 'inv-list' }, closes.map(carte))) : null,
     ];
+  }
+
+
+  // ----- carte d'alerte en étapes : 1 signalement (quoi, où, quand, qui) · 2 recherches du CU (compte à rebours)
+  //       · 3 chef de section et CTD -----
+  const nomDe = cle => ((((S.data && S.data.cus) || []).find(p => p.cle === cle) || {}).aff) || cle;
+  const dateCourte = iso => (iso ? new Date(iso).toLocaleString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '');
+  function reste(ms) {
+    if (ms <= 0) return 'délai dépassé';
+    const m = Math.ceil(ms / 60000), h = Math.floor(m / 60), j = Math.floor(h / 24);
+    if (j >= 1) return `${j} j ${h % 24} h`;
+    if (h >= 1) return `${h} h ${String(m % 60).padStart(2, '0')} min`;
+    return `${m} min`;
+  }
+  // compte à rebours : mis à jour toutes les 30 s tant qu'une alerte en attente du CU est affichée
+  let minuteur = null;
+  function majComptes() {
+    const els = document.querySelectorAll('[data-echeance]');
+    if (!els.length) { clearInterval(minuteur); minuteur = null; return; }
+    els.forEach(e => {
+      const fin = new Date(e.dataset.echeance).getTime(), deb = new Date(e.dataset.debut).getTime();
+      const ms = fin - Date.now();
+      const t = e.querySelector('.inv-cd-txt'), b = e.querySelector('.inv-cd-fill');
+      if (t) t.textContent = ms > 0 ? `Il reste ${reste(ms)}` : 'Délai dépassé : transmission au chef de section et au CTD en cours';
+      if (b) b.style.width = Math.min(100, Math.max(0, 100 * (Date.now() - deb) / Math.max(1, fin - deb))) + '%';
+      e.classList.toggle('is-urgent', ms > 0 && ms < 6 * 3600e3);
+      e.classList.toggle('is-over', ms <= 0);
+    });
+  }
+  function demarrerComptes() { majComptes(); if (!minuteur) minuteur = setInterval(majComptes, 30000); }
+
+  function etape(n, etat, titre, ...contenu) {
+    return el('li', { class: 'inv-step-li is-' + etat },
+      el('span', { class: 'inv-step-num', 'aria-hidden': 'true', text: etat === 'fait' ? '✓' : etat === 'saute' ? '–' : String(n) }),
+      el('div', { class: 'inv-step-body' }, el('strong', { class: 'inv-step-titre', text: titre }), contenu));
+  }
+  const ligne = (k, v) => (v ? el('div', { class: 'inv-qq' }, el('span', { class: 'inv-qq-k', text: k }), el('span', { class: 'inv-qq-v' }, v)) : null);
+
+  function carteAlerte(x) {
+    const e = x.etapes || {};
+    const avecCu = x.type === 'inventaire' && (x.contexte === 'fmpa_fin' || x.contexte === 'intervention');
+    const occasion = x.type === 'corde' ? 'Utilisation de cordes' : (CONTEXTES[x.contexte] || '') + (x.type === 'remarque' ? ' · remarque' : '');
+    const quoi = x.type === 'inventaire' ? 'Matériel manquant' : x.type === 'remarque' ? 'Remarque' : 'Corde à examiner';
+    const cs = (x.cs || []).map(nomDe), ctd = (x.ctd || []).map(nomDe);
+    const dest = [cs.length ? `Chef de section ${SECT[x.secteur] || x.secteur || ''} : ${cs.join(', ')}` : '', ctd.length ? `CTD : ${ctd.join(', ')}` : ''].filter(Boolean).join(' · ') || 'CTD';
+    const bouton = (act, icon, cls, txt) => (x.peut.includes(act) ? el('button', { type: 'button', icon, class: cls, text: txt, disabled: S.busy, onclick: () => agir(x, act) }) : null);
+    const etapes = [];
+    // 1. Signalement
+    etapes.push(etape(1, 'fait', 'Signalement',
+      el('div', { class: 'inv-qq-grid' },
+        ligne('Quoi', el('pre', { class: 'inv-anom', text: x.detail })),
+        ligne('Où', x.libelle + (x.secteur ? ` · secteur ${SECT[x.secteur] || x.secteur}` : '')),
+        ligne('Quand', `${dateCourte(x.date)} · ${occasion}`),
+        ligne('Qui', [e.par ? `Inventaire : ${e.par}` : '', x.cu ? `Chef d’unité : ${nomDe(x.cu)}` : ''].filter(Boolean).join(' · ')))));
+    if (avecCu) {
+      // 2. Recherches du CU
+      if (x.statut === 'cu') {
+        etapes.push(etape(2, 'encours', `Recherches · ${nomDe(x.cu)}`,
+          el('p', { class: 'small', text: 'Rechercher le matériel (véhicule, lieux de la manœuvre ou de l’intervention, autres équipes), puis indiquer le résultat.' }),
+          x.echeance ? el('div', { class: 'inv-cd', 'data-echeance': x.echeance, 'data-debut': x.date },
+            el('div', { class: 'inv-cd-track' }, el('div', { class: 'inv-cd-fill' })),
+            el('p', { class: 'inv-cd-txt' }),
+            el('p', { class: 'small muted', text: `Échéance : ${dateCourte(x.echeance)}` })) : null,
+          el('div', { class: 'inv-actions' }, bouton('retrouve', 'save', 'primary', 'Retrouvé'), bouton('non_retrouve', 'alert', 'pill danger-pill', 'Non retrouvé'))));
+      } else if (e.cu) {
+        const r = e.cu.action === 'retrouve' ? `Retrouvé par ${e.cu.par}` : e.cu.action === 'non_retrouve' ? `Non retrouvé (${e.cu.par})` : 'Pas de réponse dans le délai';
+        etapes.push(etape(2, e.cu.action === 'retrouve' ? 'fait' : 'ko', `Recherches · ${nomDe(x.cu)}`,
+          el('p', { class: 'small', text: `${r} · ${dateCourte(e.cu.le)}${e.cu.txt ? ' — « ' + e.cu.txt + ' »' : ''}` })));
+      } else {
+        etapes.push(etape(2, 'fait', `Recherches · ${nomDe(x.cu)}`, el('p', { class: 'small', text: e.cloture ? `Clos : ${e.cloture.txt || ''} (${e.cloture.par}, ${dateCourte(e.cloture.le)})` : 'Clos' })));
+      }
+    }
+    // dernière étape : chef de section et CTD
+    const n = avecCu ? 3 : 2;
+    const titreCs = avecCu ? 'Notification · chef de section et CTD' : 'Chef de section';
+    if (x.statut === 'cu') {
+      etapes.push(etape(n, 'attente', titreCs, el('p', { class: 'small muted', text: `Prévenus seulement si le matériel n’est pas retrouvé ou sans réponse à l’échéance : ${dest}.` })));
+    } else if (x.statut === 'cs') {
+      etapes.push(etape(n, 'encours', titreCs,
+        el('p', { class: 'small', text: `${avecCu ? 'Notifiés' : 'Notifié'} : ${avecCu ? dest : (cs.join(', ') || dest)}. Décision et clôture de l’alerte.` }),
+        el('div', { class: 'inv-actions' }, bouton('clore', 'save', 'primary', 'Clore l’alerte'))));
+    } else if (avecCu && e.cu && e.cu.action === 'retrouve') {
+      etapes.push(etape(n, 'saute', titreCs, el('p', { class: 'small muted', text: 'Non nécessaire : matériel retrouvé.' })));
+    } else {
+      etapes.push(etape(n, 'fait', titreCs, el('p', { class: 'small', text: e.cloture ? `Clos par ${e.cloture.par} · ${dateCourte(e.cloture.le)}${e.cloture.txt ? ' — « ' + e.cloture.txt + ' »' : ''}` : 'Clos' })));
+    }
+    return el('div', { class: 'inv-card inv-alerte inv-al-' + x.statut },
+      el('span', { class: 'inv-card-head' }, el('strong', { icon: 'alert', text: quoi }), el('span', { class: 'inv-badge', text: STATUT_AL[x.statut] || x.statut })),
+      el('ol', { class: 'inv-steps' }, etapes),
+      x.suivi ? el('details', { class: 'small' }, el('summary', { text: 'Historique détaillé' }), el('pre', { class: 'inv-suivi', text: x.suivi })) : null);
   }
 
   async function agir(x, action) {
