@@ -734,6 +734,7 @@
       <h1>Mes spécialistes</h1>
       <p class="muted small" id="pers-intro"></p>
       <p id="pers-state" class="muted small" role="status"></p>
+      <button type="button" class="primary pers-new" id="pers-new" hidden>＋ Créer un spécialiste</button>
       <div class="ann-tools">
         <input type="search" id="pers-search" placeholder="Nom, prénom, centre, grade…" autocomplete="off" aria-label="Rechercher">
         <div class="ann-filters">
@@ -782,6 +783,42 @@
           <div class="ann-dialog-btns">
             <button type="button" id="pers-cancel">Annuler</button>
             <button type="submit" class="primary" id="pers-save">Enregistrer</button>
+          </div>
+        </form>
+      <dialog id="pers-new-dialog" class="ann-dialog pers-dialog" aria-labelledby="pers-new-title">
+        <form id="pers-new-form" method="dialog">
+          <h2 id="pers-new-title">Nouveau spécialiste</h2>
+          <p class="muted small">La fiche est ajoutée à la liste du personnel, avec un dossier à son nom (livret individuel et évaluations) dans le dossier « LIVRETS ».</p>
+          <label>Nom
+            <input type="text" name="nom" maxlength="40" required autocomplete="off" autocapitalize="characters" placeholder="DUPONT">
+          </label>
+          <p class="muted small">Homonyme déjà présent : ajoutez l'initiale du prénom (ex. DUPONT.J).</p>
+          <label>Prénom
+            <input type="text" name="prenom" maxlength="40" required autocomplete="off" autocapitalize="words">
+          </label>
+          <label>Grade
+            <select name="grade" required></select>
+          </label>
+          <label>Centre d'affectation
+            <input type="text" name="affectation" list="pers-affectations" maxlength="40" required>
+          </label>
+          <label>Secteur SMPM
+            <select name="secteur" required><option value="">Choisir…</option><option value="NORD">Nord</option><option value="CENTRE">Centre</option><option value="SUD">Sud</option></select>
+          </label>
+          <label>Adresse e-mail
+            <input type="email" name="email" required autocomplete="off">
+          </label>
+          <label id="pers-new-tel-field">Téléphone portable
+            <input type="tel" name="telephone" placeholder="06 12 34 56 78">
+          </label>
+          <fieldset class="pers-qualifs">
+            <legend>Qualifications</legend>
+            <div id="pers-new-qualifs"></div>
+          </fieldset>
+          <p class="error small" id="pers-new-error" role="alert"></p>
+          <div class="ann-dialog-btns">
+            <button type="button" id="pers-new-cancel">Annuler</button>
+            <button type="submit" class="primary" id="pers-new-save">Créer</button>
           </div>
         </form>
       </dialog>

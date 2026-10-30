@@ -1432,6 +1432,7 @@ label.poi-file input { position: absolute; width: 1px; height: 1px; opacity: 0; 
 #pers-state.error { color: var(--danger); }
 #pers-count { margin-left: auto; font-weight: 600; }
 .pers-inactif { opacity: .65; }
+.pers-new { width: 100%; min-height: 48px; margin: 6px 0 4px; font-weight: 600; }
 .pers-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
 .pers-actions .link { min-height: 44px; padding: 0 4px; font-weight: 600; }
 .pers-dialog { width: min(94vw, 480px); max-height: 90vh; overflow-y: auto; }

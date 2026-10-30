@@ -2,7 +2,8 @@
 // backend/Personnel.gs). Droits (contrôlés par le serveur, à garder cohérents) :
 //   - chef de section : le personnel actif de sa ou ses sections (NORD, SUD, CENTRE : secteur SMPM ;
 //     NEIGE, ISS, SSSM : qualification correspondante) — grade, centre, e-mail, téléphone, qualifications ;
-//   - conseiller technique et administrateurs : tout le personnel, actif ou non, plus le secteur et la case actif.
+//   - conseiller technique et administrateurs : tout le personnel, actif ou non, plus le secteur et la case actif,
+//     et la création d'un spécialiste (action personnel_create : fiche, dossier et livret individuel).
 // Les données ne sont gardées qu'en mémoire (pas sur l'appareil) : la rubrique demande le réseau.
 (() => {
   'use strict';
@@ -66,6 +67,7 @@
       ? 'Tout le personnel SMPM. Touchez « Modifier » pour corriger une fiche.'
       : `Personnel de votre section (${(d.sections || []).map(s => SECTIONS[s] || s).join(', ')}). Touchez « Modifier » pour corriger une fiche.`;
     $('#pers-inactifs-wrap').hidden = !d.tout;
+    $('#pers-new').hidden = !d.creer;
     const sel = $('#pers-secteur');
     if (sel.options.length <= 1) Object.keys(SECTEURS).forEach(k => sel.append(new Option(SECTEURS[k], k)));
   }
@@ -196,13 +198,78 @@
     } finally { S.busy = false; }
   }
 
-  function reset() { S.data = null; S.edit = null; $('#pers-list').replaceChildren(); }
+  // ---------- création d'un spécialiste (conseiller technique, administrateurs) ----------
+  function create() {
+    const f = $('#pers-new-form');
+    f.reset();
+    f.elements.grade.replaceChildren(new Option('Choisir…', ''), ...app().gradeChoices('').map(c => new Option(c.label, c.code)));
+    $('#pers-affectations').replaceChildren(...app().affectations().map(a => new Option(a, a)));
+    const telOk = !!(S.data && S.data.droits && S.data.droits.tel_creation);
+    $('#pers-new-tel-field').hidden = !telOk;
+    f.elements.telephone.disabled = !telOk;
+    const an = new Date().getFullYear();
+    $('#pers-new-qualifs').replaceChildren(...QUALIFS.map(q => {
+      const box = el('input', { type: 'checkbox', 'data-q': q });
+      const year = q === 'SSSM' ? null
+        : el('input', { type: 'number', inputmode: 'numeric', min: 1970, max: an, step: 1, placeholder: 'Année', 'data-an': q, 'aria-label': 'Année d’obtention ' + q, disabled: true });
+      if (year) box.addEventListener('change', () => { year.disabled = !box.checked; if (box.checked && !year.value) year.value = an; });
+      return el('div', { class: 'pers-q' }, el('label', { class: 'ann-check' }, box, ' ' + q.replace(' ', '')), year);
+    }));
+    $('#pers-new-error').textContent = '';
+    $('#pers-new-save').disabled = false;
+    $('#pers-new-save').textContent = 'Créer';
+    $('#pers-new-dialog').showModal();
+    f.elements.nom.focus();
+  }
+
+  async function createSave(e) {
+    e.preventDefault();
+    if (S.busy) return;
+    const f = $('#pers-new-form');
+    const v = k => f.elements[k].value.trim();
+    const personne = {
+      nom: v('nom').toUpperCase(), prenom: v('prenom'), grade: v('grade'), affectation: v('affectation'),
+      secteur: v('secteur'), email: v('email').toLowerCase(), telephone: f.elements.telephone.disabled ? '' : v('telephone'), qualifs: {},
+    };
+    document.querySelectorAll('#pers-new-qualifs [data-q]').forEach(box => {
+      if (!box.checked) return;
+      const year = document.querySelector(`#pers-new-qualifs [data-an="${box.dataset.q}"]`);
+      personne.qualifs[box.dataset.q] = year ? { acquis: true, annee: year.value.trim() } : { acquis: true };
+    });
+    if (!confirm(`Créer ${personne.prenom} ${personne.nom} (${SECTEURS[personne.secteur] || personne.secteur}) ? Son dossier et son livret individuel seront créés dans Drive.`)) return;
+    S.busy = true;
+    $('#pers-new-save').disabled = true;
+    $('#pers-new-save').textContent = 'Création…';
+    $('#pers-new-error').textContent = '';
+    try {
+      const res = await app().api('personnel_create', { token: app().token(), personne });
+      if (S.data) {
+        S.data.personnes.push(res.personne);
+        S.data.personnes.sort((x, y) => (x.nom + ' ' + x.prenom).localeCompare(y.nom + ' ' + y.prenom, 'fr'));
+      }
+      $('#pers-new-dialog').close();
+      $('#pers-search').value = res.personne.nom;
+      render();
+      setState(`${res.personne.prenom} ${res.personne.nom} a été créé, avec son dossier et son livret individuel.`);
+    } catch (err) {
+      if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
+      $('#pers-new-error').textContent = err instanceof app().NetworkError
+        ? `${app().netLabel()} : création impossible.` : err.message;
+      $('#pers-new-save').disabled = false;
+      $('#pers-new-save').textContent = 'Créer';
+    } finally { S.busy = false; }
+  }
+
+  function reset() { S.data = null; S.edit = null; $('#pers-list').replaceChildren(); $('#pers-new').hidden = true; }
 
   $('#pers-search').addEventListener('input', render);
   $('#pers-secteur').addEventListener('change', render);
   $('#pers-inactifs').addEventListener('change', render);
   $('#pers-form').addEventListener('submit', save);
   $('#pers-cancel').addEventListener('click', () => $('#pers-dialog').close());
+  $('#pers-new').addEventListener('click', create);
+  $('#pers-new-form').addEventListener('submit', createSave);
+  $('#pers-new-cancel').addEventListener('click', () => $('#pers-new-dialog').close());
 
   window.SMPM_PERSONNEL = { open, reset };
 })();
