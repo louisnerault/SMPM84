@@ -62,7 +62,7 @@
       if (!x.lu) {
         const m = document.createElement('button');
         m.type = 'button'; m.className = 'link notif-mark'; m.textContent = 'Marquer comme lue';
-        m.addEventListener('click', () => marquer([x.id]));
+        m.addEventListener('click', () => marquer([x.id], 'clochette'));
         li.append(m);
       }
       list.append(li);
@@ -90,7 +90,9 @@
     }
   }
 
-  async function marquer(ids) {
+  // mode (inscrit côté serveur) : 'clic' notification touchée, 'liste' ouverte dans la clochette,
+  // 'clochette' Marquer comme lue ; 'tout' déduit par le serveur
+  async function marquer(ids, mode) {
     const a = app();
     // affichage immédiat, puis confirmation du serveur
     S.items.forEach(x => { if (ids === 'tout' || ids.includes(x.id)) x.lu = true; });
@@ -98,7 +100,7 @@
     render();
     if (!a || !navigator.onLine) return;
     try {
-      const r = await a.api('notif_read', { token: a.token(), ids });
+      const r = await a.api('notif_read', { token: a.token(), ids, mode: mode || '' });
       S.items = r.items || S.items;
       store.set(S.items);
       render();
@@ -108,7 +110,7 @@
   }
 
   function ouvrir(x) {
-    if (!x.lu) marquer([x.id]);
+    if (!x.lu) marquer([x.id], 'liste');
     fermer();
     if (x.page && app()) app().goto(x.page);
   }
@@ -143,6 +145,8 @@
     },
     refresh: () => charger(),
     open: () => { if (S.on) ouvrirPanneau(); },
+    /** Notification push touchée : marquée lue (date et heure inscrites dans l'historique du serveur). */
+    lue: (id, mode) => { if (S.on && id) marquer([String(id)], mode); },
     close: fermer,
     reset() {
       S.on = false; S.items = []; S.last = 0; S.error = '';

@@ -700,9 +700,11 @@
   // ---------- application ----------
   // Page à ouvrir au démarrage, transmise par une notification (?page=…)
   let startPage = new URLSearchParams(location.search).get('page');
+  let startNotif = new URLSearchParams(location.search).get('notif');   // notification touchée : lue
 
   // Page demandée par une notification : « notifs » = clochette ouverte sur l'accueil
-  function ouvrirDepuisNotif(p) {
+  function ouvrirDepuisNotif(p, notif) {
+    if (notif && window.SMPM_NOTIFS && window.SMPM_NOTIFS.lue) window.SMPM_NOTIFS.lue(notif, 'clic');
     if (p === 'notifs') {
       if (!state.page) gotoPage(isIntervention() ? 'accueil' : 'livret');
       if (window.SMPM_NOTIFS && window.SMPM_NOTIFS.open) window.SMPM_NOTIFS.open();
@@ -727,9 +729,11 @@
     if (startPage) {
       // ouverture depuis une notification (ex. ?page=fmpa-valid) : page demandée, une seule fois
       const p = startPage;
+      const n = startNotif;
       startPage = null;
+      startNotif = null;
       try { history.replaceState(null, '', location.pathname); } catch (e) {}
-      ouvrirDepuisNotif(p);
+      ouvrirDepuisNotif(p, n);
     } else if (!(state.keepPage && wasInApp && state.page)) gotoPage(isIntervention() ? 'accueil' : 'livret');
     state.keepPage = false;
     // Livret : affichage immédiat depuis l'appareil, puis rafraîchissement si en ligne
@@ -1430,8 +1434,8 @@
     navigator.serviceWorker.addEventListener('message', e => {
       if (!(e.data && e.data.type === 'goto' && e.data.page)) return;
       // application encore en chargement (ou écran de connexion) : page ouverte dès l'entrée
-      if (state.data && !$('#view-app').hidden) ouvrirDepuisNotif(e.data.page);
-      else startPage = e.data.page;
+      if (state.data && !$('#view-app').hidden) ouvrirDepuisNotif(e.data.page, e.data.notif);
+      else { startPage = e.data.page; startNotif = e.data.notif || null; }
     });
     // version affichée = celle du service worker qui sert réellement la page
     const showVersion = () => {

@@ -6,7 +6,7 @@
 // - Carte hors ligne : cache dédié (smpm84-carte) rempli par carte-hors-ligne.js à la demande ; jamais rempli ici.
 // - Photos des points d'intérêt : cache dédié (smpm84-poi) rempli par poi.js ; jamais rempli ici.
 // Les données personnelles ne passent jamais par ce cache (elles sont dans localStorage).
-const CACHE = 'smpm84-shell-v103';
+const CACHE = 'smpm84-shell-v104';
 const FICHES_CACHE = 'smpm84-fiches';
 const CARTE_CACHE = 'smpm84-carte';
 const POI_CACHE = 'smpm84-poi';         // photos des points d'intérêt consultées (poi.js)
@@ -39,7 +39,7 @@ self.addEventListener('push', e => {
     renotify: !!d.tag,
     icon: 'assets/icon-192.png',
     badge: 'assets/icon-192.png',
-    data: { page: d.page || '' },
+    data: { page: d.page || '', id: d.id || '' },
   }));
 });
 
@@ -52,7 +52,8 @@ self.addEventListener('push', e => {
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   const page = (e.notification.data && e.notification.data.page) || 'notifs';
-  const url = new URL('./?page=' + encodeURIComponent(page), self.registration.scope).href;
+  const notif = (e.notification.data && e.notification.data.id) || '';   // lecture signalée au serveur (clic)
+  const url = new URL('./?page=' + encodeURIComponent(page) + (notif ? '&notif=' + encodeURIComponent(notif) : ''), self.registration.scope).href;
   const ouvrir = () => self.clients.openWindow(url).catch(() => null);
   e.waitUntil((async () => {
     let list = [];
@@ -65,7 +66,7 @@ self.addEventListener('notificationclick', e => {
     if (!c) return ouvrir();
     try {
       const f = await c.focus();
-      if (f || c.focused) { (f || c).postMessage({ type: 'goto', page }); return; }
+      if (f || c.focused) { (f || c).postMessage({ type: 'goto', page, notif }); return; }
     } catch (err) { /* mise au premier plan refusée */ }
     try {
       if (c.navigate) { const n = await c.navigate(url); if (n) { try { await n.focus(); } catch (err) {} return; } }
