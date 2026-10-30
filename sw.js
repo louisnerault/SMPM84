@@ -6,7 +6,7 @@
 // - Carte hors ligne : cache dédié (smpm84-carte) rempli par carte-hors-ligne.js à la demande ; jamais rempli ici.
 // - Photos des points d'intérêt : cache dédié (smpm84-poi) rempli par poi.js ; jamais rempli ici.
 // Les données personnelles ne passent jamais par ce cache (elles sont dans localStorage).
-const CACHE = 'smpm84-shell-v101';
+const CACHE = 'smpm84-shell-v102';
 const FICHES_CACHE = 'smpm84-fiches';
 const CARTE_CACHE = 'smpm84-carte';
 const POI_CACHE = 'smpm84-poi';         // photos des points d'intérêt consultées (poi.js)
@@ -43,18 +43,35 @@ self.addEventListener('push', e => {
   }));
 });
 
-// Notification (ex. nouvelle demande de validation) : ouvre l'application sur la page concernée
+// Toucher une notification : ouvre l'application sur la page concernée.
+// Sans page (message de l'encadrement, test) : ouvre la clochette (page spéciale « notifs »).
+// Ordre des tentatives (chaque étape peut échouer selon le téléphone) :
+//   1. fenêtre de l'application déjà ouverte -> mise au premier plan + demande de la page ;
+//   2. mise au premier plan refusée -> rechargement de cette fenêtre sur la page ;
+//   3. aucune fenêtre (ou échec) -> ouverture d'une nouvelle fenêtre sur la page.
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const page = (e.notification.data && e.notification.data.page) || '';
-  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-    const c = list[0];
-    if (c) {
-      if (page) c.postMessage({ type: 'goto', page });
-      return c.focus();
-    }
-    return self.clients.openWindow('./' + (page ? '?page=' + encodeURIComponent(page) : ''));
-  }));
+  const page = (e.notification.data && e.notification.data.page) || 'notifs';
+  const url = new URL('./?page=' + encodeURIComponent(page), self.registration.scope).href;
+  const ouvrir = () => self.clients.openWindow(url).catch(() => null);
+  e.waitUntil((async () => {
+    let list = [];
+    try { list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true }); } catch (err) {}
+    // fenêtres de l'application uniquement, la plus pertinente d'abord (visible, puis contrôlée)
+    const scope = self.registration.scope;
+    const wins = list.filter(c => c.url && c.url.startsWith(scope))
+      .sort((a, b) => (b.visibilityState === 'visible') - (a.visibilityState === 'visible') || b.focused - a.focused);
+    const c = wins[0];
+    if (!c) return ouvrir();
+    try {
+      const f = await c.focus();
+      if (f || c.focused) { (f || c).postMessage({ type: 'goto', page }); return; }
+    } catch (err) { /* mise au premier plan refusée */ }
+    try {
+      if (c.navigate) { const n = await c.navigate(url); if (n) { try { await n.focus(); } catch (err) {} return; } }
+    } catch (err) { /* fenêtre non contrôlée par ce service worker */ }
+    return ouvrir();
+  })());
 });
 
 self.addEventListener('install', e => {

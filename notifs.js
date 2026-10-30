@@ -142,6 +142,7 @@
       }
     },
     refresh: () => charger(),
+    open: () => { if (S.on) ouvrirPanneau(); },
     close: fermer,
     reset() {
       S.on = false; S.items = []; S.last = 0; S.error = '';
