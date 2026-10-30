@@ -327,6 +327,19 @@
     const titreCs = avecCu ? 'Notification · chef de section, contrôleur EPI et CTD' : 'Chef de section et contrôleur EPI';
     if (x.statut === 'cu') {
       etapes.push(etape(n, 'attente', titreCs, el('p', { class: 'small muted', text: `Prévenus seulement si le matériel n’est pas retrouvé ou sans réponse à l’échéance : ${dest}.` })));
+    } else if (x.statut === 'cs' && x.type === 'corde') {
+      etapes.push(etape(n, 'encours', titreCs,
+        el('p', { class: 'small', text: `Notifiés : ${destCs}. Pour chaque corde : lever la surveillance, la laisser sous surveillance ou la réformer. L’alerte se clôt quand toutes les cordes sont traitées.` }),
+        el('ul', { class: 'inv-traiter' }, x.objet.split(',').map(id => {
+          const c = cordes().find(o => o.id === id);
+          const num = id.split('-').pop();
+          const fait = (x.traitees || {})[num];
+          return el('li', null,
+            el('button', { type: 'button', class: 'link', text: `Corde n° ${num}`, onclick: () => go('corde', { corde: id }), disabled: !c }),
+            fait ? el('span', { class: 'small', text: ' ✓ ' + fait })
+              : c && c.statut !== 'inactive' && droits().gerer && x.peut.includes('clore') ? boutonsDecision(c)
+                : el('span', { class: 'small muted', text: ' à traiter' }));
+        }))));
     } else if (x.statut === 'cs') {
       etapes.push(etape(n, 'encours', titreCs,
         el('p', { class: 'small', text: `Notifiés : ${avecCu ? dest : destCs}. Décision et clôture de l’alerte.` }),
@@ -891,6 +904,7 @@
     const c = cordes().find(x => x.id === S.corde);
     if (!c) return vListe();
     const fam = familles().find(f => f.code === c.famille) || { libelle: c.famille };
+    const aTraiter = c.statut === 'a_surveiller' || !!c.anomalie;
     const info = [['Secteur', SECT[c.secteur] || c.secteur], ['Longueur', c.longueur && c.longueur + ' m'], ['Diamètre', c.diametre && c.diametre + ' mm'],
       ['Type', c.type], ['Fabricant', c.fabricant], ['Modèle', c.modele], ['N° de série', c.serie], ['N° TEXIS / TECHSYS', c.texis],
       ['Fabrication', moisAn(c.fabrication)], ['Mise en service', moisAn(c.service)], ['Caserne', c.caserne]].filter(x => x[1]);
@@ -916,6 +930,7 @@
         c.anomalie && c.statut !== 'inactive' ? el('span', { class: 'inv-excl', 'aria-hidden': 'true', text: '!' }) : null,
         STATUTS[c.statut] + (c.anomalie && c.anomalie !== 'À surveiller' && c.statut !== 'inactive' ? ' · anomalie signalée : ' + c.anomalie : '')),
       c.ph ? el('figure', { class: 'inv-motif' }, grandePhoto(photoCorde(c)), el('figcaption', { class: 'small muted', text: 'Motif' + (c.motif ? ' : ' + c.motif : '') })) : null,
+      c.surv && !aTraiter ? el('p', { class: 'small muted', text: texteDecision(c) }) : null,
       c.commentaire ? el('p', { class: 'small', text: c.commentaire }) : null,
       el('dl', { class: 'inv-dl' }, info.map(([k, v]) => [el('dt', { text: k }), el('dd', { text: v })])),
       el('h3', { class: 'inv-sub', text: 'Compteurs' }),
@@ -929,12 +944,59 @@
           h.ctl.length ? el('small', { class: 'muted', text: ' · ' + h.ctl.map(k => CTL[k] || k).join(', ') }) : null,
           h.rq ? el('em', { class: 'inv-hrq', text: h.rq }) : null)))) : el('p', { class: 'muted small', text: 'Aucun contrôle enregistré.' }),
       archivesListe(),
+      aTraiter ? vTraitement(c) : null,
       el('div', { class: 'inv-actions' },
         c.statut !== 'inactive' ? el('button', { type: 'button', icon: 'rope', class: 'primary', text: 'Déclarer une utilisation',
           onclick: () => go('usage', { usage: { famille: c.famille, type: 'FMPA', nums: [c.num], ctl: ['VISUEL'], rq: {}, ref: [], sid: sid(), err: '' } }) }) : null,
         droits().gerer && c.statut !== 'inactive' ? el('button', { type: 'button', icon: 'edit', class: 'pill', text: 'Modifier la fiche', onclick: () => editCorde(c) }) : null,
-        droits().gerer && c.statut !== 'inactive' ? el('button', { type: 'button', icon: 'trash', class: 'pill danger-pill', text: 'Réformer cette corde', disabled: S.busy, onclick: () => reformer(c) }) : null),
+        droits().gerer && !aTraiter ? el('button', { type: 'button', icon: 'alert', class: 'pill', text: 'Placer sous surveillance', disabled: S.busy, onclick: () => decider(c, 'maintenir') }) : null,
+        droits().gerer && !aTraiter ? el('button', { type: 'button', icon: 'trash', class: 'pill danger-pill', text: 'Réformer cette corde', disabled: S.busy, onclick: () => reformer(c) }) : null),
     ];
+  }
+
+  // Dernière décision sur la surveillance (visible de tous)
+  function texteDecision(c) {
+    const d = c.surv;
+    if (!d) return '';
+    return `${d.decision === 'lever' ? 'Surveillance levée' : 'Mise sous surveillance'} le ${new Date(d.d).toLocaleDateString('fr-FR')} par ${d.par}${d.txt ? ' — « ' + d.txt + ' »' : ''}`;
+  }
+
+  // Corde signalée ou à surveiller : trois décisions (chefs de section, contrôleurs EPI, CTD, administrateurs)
+  function boutonsDecision(c) {
+    return el('div', { class: 'inv-actions' },
+      el('button', { type: 'button', icon: 'save', class: 'primary', text: 'Lever la surveillance', disabled: S.busy, onclick: () => decider(c, 'lever') }),
+      el('button', { type: 'button', icon: 'alert', class: 'pill', text: c.statut === 'a_surveiller' ? 'Laisser sous surveillance' : 'Mettre sous surveillance', disabled: S.busy, onclick: () => decider(c, 'maintenir') }),
+      el('button', { type: 'button', icon: 'trash', class: 'pill danger-pill', text: 'Réformer la corde', disabled: S.busy, onclick: () => reformer(c) }));
+  }
+
+  function vTraitement(c) {
+    const signalee = c.anomalie && c.anomalie !== 'À surveiller';
+    return el('div', { class: 'inv-card inv-traitement' },
+      el('strong', { icon: 'alert', text: signalee ? 'Signalement à traiter' : 'Corde sous surveillance' }),
+      signalee ? el('p', { class: 'small', text: 'Signalé : ' + c.anomalie }) : null,
+      c.surv && c.surv.decision === 'maintenir' ? el('p', { class: 'small', text: texteDecision(c) }) : null,
+      droits().gerer ? [
+        el('p', { class: 'small muted', text: 'Lever : la corde repasse « En service ». Laisser sous surveillance : elle reste utilisable, signalée à chaque utilisation. Réformer : fiche archivée en PDF, numéro libéré.' }),
+        boutonsDecision(c),
+      ] : el('p', { class: 'small muted', text: 'Décision par le chef de section, le contrôleur EPI ou le CTD.' }));
+  }
+
+  async function decider(c, decision) {
+    const lever = decision === 'lever';
+    const precedent = c.surv && c.surv.decision === 'maintenir' ? c.surv.txt : (c.anomalie && c.anomalie !== 'À surveiller' ? c.anomalie.replace(/^À réformer \?\s*/, '') : '');
+    const txt = prompt(lever
+      ? `Lever la surveillance de la corde n° ${c.num} ?\n\nElle repasse « En service » et le signalement est traité.\n\nCommentaire (facultatif) :`
+      : `${c.statut === 'a_surveiller' ? 'Laisser' : 'Mettre'} la corde n° ${c.num} sous surveillance ?\n\nElle reste utilisable et apparaît « À surveiller » à chaque utilisation.\n\nCe qu’il faut surveiller :`, lever ? '' : precedent);
+    if (txt === null) return;
+    if (!lever && !txt.trim()) { S.msg = 'Précisez ce qu’il faut surveiller.'; render(); return; }
+    S.busy = true; S.msg = ''; render();
+    try {
+      setData(await app().api('inv_corde_decision', { token: app().token(), corde: c.id, decision, commentaire: txt.trim() }));
+      S.msg = lever ? `Corde n° ${c.num} : surveillance levée, corde en service.` : `Corde n° ${c.num} sous surveillance.`;
+    } catch (err) {
+      if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
+      S.msg = err instanceof app().NetworkError ? app().netLabel() + ' : décision impossible hors ligne.' : err.message;
+    } finally { S.busy = false; render(); }
   }
 
   async function reformer(c) {
@@ -1035,8 +1097,6 @@
       el('h2', { class: 'inv-title', text: c.activer ? `Nouvelle corde n° ${c.num}` : `Fiche de la corde n° ${c.num}` }),
       el('p', { class: 'muted small', text: `${fam.libelle || c.famille} · n° ${c.num}${c.secteur ? ' · secteur ' + (SECT[c.secteur] || c.secteur) : ''}`
         + (c.activer ? ' · compteurs remis à zéro à la mise en service.' : '') }),
-      c.activer ? null : el('label', null, 'Statut', el('select', { onchange: e => { c.statut = e.target.value; } },
-        ['en_service', 'a_surveiller'].map(k => el('option', { value: k, selected: k === c.statut }, STATUTS[k])))),
       el('div', { class: 'inv-2col' }, champ('Longueur (m)', 'longueur', { inputmode: 'decimal' }), champ('Diamètre (mm)', 'diametre', { inputmode: 'decimal' })),
       el('div', { class: 'inv-2col' }, champ('Type', 'type', { placeholder: 'Semi-stat, A…' }), champ('Fabricant', 'fabricant')),
       el('div', { class: 'inv-2col' }, champ('Modèle', 'modele'), champ('N° de série', 'serie')),
