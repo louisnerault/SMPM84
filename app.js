@@ -59,6 +59,9 @@
   const canPoiEdit = session => !!session && (isAdm(session) || ['chef_section', 'ctd', 'admin'].includes(session.role));
   // Gestion des listes des points d'intérêt (types et icônes, secteurs et couleurs) : CTD et administrateurs (Poi.gs : POI.ADMIN)
   const canPoiAdmin = session => !!session && (isAdm(session) || ['ctd', 'admin'].includes(session.role));
+  // Inventaire du matériel (à garder cohérent avec Inventaire.gs : INV.GERER) : inventaires et utilisations de cordes
+  // par tous ; contenu théorique des contenants et fiches des cordes : chef de section, CTD, administrateur
+  const canInvGerer = session => !!session && (isAdm(session) || ['chef_section', 'ctd', 'admin'].includes(session.role));
   // Encadrer (déclarer) une FMPA : qualification IMP 3 (fonction renvoyée par le serveur), ou administrateur
   const canEncadrer = data => {
     if (!data || !data.session) return false;
@@ -345,6 +348,7 @@
     $('#tab-accueil').hidden = name !== 'accueil';
     $('#tab-annuaire').hidden = name !== 'annuaire';
     $('#tab-poi').hidden = name !== 'poi';
+    $('#tab-inventaire').hidden = name !== 'inventaire';
     $('#tab-fmpa').hidden = !(name === 'fmpa' || name === 'fmpa-fiche');
     $('#tab-fmpa-list').hidden = !FMPA_LISTS.includes(name);
     $('#tab-fmpa-valid').hidden = name !== 'fmpa-valid';
@@ -361,6 +365,7 @@
     if ((name === 'fiches' || name === 'notices') && window.SMPM_FICHES) window.SMPM_FICHES.open();
     if (name === 'annuaire' && window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.open();
     if (name === 'poi' && window.SMPM_POI) window.SMPM_POI.open();
+    if (name === 'inventaire' && window.SMPM_INV) window.SMPM_INV.open();
     if (name === 'livret' && window.SMPM_CSH) window.SMPM_CSH.home(state.year);
     if (name.startsWith('cs-heures')) setCshGroup(true);
     if (name.startsWith('cs-heures') && window.SMPM_CSH) window.SMPM_CSH.open(name);
@@ -465,6 +470,7 @@
       if (window.SMPM_ITV) window.SMPM_ITV.flush();
       if (window.SMPM_THEMES) window.SMPM_THEMES.flush();
       if (window.SMPM_POI) { window.SMPM_POI.flush(); window.SMPM_POI.prefetch(); }
+      if (window.SMPM_INV) window.SMPM_INV.flush();
     }
   }
 
@@ -601,6 +607,7 @@
     if (window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.reset();
     if (window.SMPM_PERSONNEL) window.SMPM_PERSONNEL.reset();
     if (window.SMPM_POI) window.SMPM_POI.reset(explicit === true);
+    if (window.SMPM_INV) window.SMPM_INV.reset(explicit === true);
     if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.reset();
     if (window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.reset();
     if (window.SMPM_THEMES) window.SMPM_THEMES.reset(explicit === true);
@@ -753,6 +760,8 @@
     if (!offline && window.SMPM_THEMES) window.SMPM_THEMES.flush();
     // points d'intérêt : liste gardée sur l'appareil pour une consultation hors ligne
     if (!offline && window.SMPM_POI) { window.SMPM_POI.flush(); window.SMPM_POI.prefetch(); }
+    // inventaire : saisies hors ligne envoyées, données gardées sur l'appareil (inventaire au garage sans réseau)
+    if (window.SMPM_INV) { window.SMPM_INV.renderPending(); if (!offline) { window.SMPM_INV.flush(); window.SMPM_INV.prefetch(); } }
     // demandes de validation des thèmes en attente : compteur du menu
     // (compteur affiché tout de suite depuis l'appareil, puis rafraîchi : menu, bouton ☰ et icône de l'application)
     if (canDeclare(data.session) && window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.refresh();
@@ -1242,8 +1251,9 @@
   });
 
   $('#btn-logout').addEventListener('click', () => {
-    const n = (window.SMPM_FMPA ? window.SMPM_FMPA.pending() : 0) + (window.SMPM_ITV ? window.SMPM_ITV.pending() : 0) + (window.SMPM_POI ? window.SMPM_POI.pending() : 0);
-    if (n && !confirm(`${n} saisie${n > 1 ? 's' : ''} (FMPA, intervention ou point d’intérêt) ${n > 1 ? 'ne sont' : 'n’est'} pas encore envoyée${n > 1 ? 's' : ''}. ` +
+    const n = (window.SMPM_FMPA ? window.SMPM_FMPA.pending() : 0) + (window.SMPM_ITV ? window.SMPM_ITV.pending() : 0) + (window.SMPM_POI ? window.SMPM_POI.pending() : 0)
+      + (window.SMPM_INV ? window.SMPM_INV.pending() : 0);
+    if (n && !confirm(`${n} saisie${n > 1 ? 's' : ''} (FMPA, intervention, point d’intérêt ou inventaire) ${n > 1 ? 'ne sont' : 'n’est'} pas encore envoyée${n > 1 ? 's' : ''}. ` +
       'Se déconnecter les supprimera de cet appareil. Continuer ?')) return;
     logout(true);
   });
@@ -1396,6 +1406,7 @@
     // Gestion du personnel (personnel.js) : grades proposés et centres d'affectation connus
     gradeChoices: current => gradeChoices(state.options && state.options.grades, current),
     affectations: () => (state.options && state.options.affectations) || [],
+    invGerer: () => !!state.data && canInvGerer(state.data.session),
     poiDroits: () => ({ creer: !!state.data && canPoiCreate(state.data.session), modifier: !!state.data && canPoiEdit(state.data.session), gerer: !!state.data && canPoiAdmin(state.data.session) }),
   };
 
@@ -1416,8 +1427,10 @@
       if (window.SMPM_ITV) await window.SMPM_ITV.flush();
       if (window.SMPM_THEMES) await window.SMPM_THEMES.flush();
       if (window.SMPM_POI) await window.SMPM_POI.flush();
+      if (window.SMPM_INV) await window.SMPM_INV.flush();
       await loadLivret();
       if (window.SMPM_POI) await window.SMPM_POI.refresh();
+      if (window.SMPM_INV && state.page === 'inventaire') await window.SMPM_INV.refresh();
       if (window.SMPM_FICHES) await window.SMPM_FICHES.sync();
     } finally {
       setSyncBusy(false);
@@ -1454,7 +1467,7 @@
       const a = document.activeElement;
       if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'search') return true;
       const poiForm = document.getElementById('poi-form');
-      return (poiForm && !poiForm.hidden) || state.page === 'bug' || state.page === 'infos';
+      return (poiForm && !poiForm.hidden) || state.page === 'bug' || state.page === 'infos' || !!(window.SMPM_INV && window.SMPM_INV.busy());
     };
     const reloadNow = () => {
       if (reloading) return;

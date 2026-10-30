@@ -86,6 +86,7 @@
     
     <button data-page="annuaire"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.3c2.1.7 3.5 2.6 3.5 5.7"/></svg>Annuaire des spécialistes</button>
     <button data-page="poi"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>Points d'intérêt<span class="pending-dot" id="poi-nav-dot" title="Point en attente d'envoi" hidden></span></button>
+    <button data-page="inventaire"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5L12 4l8.5 4.5v9L12 22l-8.5-4.5z"/><path d="M3.5 8.5L12 13l8.5-4.5"/><path d="M12 13v9"/><path d="M7.8 6.2l8.4 4.6"/></svg>Inventaire du matériel<span class="pending-dot" id="inv-nav-dot" title="Saisie en attente d'envoi" hidden></span></button>
     <div id="nav-doc" class="nav-group">
       <button type="button" class="nav-group-btn" aria-expanded="false" aria-controls="nav-doc-sub"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M2 5.5c3.2-1.2 6.4-1.2 10 1 3.6-2.2 6.8-2.2 10-1v13c-3.2-1.2-6.4-1.2-10 1-3.6-2.2-6.8-2.2-10-1z"/><path d="M12 6.5v13"/></svg>Documentation<svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
       <div id="nav-doc-sub" class="nav-sub" hidden>
@@ -260,6 +261,10 @@
           <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>
           <span>Points d'intérêt <small class="home-sub">Parkings, accès, lieux-dits…</small></span>
         </button>
+        <button type="button" class="home-btn" data-go="inventaire">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5L12 4l8.5 4.5v9L12 22l-8.5-4.5z"/><path d="M3.5 8.5L12 13l8.5-4.5"/><path d="M12 13v9"/><path d="M7.8 6.2l8.4 4.6"/></svg>
+          <span>Inventaire du matériel <small class="home-sub">Contenants des véhicules, cordes</small></span>
+        </button>
         <button type="button" class="home-btn" data-go="fiches">
           <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M2 5.5c3.2-1.2 6.4-1.2 10 1 3.6-2.2 6.8-2.2 10-1v13c-3.2-1.2-6.4-1.2-10 1-3.6-2.2-6.8-2.2-10-1z"/><path d="M12 6.5v13"/></svg>
           <span>Fiches techniques</span>
@@ -305,6 +310,15 @@
           </div>
         </form>
       </dialog>
+    </div>
+
+    <!-- Inventaire du matériel : contenants des véhicules et cordes (inventaire.js, Inventaire.gs du dépôt privé) -->
+    <div id="tab-inventaire" hidden>
+      <div class="sub-head only-intervention"><button type="button" class="link" data-go="accueil">← Accueil intervention</button></div>
+      <h1>Inventaire du matériel</h1>
+      <div id="inv-outbox"></div>
+      <p id="inv-state" class="muted small" role="status"></p>
+      <div id="inv-root"></div>
     </div>
 
     <!-- Points d'intérêt : base partagée de points GPS (poi.js, backend/Poi.gs) -->
@@ -812,6 +826,7 @@
 <script src="intervention-list.js"></script>
 <script src="annuaire.js"></script>
 <script src="poi.js"></script>
+<script src="inventaire.js"></script>
 <script src="fmpa-valid.js"></script>
 <script src="livret-remplir.js"></script>
 <script src="livret-themes.js"></script>
