@@ -275,8 +275,10 @@
   // Une application web ne peut pas savoir quelles applications sont installées : on propose celles qui existent
   // pour le système du téléphone. Plans : iPhone/iPad seulement. Roole et les autres GPS : Android, par le lien « geo: »
   // qui ouvre le sélecteur du téléphone (Roole n'a pas de lien direct public).
-  // Iphigénie et Avenza Maps n'ont pas de lien « naviguer vers » : on leur transmet le point sous forme de fichier GPX
-  // (un repère) par le menu de partage du téléphone, ou en téléchargement si le partage de fichier est refusé.
+  // Iphigénie et Avenza Maps n'ont pas de lien « naviguer vers » : on leur transmet le point comme repère.
+  // Iphigénie : lien d'import « gpxs:// » vers le back-end (doGet ?gpx=1 → fichier GPX), sans fichier sur le téléphone.
+  // Avenza : partage d'un fichier (GPX, ou CSV sur Android où Chrome refuse de partager un .gpx).
+  // En dernier recours (hors ligne pour Iphigénie, partage impossible) : partage ou téléchargement du GPX.
   const KEY_NAV = 'smpm_poi_nav';
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const isAndroid = /Android/i.test(navigator.userAgent);
@@ -285,13 +287,30 @@
     { id: 'waze', nom: 'Waze', ok: true, url: (la, lo) => `https://waze.com/ul?ll=${la},${lo}&navigate=yes` },
     { id: 'gmaps', nom: 'Google Maps', ok: true, url: (la, lo) => `https://www.google.com/maps/dir/?api=1&destination=${la},${lo}&travelmode=driving` },
     { id: 'geo', nom: 'Roole ou autre GPS du téléphone', ok: isAndroid, url: (la, lo, nom) => `geo:${la},${lo}?q=${la},${lo}(${encodeURIComponent(nom || 'Point')})` },
-    { id: 'iphigenie', nom: 'Iphigénie (repère GPX)', ok: true, gpx: true },
-    { id: 'avenza', nom: 'Avenza Maps (repère GPX)', ok: true, gpx: true },
+    { id: 'iphigenie', nom: 'Iphigénie (repère)', ok: true, gpx: true, lien: true },
+    { id: 'avenza', nom: 'Avenza Maps (repère)', ok: true, gpx: true, csv: true },
   ];
   const navApps = () => NAV_APPS.filter(a => a.ok);
   const navPref = () => { const id = store.getJSON(KEY_NAV); return navApps().find(a => a.id === id) || null; };
   const routeUrl = p => `https://www.google.com/maps/dir/?api=1&destination=${p.lat.toFixed(6)},${p.lng.toFixed(6)}`;
   const xmlEsc = t => String(t == null ? '' : t).replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
+  const safeName = nom => (nom.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'point');
+  function csvFile(p) {
+    const q = t => '"' + String(t == null ? '' : t).replace(/"/g, '""').replace(/[\r\n]+/g, ' ') + '"';
+    const nom = (p.nom || 'Point').trim() || 'Point';
+    const txt = 'name,description,latitude,longitude\r\n'
+      + [q(nom), q(p.commentaire || ''), p.lat.toFixed(6), p.lng.toFixed(6)].join(',') + '\r\n';
+    return new File([txt], safeName(nom) + '.csv', { type: 'text/csv' });
+  }
+  // Lien d'import Iphigénie : https:// remplacé par gpxs://, le fichier est fabriqué par le back-end
+  function iphigenieUrl(p) {
+    const api = (window.SMPM_CONFIG && window.SMPM_CONFIG.API_URL) || '';
+    if (!/^https:\/\//.test(api)) return '';
+    const qs = new URLSearchParams({ gpx: '1', lat: p.lat.toFixed(6), lon: p.lng.toFixed(6), nom: (p.nom || 'Point').slice(0, 80) });
+    if (p.commentaire) qs.set('desc', p.commentaire.slice(0, 300));
+    qs.set('fichier', safeName(p.nom || 'Point') + '.gpx');
+    return api.replace(/^https:\/\//, 'gpxs://') + '?' + qs.toString();
+  }
   function gpxFile(p) {
     const nom = (p.nom || 'Point').trim() || 'Point';
     const xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -300,7 +319,7 @@
       + `    <name>${xmlEsc(nom)}</name>\n`
       + (p.commentaire ? `    <desc>${xmlEsc(p.commentaire)}</desc>\n` : '')
       + '  </wpt>\n</gpx>\n';
-    const fname = (nom.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'point') + '.gpx';
+    const fname = safeName(nom) + '.gpx';
     return new File([xml], fname, { type: 'application/gpx+xml' });
   }
   function navMsg(t) {
@@ -312,19 +331,29 @@
   }
   // Partage du fichier (à appeler directement dans le clic : le partage exige un geste de l'utilisateur)
   function sendGpx(a, p) {
-    const f = gpxFile(p);
+    const app = a.nom.replace(/ \(.*$/, '');
+    if (a.lien && navigator.onLine) {
+      const u = iphigenieUrl(p);
+      if (u) {
+        location.href = u;
+        navMsg(`Ouverture de ${app} : le repère « ${p.nom} » arrive dans le groupe [import]. Si rien ne se passe, vérifiez que ${app} est installée.`);
+        return;
+      }
+    }
+    const canFiles = f => { try { return !!(navigator.canShare && navigator.canShare({ files: [f] })); } catch (e) { return false; } };
+    let f = gpxFile(p);
+    if (!canFiles(f) && a.csv) { const c = csvFile(p); if (canFiles(c)) f = c; }
     const download = () => {
+      f = gpxFile(p);
       const u = URL.createObjectURL(f);
       const link = el('a', { href: u, download: f.name });
       document.body.append(link); link.click(); link.remove();
       setTimeout(() => URL.revokeObjectURL(u), 60000);
-      navMsg(`Fichier « ${f.name} » téléchargé : ouvrez-le depuis la notification ou le dossier Téléchargements et choisissez ${a.nom.replace(/ \(.*$/, '')}.`);
+      navMsg(`Fichier « ${f.name} » téléchargé : ouvrez-le depuis la notification ou le dossier Téléchargements et choisissez ${app}.`);
     };
-    let shareable = false;
-    try { shareable = !!(navigator.canShare && navigator.canShare({ files: [f] })); } catch (e) { shareable = false; }
-    if (!shareable) return download();
+    if (!canFiles(f)) return download();
     navigator.share({ files: [f], title: p.nom })
-      .then(() => navMsg(`Point envoyé. Dans ${a.nom.replace(/ \(.*$/, '')}, il apparaît parmi les repères importés.`))
+      .then(() => navMsg(`Point envoyé. Dans ${app}, il apparaît parmi les repères importés.`))
       .catch(e => { if (!e || e.name !== 'AbortError') download(); });
   }
   function launchNav(a, p) {
@@ -346,7 +375,7 @@
     $('#poi-nav-keep-row').hidden = !p;
     $('#poi-nav-note').textContent = (isIOS ? 'Roole n’est pas proposé sur iPhone : il ne peut pas être ouvert depuis une application web. '
       : isAndroid ? '« Roole ou autre GPS » ouvre le choix des applications de navigation installées sur le téléphone. ' : '')
-      + 'Iphigénie et Avenza Maps : le point est envoyé comme repère (fichier GPX) ; choisissez l’application dans le menu de partage, puis lancez la navigation vers ce repère depuis l’application.';
+      + 'Iphigénie et Avenza Maps : le point est envoyé comme repère (Iphigénie s’ouvre directement ; pour Avenza, choisissez-la dans le menu de partage), puis lancez la navigation vers ce repère depuis l’application.';
     const cur = navPref();
     $('#poi-nav-list').replaceChildren(...navApps().map(a => el('button', {
       type: 'button', class: 'poi-nav-app' + (cur && cur.id === a.id ? ' is-cur' : ''), text: a.nom,
