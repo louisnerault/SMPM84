@@ -60,8 +60,9 @@
   // Gestion des listes des points d'intérêt (types et icônes, secteurs et couleurs) : CTD et administrateurs (Poi.gs : POI.ADMIN)
   const canPoiAdmin = session => !!session && (isAdm(session) || ['ctd', 'admin'].includes(session.role));
   // Contrôleur EPI : casquette cumulable avec n'importe quel rôle (case « Contrôleur EPI » de la Liste du personnel,
-  // renvoyée par le serveur dans session.ctrl_epi) — responsable matériel de son secteur
-  const isCtrlEpi = session => !!session && session.ctrl_epi === true;
+  // renvoyée par l'action « fonction » de Roles.gs : fonction.ctrl_epi) — responsable matériel de son secteur
+  const isCtrlEpi = session => !!session && (session.ctrl_epi === true
+    || !!(state.data && state.data.session === session && state.data.fonction && state.data.fonction.ctrl_epi));
   // Inventaire du matériel (à garder cohérent avec Inventaire.gs : INV.GERER) : inventaires et utilisations de cordes
   // par tous ; contenu théorique des contenants et fiches des cordes : chef de section, contrôleur EPI, CTD, administrateur
   const canInvGerer = session => !!session && (isAdm(session) || isCtrlEpi(session) || ['chef_section', 'ctd', 'admin'].includes(session.role));
@@ -91,7 +92,7 @@
   // Fonction affichée : jamais « administrateur » (droit d'administration invisible) ; « · Contrôleur EPI » ajouté si besoin
   function roleLabel(session, me, qualifications, fonction) {
     const base = baseLabel(session, me, qualifications, fonction);
-    return isCtrlEpi(session) ? [base, 'Contrôleur EPI'].filter(Boolean).join(' · ') : base;
+    return (isCtrlEpi(session) || (fonction && fonction.ctrl_epi)) ? [base, 'Contrôleur EPI'].filter(Boolean).join(' · ') : base;
   }
   function baseLabel(session, me, qualifications, fonction) {
     if (fonction && fonction.libelle) return fonction.libelle;
@@ -660,7 +661,8 @@
   // au lieu de 3. Tant que le serveur ne connaît pas « boot », on revient aux trois appels séparés.
   let bootUnknown = false;
   function applyFonction(data, fonction) {
-    if (fonction && fonction.ok) data.fonction = { libelle: fonction.libelle || '', sections: fonction.sections || [], imp3: !!fonction.imp3 };
+    if (fonction && fonction.ok) data.fonction = { libelle: fonction.libelle || '', sections: fonction.sections || [], imp3: !!fonction.imp3,
+      ctrl_epi: !!fonction.ctrl_epi, ctrl_epi_secteur: fonction.ctrl_epi_secteur || '' };
     else if (state.data && state.data.fonction) data.fonction = state.data.fonction;
   }
   async function fetchProfile(token, oldOptions) {
