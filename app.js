@@ -116,7 +116,7 @@
   // 40 s : le serveur Apps Script met souvent 20 s à répondre lorsque plusieurs requêtes arrivent ensemble
   const API_TIMEOUT = 40000;
   const API_TIMEOUT_LONG = 60000;
-  const LONG_ACTIONS = /(_submit|_update|_create|_decide|^itv_list$|^itv_get$|^itv_form$|^update_me$|^login$|^verify_code$|^request_code$|^livret_pdf$)/;
+  const LONG_ACTIONS = /(_submit|_update|_create|_decide|^itv_list$|^itv_get$|^itv_form$|^update_me$|^login$|^verify_code$|^request_code$|^livret_pdf$|^bug_report$)/;
 
   // ---------- barre de progression des requêtes ----------
   // Apps Script ne renvoie pas d'avancement : la barre progresse vite puis ralentit

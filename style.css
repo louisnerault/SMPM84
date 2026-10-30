@@ -1569,3 +1569,22 @@ button.notif-body { cursor: pointer; }
 .notif-body p { margin: 2px 0 4px; font-size: .86rem; white-space: pre-line; overflow-wrap: anywhere; }
 .notif-body small { font-size: .75rem; }
 .notif-mark { margin-top: 2px; padding: 6px 0; font-size: .8rem; }
+
+/* Signaler un problème : photos et message vocal */
+.bug-media { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px 12px; margin: 0 0 14px; min-width: 0; }
+.bug-media legend { padding: 0 6px; font-weight: 600; }
+.bug-thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
+.bug-thumbs:not(:empty) { margin-bottom: 10px; }
+.bug-thumb { position: relative; width: 76px; height: 76px; }
+.bug-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); display: block; }
+.bug-thumb button { position: absolute; top: -6px; right: -6px; width: 26px; height: 26px; border-radius: 50%; border: 0; background: #c62828; color: #fff; font-size: 16px; line-height: 1; cursor: pointer; }
+.bug-add { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 1px dashed var(--line); border-radius: 10px; background: none; color: inherit; font: inherit; cursor: pointer; }
+.bug-add[aria-disabled="true"], .bug-add:disabled { opacity: .45; cursor: not-allowed; }
+.bug-voice { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.bug-rec.is-rec { border-style: solid; border-color: #c62828; color: #c62828; animation: bug-pulse 1.2s ease-in-out infinite; }
+@keyframes bug-pulse { 50% { background: rgba(198, 40, 40, .1); } }
+@media (prefers-reduced-motion: reduce) { .bug-rec.is-rec { animation: none; } }
+.bug-rec-time { font-variant-numeric: tabular-nums; color: #c62828; font-weight: 600; }
+.bug-audio { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.bug-audio audio { max-width: 100%; flex: 1 1 220px; }
+.danger-link { color: #c62828; }

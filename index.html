@@ -134,7 +134,7 @@
   </nav>
   <div class="drawer-foot">
     <nav class="drawer-nav drawer-nav-foot" aria-label="Assistance">
-      <button data-page="bug"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="10" height="13" rx="5"/><path d="M9.5 7a2.5 2.5 0 0 1 5 0M12 11v9M3 13h4M17 13h4M4 7.5l3 2M20 7.5l-3 2M4 19l3-2M20 19l-3-2"/></svg>Signaler un problème</button>
+      <button data-page="bug"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9L2.4 17.6A2 2 0 0 0 4.1 20.6h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4.5"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg>Signaler un problème</button>
     </nav>
     <button id="btn-logout" class="logout" hidden>Déconnexion</button>
   </div>
@@ -667,27 +667,57 @@
 
     <div id="tab-bug" hidden>
       <h1>Signaler un problème</h1>
-      <p class="muted small">Un problème, un affichage incorrect, une idée d'amélioration ? Décrivez-le : l'administrateur est prévenu immédiatement. Sans réseau, le signalement part au retour de la connexion.</p>
+      <p class="muted small">Application, opération, FMPA, matériel, technique, RH ou relation avec le personnel : décrivez le problème, ajoutez si besoin des photos ou un message vocal. Le signalement est adressé à l'administrateur uniquement. Sans réseau, il part au retour de la connexion.</p>
       <form id="form-bug">
-        <label>Rubrique concernée
-          <select name="rubrique">
-            <option>Mon livret</option><option>FMPA</option><option>Validation des livrets</option><option>Intervention</option>
-            <option>Mode intervention / annuaire</option><option>Points d'intérêt</option><option>Fiches techniques (FTE)</option><option>Notices</option><option>Mon profil</option><option>Annuaire des spécialistes</option><option>Rubriques chefs de section</option>
-            <option>Notifications</option><option>Connexion</option><option selected>Autre</option>
+        <label>Catégorie
+          <select name="categorie" id="bug-cat" required>
+            <option value="">— Choisir —</option>
+            <option>L'application</option><option>OPS</option><option>FMPA</option><option>Matériel</option>
+            <option>Techniques</option><option>RH</option><option>Personnels</option>
           </select>
         </label>
-        <label>Gravité
+        <label>Objet
+          <select name="objet" id="bug-objet" required disabled><option value="">— Choisir d'abord la catégorie —</option></select>
+        </label>
+        <label>Urgence
           <select name="gravite">
-            <option value="Bloquant">Bloquant — impossible de continuer</option>
-            <option value="Gênant" selected>Gênant — contournable</option>
-            <option value="Mineur">Mineur — détail</option>
+            <option value="Urgent">Urgent — bloquant, à traiter vite</option>
+            <option value="Important" selected>Important</option>
+            <option value="Mineur">Mineur — pour information</option>
             <option value="Suggestion">Suggestion d'amélioration</option>
           </select>
         </label>
         <label>Description
-          <textarea name="description" rows="6" maxlength="3000" required placeholder="Ce que vous faisiez, ce qui s'est passé, ce que vous attendiez…"></textarea>
+          <textarea name="description" rows="6" maxlength="3000" placeholder="Ce qui s'est passé, où, quand, ce que vous attendiez…"></textarea>
         </label>
-        <p class="muted small">La page, la version de l'application et le type d'appareil sont joints automatiquement.</p>
+
+        <fieldset class="bug-media">
+          <legend>Photos <span class="muted small">(5 au maximum)</span></legend>
+          <div id="bug-photos" class="bug-thumbs"></div>
+          <label class="bug-add">
+            <input type="file" id="bug-photo-input" accept="image/*" multiple hidden>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>
+            <span>Ajouter des photos</span>
+          </label>
+        </fieldset>
+
+        <fieldset class="bug-media">
+          <legend>Message vocal <span class="muted small">(3 min au maximum)</span></legend>
+          <div class="bug-voice">
+            <button type="button" id="bug-rec" class="bug-add bug-rec">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>
+              <span id="bug-rec-label">Enregistrer un vocal</span>
+            </button>
+            <span id="bug-rec-time" class="bug-rec-time" hidden>0:00</span>
+          </div>
+          <div id="bug-audio-box" class="bug-audio" hidden>
+            <audio id="bug-audio" controls preload="metadata"></audio>
+            <button type="button" id="bug-audio-del" class="link danger-link">Supprimer</button>
+          </div>
+          <p id="bug-rec-note" class="muted small" hidden></p>
+        </fieldset>
+
+        <p class="muted small">Pour « L'application », la page consultée, la version et le type d'appareil sont joints automatiquement.</p>
         <p class="error" role="alert"></p>
         <p class="ok" role="status"></p>
         <button type="submit" class="primary" id="btn-bug">Envoyer le signalement</button>
