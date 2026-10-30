@@ -1758,3 +1758,10 @@ label.inv-edit-dest select { margin: 0; padding: 8px 10px; font-size: .85rem; fl
 }
 :where(:root[data-theme="dark"]) .inv-cd { background: #3a3010; color: #fde68a; }
 :where(:root[data-theme="dark"]) .inv-cd.is-urgent { background: #3a1720; color: #ffb3bd; }
+
+/* code couleur sur toute la bulle (contenants, cordes, alertes, historique) */
+.inv-card { background: color-mix(in srgb, var(--st) 9%, var(--card)); border-color: color-mix(in srgb, var(--st) 40%, var(--line)); border-left-color: var(--st); }
+button.inv-card:hover { background: color-mix(in srgb, var(--st) 18%, var(--card)); }
+.inv-banner { background: color-mix(in srgb, var(--st, var(--line)) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--st, var(--line)) 40%, var(--line)); border-left: 5px solid var(--st, var(--line)); }
+.inv-st-reformee.inv-card { --st: #8a96a8; }
+.inv-card .inv-badge { background: color-mix(in srgb, var(--st) 18%, var(--card)); color: color-mix(in srgb, var(--st) 80%, var(--ink)); }
