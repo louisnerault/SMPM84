@@ -56,10 +56,40 @@
       else if (k === 'text') n.textContent = v;
       else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
       else if (k === 'value') n.value = v;
+      else if (k === 'icon') return;
       else n.setAttribute(k, v === true ? '' : v);
     });
     children.flat(Infinity).forEach(c => { if (c !== null && c !== undefined && c !== false) n.append(c); });
+    if (attrs && attrs.icon) { n.prepend(ico(attrs.icon)); n.classList.add('has-ico'); }
     return n;
+  }
+  // Icônes des actions (traits, couleur du texte)
+  const ICONES = {
+    plus: 'M12 5v14M5 12h14',
+    qr: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2M14 18v2M18 18h2v2',
+    print: 'M7 9V3.5h10V9M7 17H4.5v-6.5a1.5 1.5 0 0 1 1.5-1.5h12a1.5 1.5 0 0 1 1.5 1.5V17H17M7 14h10v6.5H7z',
+    check: 'M9 3.5h6v3H9zM6.5 5H5v15.5h14V5h-1.5M8.5 13.5l2.5 2.5 4.5-5',
+    clock: 'M12 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17zM12 7.5V12l3 2',
+    edit: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4',
+    link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
+    trash: 'M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v6M14 11v6',
+    camera: 'M4 8h3.5l1.5-2.5h6L16.5 8H20v11H4zM12 10.5a3 3 0 1 1 0 6 3 3 0 0 1 0-6z',
+    save: 'M5 12.5l4.5 4.5L19 7.5',
+    rope: 'M12 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17zM12 7.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zM12 11a1 1 0 1 1 0 2 1 1 0 0 1 0-2z',
+    move: 'M5 12h13M14 7.5L18.5 12 14 16.5',
+    note: 'M5 4.5h14v11H11l-4 4v-4H5z',
+    close: 'M6 6l12 12M18 6L6 18',
+  };
+  function ico(name) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('width', '18'); svg.setAttribute('height', '18');
+    svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-linecap', 'round'); svg.setAttribute('stroke-linejoin', 'round'); svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('class', 'inv-ico');
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', ICONES[name] || ''); svg.append(path);
+    return svg;
   }
   const pill = (text, on, onclick, extra) => el('button', Object.assign({ type: 'button', class: 'pill', 'aria-pressed': String(!!on), text, onclick }, extra || {}));
 
@@ -150,7 +180,7 @@
     renderState();
     if (!S.data) { root.replaceChildren(); return; }
     const vues = { liste: vListe, contenant: vContenant, saisie: vSaisie, histo: vHisto, edit: vEdit,
-      corde: vCorde, usage: vUsage, cedit: vCordeEdit, qr: vQr };
+      corde: vCorde, usage: vUsage, cedit: vCordeEdit, qr: vQr, listing: vListing };
     root.replaceChildren(...[].concat((vues[S.vue] || vListe)()).flat(Infinity).filter(x => x !== null && x !== undefined && x !== false));
   }
 
@@ -199,10 +229,13 @@
     const nbOld = liste.filter(c => !c.dernier || jours(c.dernier.date) > VIEUX_JOURS).length;
     out.push(el('p', { class: 'muted small inv-resume', text: `${liste.length} contenant${liste.length > 1 ? 's' : ''}`
       + (nbBad ? ` · ${nbBad} avec écart` : '') + (nbOld ? ` · ${nbOld} à refaire` : '') }));
+    if (!droits().gerer && liste.length) out.push(el('div', { class: 'inv-actions' },
+      el('button', { type: 'button', icon: 'print', class: 'pill', text: 'Listing papier', onclick: () => go('listing', { listing: liste.map(c => c.id) }) })));
     if (droits().gerer) out.push(el('div', { class: 'inv-actions' },
-      el('button', { type: 'button', class: 'pill', text: '＋ Nouveau contenant',
+      el('button', { type: 'button', icon: 'plus', class: 'pill', text: 'Nouveau contenant',
         onclick: () => go('edit', { edit: { id: '', vehicule: S.p.veh, nom: '', articles: [] } }) }),
-      liste.length ? el('button', { type: 'button', class: 'pill', text: 'QR codes du véhicule', onclick: () => go('qr', { qr: liste.map(c => c.id) }) }) : null));
+      liste.length ? el('button', { type: 'button', icon: 'print', class: 'pill', text: 'Listing papier', onclick: () => go('listing', { listing: liste.map(c => c.id) }) }) : null,
+      liste.length ? el('button', { type: 'button', icon: 'qr', class: 'pill', text: 'QR codes du véhicule', onclick: () => go('qr', { qr: liste.map(c => c.id) }) }) : null));
     out.push(el('ul', { class: 'inv-list' }, liste.map(c => {
       const e = etat(c);
       return el('li', null, el('button', { type: 'button', class: 'inv-card ' + e.cls, onclick: () => go('contenant', { cid: c.id }) },
@@ -229,11 +262,12 @@
       d && d.anomalies ? el('pre', { class: 'inv-anom', text: d.anomalies }) : null,
       d && d.remarque ? el('p', { class: 'small', text: '« ' + d.remarque + ' »' }) : null,
       el('div', { class: 'inv-actions' },
-        el('button', { type: 'button', class: 'primary', text: 'Faire l’inventaire', disabled: !c.articles.length, onclick: () => startSaisie(c) }),
-        el('button', { type: 'button', class: 'pill', text: 'Historique', onclick: () => openHisto(c) }),
-        droits().gerer ? el('button', { type: 'button', class: 'pill', text: 'Modifier le contenu',
+        el('button', { type: 'button', icon: 'check', class: 'primary', text: 'Faire l’inventaire', disabled: !c.articles.length, onclick: () => startSaisie(c) }),
+        el('button', { type: 'button', icon: 'clock', class: 'pill', text: 'Historique', onclick: () => openHisto(c) }),
+        el('button', { type: 'button', icon: 'print', class: 'pill', text: 'Listing papier', disabled: !c.articles.length, onclick: () => go('listing', { listing: [c.id] }) }),
+        droits().gerer ? el('button', { type: 'button', icon: 'edit', class: 'pill', text: 'Modifier le contenu',
           onclick: () => go('edit', { edit: { id: c.id, vehicule: c.vehicule, nom: c.nom, articles: c.articles.map(a => Object.assign({}, a)) } }) }) : null,
-        droits().gerer ? el('button', { type: 'button', class: 'pill', text: 'QR code', onclick: () => go('qr', { qr: [c.id] }) }) : null),
+        droits().gerer ? el('button', { type: 'button', icon: 'qr', class: 'pill', text: 'QR code', onclick: () => go('qr', { qr: [c.id] }) }) : null),
       el('h3', { class: 'inv-sub', text: 'Contenu théorique' }),
       el('ul', { class: 'inv-arts' }, c.articles.map(a => {
         const l = last[a.id];
@@ -279,14 +313,42 @@
       el('h2', { class: 'inv-title', text: un ? `QR code · ${un.nom}` : `QR codes · ${vehLib(liste[0].vehicule)}` }),
       el('p', { class: 'muted small', text: 'À imprimer et coller sur le contenant : le scan ouvre directement son inventaire dans l’application (connexion requise).' }),
       el('div', { class: 'inv-actions' },
-        el('button', { type: 'button', class: 'primary', text: liste.length > 1 ? `Imprimer les ${liste.length} étiquettes` : 'Imprimer', onclick: imprimer }),
-        un ? el('button', { type: 'button', class: 'pill', text: 'Copier le lien', onclick: () => copierLien(un) }) : null),
-      el('div', { class: 'inv-qr-sheet' }, liste.map(c => {
+        el('button', { type: 'button', icon: 'print', class: 'primary', text: liste.length > 1 ? `Imprimer les ${liste.length} étiquettes` : 'Imprimer', onclick: imprimer }),
+        un ? el('button', { type: 'button', icon: 'link', class: 'pill', text: 'Copier le lien', onclick: () => copierLien(un) }) : null),
+      el('div', { class: 'inv-print-area inv-qr-sheet' }, liste.map(c => {
         let img;
         try { img = qrSvg(lienDe(c)); } catch (e) { img = el('p', { class: 'error', text: 'QR code indisponible' }); }
         return el('figure', { class: 'inv-qr' }, img,
           el('figcaption', null, el('strong', { text: c.nom }), el('span', { text: vehLib(c.vehicule) }), el('small', { text: 'SMPM 84 · Scanner pour l’inventaire' })));
       })),
+    ];
+  }
+
+  // ===== Listing papier (véhicule entier ou un contenant), pour un inventaire sur papier =====
+  function vListing() {
+    const liste = (S.listing || []).map(contenant).filter(Boolean);
+    if (!liste.length) return vListe();
+    const un = liste.length === 1 ? liste[0] : null;
+    const veh = vehLib(liste[0].vehicule);
+    const nbArt = liste.reduce((n, c) => n + c.articles.length, 0);
+    return [
+      retour(un ? un.nom : 'Inventaire', () => go(un ? 'contenant' : 'liste', { cid: un ? un.id : S.cid, listing: null })),
+      el('h2', { class: 'inv-title', text: un ? `Listing · ${un.nom}` : `Listing · ${veh}` }),
+      el('p', { class: 'muted small', text: `${liste.length} contenant${liste.length > 1 ? 's' : ''}, ${nbArt} article${nbArt > 1 ? 's' : ''}. Imprimez, cochez sur place, puis reportez l’inventaire dans l’application.` }),
+      el('div', { class: 'inv-actions' }, el('button', { type: 'button', icon: 'print', class: 'primary', text: 'Imprimer', onclick: imprimer })),
+      el('div', { class: 'inv-print-area inv-listing' },
+        el('div', { class: 'inv-lst-head' },
+          el('strong', { text: `SMPM 84 · Inventaire ${veh}${un ? ' · ' + un.nom : ''}` }),
+          el('span', { text: `Édité le ${new Date().toLocaleDateString('fr-FR')}` }),
+          el('span', { text: 'Réalisé par : ………………………………  le ……/……/………' })),
+        liste.map(c => el('section', { class: 'inv-lst-cont' },
+          el('h3', { text: c.nom + (c.dernier ? `  (dernier inventaire : ${new Date(c.dernier.date).toLocaleDateString('fr-FR')} · ${c.dernier.par})` : '') }),
+          el('table', null,
+            el('thead', null, el('tr', null, ['Article', 'Détail / n° de série', 'Théorique', 'Réel', 'OK'].map(t => el('th', { text: t })))),
+            el('tbody', null, c.articles.map(a => el('tr', null,
+              el('td', { text: a.nom + (a.u ? '  (utilisation : FMPA / OPS / non)' : '') }), el('td', { text: a.detail || '' }),
+              el('td', { class: 'num', text: String(a.t) }), el('td', { class: 'box' }), el('td', { class: 'box' })))))),
+          el('p', { class: 'inv-lst-rq', text: 'Remarques : ' }))),
     ];
   }
 
@@ -335,7 +397,7 @@
   function agrandir(a, src) {
     if (!src) return;
     const ov = el('div', { class: 'inv-photo-ov', role: 'dialog', 'aria-label': a.nom, onclick: () => ov.remove() },
-      el('img', { src, alt: a.nom }), el('p', { text: a.nom + (a.detail ? ' · ' + a.detail : '') }), el('button', { type: 'button', class: 'pill', text: 'Fermer' }));
+      el('img', { src, alt: a.nom }), el('p', { text: a.nom + (a.detail ? ' · ' + a.detail : '') }), el('button', { type: 'button', icon: 'close', class: 'pill', text: 'Fermer' }));
     document.body.append(ov);
   }
   // Photo réduite sur l'appareil avant envoi (1280 px max, JPEG)
@@ -384,7 +446,7 @@
     const majBtn = () => {
       const n = c.articles.filter(a => Number(s.lignes[a.id].r) !== a.t).length;
       const b = $('#inv-valider');
-      if (b) b.textContent = n ? `Valider l’inventaire (${n} écart${n > 1 ? 's' : ''})` : 'Valider : tout est conforme';
+      if (b) b.lastChild.textContent = n ? `Valider l’inventaire (${n} écart${n > 1 ? 's' : ''})` : 'Valider : tout est conforme';
     };
     const rows = c.articles.map(a => {
       const l = s.lignes[a.id];
@@ -407,7 +469,7 @@
           }))) : null,
         l.note || l.rq
           ? el('input', { type: 'text', class: 'inv-rq', maxlength: '300', placeholder: 'Remarque (état, n° manquant…)', value: l.rq, oninput: e => { l.rq = e.target.value; } })
-          : el('button', { type: 'button', class: 'link small inv-note', text: '＋ remarque', onclick: () => { l.note = true; render(); } }),
+          : el('button', { type: 'button', icon: 'note', class: 'link small inv-note', text: 'remarque', onclick: () => { l.note = true; render(); } }),
       ].filter(Boolean));
       return li;
     });
@@ -419,7 +481,7 @@
       el('label', null, 'Remarque générale (facultatif)',
         el('textarea', { rows: '2', maxlength: '1000', oninput: e => { s.remarque = e.target.value; } }, s.remarque)),
       el('p', { class: 'error', role: 'alert', text: s.err }),
-      el('button', { type: 'button', class: 'primary inv-submit', id: 'inv-valider', disabled: S.busy,
+      el('button', { type: 'button', icon: 'save', class: 'primary inv-submit', id: 'inv-valider', disabled: S.busy,
         text: ecarts ? `Valider l’inventaire (${ecarts} écart${ecarts > 1 ? 's' : ''})` : 'Valider : tout est conforme', onclick: submitSaisie }),
     ];
   }
@@ -504,11 +566,11 @@
     if (!e) return vListe();
     // autres contenants (tous véhicules) pour « Déplacer vers… » ; articles existants seulement
     const autres = contenants().filter(c => c.id !== e.id);
-    const destSelect = a => el('select', { class: 'inv-edit-dest', 'aria-label': 'Déplacer vers un autre contenant',
+    const destSelect = a => el('label', { class: 'inv-edit-dest', icon: 'move' }, el('select', { 'aria-label': 'Déplacer vers un autre contenant',
       onchange: ev => { a.dest = ev.target.value; render(); } },
       el('option', { value: '' }, a.dest ? 'Annuler le déplacement' : 'Déplacer vers…'),
       vehicules().map(v => el('optgroup', { label: v.libelle },
-        autres.filter(c => c.vehicule === v.code).map(c => el('option', { value: c.id, selected: a.dest === c.id }, c.nom)))));
+        autres.filter(c => c.vehicule === v.code).map(c => el('option', { value: c.id, selected: a.dest === c.id }, c.nom))))));
     const rows = e.articles.map((a, i) => el('li', { class: 'inv-edit-row' + (a.dest ? ' is-moved' : '') },
       el('input', { type: 'text', maxlength: '120', placeholder: 'Article', value: a.nom, 'aria-label': 'Nom de l’article', oninput: ev => { a.nom = ev.target.value; } }),
       el('input', { type: 'number', min: '0', max: '999', inputmode: 'numeric', value: String(a.t), 'aria-label': 'Quantité théorique', class: 'inv-edit-q', oninput: ev => { a.t = Math.max(0, parseInt(ev.target.value, 10) || 0); } }),
@@ -517,15 +579,15 @@
       a.id && autres.length ? destSelect(a) : null,
       a.id ? el('div', { class: 'inv-edit-photo' },
         vignette(a),
-        el('label', { class: 'pill inv-file' }, a.ph ? '📷 Changer la photo' : '📷 Ajouter une photo',
+        el('label', { class: 'pill inv-file', icon: 'camera' }, a.ph ? 'Changer la photo' : 'Ajouter une photo',
           el('input', { type: 'file', accept: 'image/*', disabled: S.busy, onchange: ev => { const f = ev.target.files[0]; if (f) envoyerPhoto(a, f); } })),
-        a.ph ? el('button', { type: 'button', class: 'link danger small', text: 'Retirer', disabled: S.busy, onclick: () => { if (confirm(`Retirer la photo de « ${a.nom} » ?`)) envoyerPhoto(a, null); } }) : null)
+        a.ph ? el('button', { type: 'button', icon: 'trash', class: 'link danger small', text: 'Retirer', disabled: S.busy, onclick: () => { if (confirm(`Retirer la photo de « ${a.nom} » ?`)) envoyerPhoto(a, null); } }) : null)
         : el('p', { class: 'muted small inv-edit-photo', text: 'Photo : enregistrez d’abord pour pouvoir en ajouter une.' }),
       el('div', { class: 'inv-edit-tools' },
         el('label', { class: 'ann-check' }, el('input', { type: 'checkbox', checked: a.u, onchange: ev => { a.u = ev.target.checked; } }), 'Suivi d’utilisation'),
         el('button', { type: 'button', class: 'link', 'aria-label': 'Monter', text: '↑', disabled: i === 0, onclick: () => { e.articles.splice(i - 1, 0, e.articles.splice(i, 1)[0]); render(); } }),
         el('button', { type: 'button', class: 'link', 'aria-label': 'Descendre', text: '↓', disabled: i === e.articles.length - 1, onclick: () => { e.articles.splice(i + 1, 0, e.articles.splice(i, 1)[0]); render(); } }),
-        el('button', { type: 'button', class: 'link danger', text: 'Retirer', onclick: () => { e.articles.splice(i, 1); render(); } }))));
+        el('button', { type: 'button', icon: 'trash', class: 'link danger', text: 'Retirer', onclick: () => { e.articles.splice(i, 1); render(); } }))));
     return [
       retour(e.id ? e.nom : 'Inventaire', () => go(e.id ? 'contenant' : 'liste', { edit: null })),
       el('h2', { class: 'inv-title', text: e.id ? 'Modifier le contenu' : 'Nouveau contenant' }),
@@ -535,14 +597,14 @@
       el('h3', { class: 'inv-sub', text: `Articles (${e.articles.length})` }),
       el('p', { class: 'muted small', text: '« Suivi d’utilisation » demande à chaque inventaire si l’article a servi (FMPA, OPS). « Déplacer vers… » transfère l’article dans un autre contenant, même d’un autre véhicule. Un article retiré reste dans l’historique.' }),
       el('ul', { class: 'inv-edit' }, rows),
-      el('button', { type: 'button', class: 'pill', text: '＋ Ajouter un article', onclick: () => {
+      el('button', { type: 'button', icon: 'plus', class: 'pill', text: 'Ajouter un article', onclick: () => {
         e.articles.push({ id: '', nom: '', detail: '', t: 1, u: false }); render();
         const ins = document.querySelectorAll('.inv-edit-row input[type=text]:first-child'); if (ins.length) ins[ins.length - 1].focus();
       } }),
       el('p', { class: 'error', role: 'alert', text: e.err || '' }),
       el('div', { class: 'inv-actions' },
-        el('button', { type: 'button', class: 'primary', text: 'Enregistrer', disabled: S.busy, onclick: () => saveEdit(false) }),
-        e.id ? el('button', { type: 'button', class: 'link danger', text: 'Supprimer ce contenant', disabled: S.busy, onclick: () => saveEdit(true) }) : null),
+        el('button', { type: 'button', icon: 'save', class: 'primary', text: 'Enregistrer', disabled: S.busy, onclick: () => saveEdit(false) }),
+        e.id ? el('button', { type: 'button', icon: 'trash', class: 'link danger', text: 'Supprimer ce contenant', disabled: S.busy, onclick: () => saveEdit(true) }) : null),
     ];
   }
 
@@ -594,9 +656,9 @@
             .map(([v, t]) => el('option', { value: v, selected: S.p.statut === v }, t))),
         el('span', { class: 'small', text: `${liste.length} corde${liste.length > 1 ? 's' : ''}` })),
       el('div', { class: 'inv-actions' },
-        el('button', { type: 'button', class: 'primary', text: 'Déclarer une utilisation', disabled: !cordes().some(c => c.famille === S.p.famille && c.statut !== 'reformee'),
+        el('button', { type: 'button', icon: 'rope', class: 'primary', text: 'Déclarer une utilisation', disabled: !cordes().some(c => c.famille === S.p.famille && c.statut !== 'reformee'),
           onclick: () => go('usage', { usage: { famille: S.p.famille, type: 'FMPA', nums: [], ctl: ['VISUEL'], rq: {}, ref: [], sid: sid(), err: '' } }) }),
-        droits().gerer ? el('button', { type: 'button', class: 'pill', text: '＋ Nouvelle corde', onclick: () => editCorde(null) }) : null),
+        droits().gerer ? el('button', { type: 'button', icon: 'plus', class: 'pill', text: 'Nouvelle corde', onclick: () => editCorde(null) }) : null),
       el('ul', { class: 'inv-list' }, liste.map(c => el('li', null,
         el('button', { type: 'button', class: 'inv-card inv-corde inv-st-' + c.statut, onclick: () => go('corde', { corde: c.id }) },
           el('span', { class: 'inv-card-head' },
@@ -634,9 +696,9 @@
           h.ctl.length ? el('small', { class: 'muted', text: ' · ' + h.ctl.map(k => CTL[k] || k).join(', ') }) : null,
           h.rq ? el('em', { class: 'inv-hrq', text: h.rq }) : null)))) : el('p', { class: 'muted small', text: 'Aucun contrôle enregistré.' }),
       el('div', { class: 'inv-actions' },
-        c.statut !== 'reformee' ? el('button', { type: 'button', class: 'primary', text: 'Déclarer une utilisation',
+        c.statut !== 'reformee' ? el('button', { type: 'button', icon: 'rope', class: 'primary', text: 'Déclarer une utilisation',
           onclick: () => go('usage', { usage: { famille: c.famille, type: 'FMPA', nums: [c.num], ctl: ['VISUEL'], rq: {}, ref: [], sid: sid(), err: '' } }) }) : null,
-        droits().gerer ? el('button', { type: 'button', class: 'pill', text: 'Modifier la fiche', onclick: () => editCorde(c) }) : null),
+        droits().gerer ? el('button', { type: 'button', icon: 'edit', class: 'pill', text: 'Modifier la fiche', onclick: () => editCorde(c) }) : null),
     ];
   }
 
@@ -668,7 +730,7 @@
         el('input', { type: 'text', maxlength: '500', placeholder: 'État, critère de réforme…', value: u.rq[n] || '', 'aria-label': `Remarque corde ${n}`, oninput: e => { u.rq[n] = e.target.value; } }),
         el('label', { class: 'ann-check' }, el('input', { type: 'checkbox', checked: u.ref.includes(n), onchange: () => toggle(u.ref, n) }), 'À faire examiner pour réforme')))),
       el('p', { class: 'error', role: 'alert', text: u.err }),
-      el('button', { type: 'button', class: 'primary inv-submit', disabled: S.busy || !u.nums.length, text: 'Enregistrer', onclick: submitUsage }),
+      el('button', { type: 'button', icon: 'save', class: 'primary inv-submit', disabled: S.busy || !u.nums.length, text: 'Enregistrer', onclick: submitUsage }),
     ];
   }
 
@@ -720,7 +782,7 @@
       champ('Caserne', 'caserne'),
       el('label', null, 'Commentaire', el('textarea', { rows: '3', maxlength: '1000', oninput: e => { c.commentaire = e.target.value; } }, c.commentaire || '')),
       el('p', { class: 'error', role: 'alert', text: c.err }),
-      el('button', { type: 'button', class: 'primary inv-submit', disabled: S.busy, text: 'Enregistrer', onclick: saveCorde }),
+      el('button', { type: 'button', icon: 'save', class: 'primary inv-submit', disabled: S.busy, text: 'Enregistrer', onclick: saveCorde }),
     ];
   }
 
@@ -813,7 +875,7 @@
     store.del(KEY);
     store.del(KEY_PREFS);
     try { caches.delete(PHOTO_CACHE); } catch (e) {}
-    Object.assign(S, { data: null, fresh: false, loading: false, err: '', p: P0(), vue: 'liste', cid: null, q: '', saisie: null, edit: null, histo: null, corde: null, usage: null, cEdit: null, qr: null, msg: '' });
+    Object.assign(S, { data: null, fresh: false, loading: false, err: '', p: P0(), vue: 'liste', cid: null, q: '', saisie: null, edit: null, histo: null, corde: null, usage: null, cEdit: null, qr: null, listing: null, msg: '' });
     const root = $('#inv-root');
     if (root) root.replaceChildren();
     renderPending();
