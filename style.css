@@ -1568,3 +1568,87 @@ button.notif-body { cursor: pointer; }
 .notif-body p { margin: 2px 0 4px; font-size: .86rem; white-space: pre-line; overflow-wrap: anywhere; }
 .notif-body small { font-size: .75rem; }
 .notif-mark { margin-top: 2px; padding: 6px 0; font-size: .8rem; }
+
+/* ---------- Inventaire du matériel (inventaire.js) ---------- */
+#inv-state:empty { display: none; }
+#inv-state.error { color: var(--danger); }
+.inv-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin: 8px 0 12px; border-radius: 99px; background: var(--primary-soft); }
+.inv-tabs button { border: 0; border-radius: 99px; min-height: 40px; background: none; color: var(--muted); font-weight: 700; }
+.inv-tabs button[aria-selected="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.inv-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
+.inv-resume { margin: 4px 0 8px; }
+.inv-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.inv-card {
+  --st: var(--line);
+  display: flex; flex-direction: column; gap: 3px; width: 100%; text-align: left; padding: 10px 12px;
+  background: var(--card); color: var(--ink); border: 1px solid var(--line); border-left: 5px solid var(--st); border-radius: var(--radius);
+}
+button.inv-card:hover { background: var(--primary-soft); }
+.inv-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.inv-n { font-size: .75rem; color: var(--muted); font-weight: 600; flex: none; }
+.inv-ok { --st: var(--ok); }
+.inv-bad { --st: var(--danger); }
+.inv-old { --st: #d97706; }
+.inv-wait { --st: #f59e0b; }
+.inv-etat { color: var(--muted); }
+.inv-bad .inv-etat { color: var(--danger); font-weight: 600; }
+.inv-title { font-size: 1.2rem; margin: 4px 0 2px; }
+.inv-sub { font-size: .95rem; margin: 18px 0 6px; }
+.inv-banner { margin: 8px 0; padding: 8px 12px; border-radius: 10px; border-left: 5px solid var(--st, var(--line)); background: var(--card); font-weight: 600; font-size: .9rem; }
+.inv-anom { white-space: pre-wrap; font: inherit; font-size: .85rem; margin: 6px 0; padding: 8px 12px; border-radius: 10px; background: #fdecee; color: #8a1023; }
+.inv-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+.inv-actions .primary { width: auto; }
+.inv-arts { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
+.inv-arts li { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--line); }
+.inv-arts li:first-child { border-top: 0; }
+.inv-arts li.is-ecart { background: #fdecee; }
+.inv-art-q { font-weight: 700; font-variant-numeric: tabular-nums; flex: none; }
+.inv-hrq { display: block; font-size: .85rem; margin-top: 2px; }
+.inv-rows { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.inv-row { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--ok); border-radius: 10px; }
+.inv-row.is-ecart { border-left-color: var(--danger); background: color-mix(in srgb, var(--danger) 7%, var(--card)); }
+.inv-row-main { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.inv-row-nom { display: flex; flex-direction: column; min-width: 0; }
+.inv-step { display: flex; align-items: center; gap: 4px; flex: none; }
+.inv-step .pill { min-width: 44px; min-height: 44px; font-size: 1.2rem; padding: 0; }
+.inv-step input { width: 56px; margin: 0; text-align: center; font-weight: 700; font-size: 1.05rem; padding: 8px 4px; }
+.inv-util { margin: 0; }
+.inv-util .pill { min-height: 32px; padding: 4px 10px; }
+.inv-rq { margin: 0; }
+.inv-note { align-self: flex-start; padding: 0; }
+.inv-submit { margin-top: 8px; }
+.inv-edit { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.inv-edit-row { display: grid; grid-template-columns: 1fr 72px; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.inv-edit-row input { margin: 0; }
+.inv-edit-detail, .inv-edit-tools { grid-column: 1 / -1; }
+.inv-edit-tools { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.inv-edit-tools .ann-check { margin-right: auto; font-size: .85rem; }
+.inv-edit-tools .link { padding: 4px 8px; text-decoration: none; font-weight: 700; }
+.inv-edit-tools .link:disabled { opacity: .3; }
+.inv-filtres { display: flex; align-items: center; gap: 12px; margin: 4px 0; }
+.inv-filtres select { width: auto; margin: 0; padding: 8px 10px; }
+.inv-badge { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--primary-soft); color: var(--primary); flex: none; }
+.inv-st-en_service { --st: var(--ok); }
+.inv-st-a_surveiller { --st: #d97706; }
+.inv-st-a_surveiller .inv-badge { background: #fff3cd; color: #7a5200; }
+.inv-st-reformee { --st: var(--muted); }
+.inv-st-reformee .inv-badge { background: var(--bg); color: var(--muted); }
+.inv-dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 8px 0; font-size: .9rem; }
+.inv-dl dt { color: var(--muted); }
+.inv-dl dd { margin: 0; font-weight: 600; }
+.inv-cpt { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.inv-cpt div { display: flex; flex-direction: column; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.inv-cpt strong { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+.inv-numgrp p { margin: 6px 0 2px; }
+.inv-nums { display: flex; flex-wrap: wrap; gap: 6px; }
+.inv-nums .pill { min-width: 48px; min-height: 44px; font-size: .95rem; }
+.inv-pill-warn { border-color: #d97706; }
+.inv-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.inv-histo summary { cursor: pointer; }
+@media (prefers-color-scheme: dark) {
+  :where(:root:not([data-theme="light"])) .inv-anom, :where(:root:not([data-theme="light"])) .inv-arts li.is-ecart { background: #3a1720; color: #ffb3bd; }
+  :where(:root:not([data-theme="light"])) .inv-st-a_surveiller .inv-badge { background: #3a3010; color: #fde68a; }
+}
+:where(:root[data-theme="dark"]) .inv-anom, :where(:root[data-theme="dark"]) .inv-arts li.is-ecart { background: #3a1720; color: #ffb3bd; }
+:where(:root[data-theme="dark"]) .inv-st-a_surveiller .inv-badge { background: #3a3010; color: #fde68a; }
+#tab-inventaire textarea { display: block; width: 100%; margin-top: 6px; padding: 10px 12px; font: inherit; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); resize: vertical; }
