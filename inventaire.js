@@ -324,7 +324,7 @@
     ];
   }
 
-  // ===== Listing papier (véhicule entier ou un contenant), pour un inventaire sur papier =====
+  // ===== Listing papier (véhicule entier ou un contenant) : contenu théorique, pour consultation ou affichage =====
   function vListing() {
     const liste = (S.listing || []).map(contenant).filter(Boolean);
     if (!liste.length) return vListe();
@@ -334,21 +334,18 @@
     return [
       retour(un ? un.nom : 'Inventaire', () => go(un ? 'contenant' : 'liste', { cid: un ? un.id : S.cid, listing: null })),
       el('h2', { class: 'inv-title', text: un ? `Listing · ${un.nom}` : `Listing · ${veh}` }),
-      el('p', { class: 'muted small', text: `${liste.length} contenant${liste.length > 1 ? 's' : ''}, ${nbArt} article${nbArt > 1 ? 's' : ''}. Imprimez, cochez sur place, puis reportez l’inventaire dans l’application.` }),
+      el('p', { class: 'muted small', text: `Contenu théorique : ${liste.length} contenant${liste.length > 1 ? 's' : ''}, ${nbArt} article${nbArt > 1 ? 's' : ''}. Les inventaires se font dans l’application.` }),
       el('div', { class: 'inv-actions' }, el('button', { type: 'button', icon: 'print', class: 'primary', text: 'Imprimer', onclick: imprimer })),
       el('div', { class: 'inv-print-area inv-listing' },
         el('div', { class: 'inv-lst-head' },
-          el('strong', { text: `SMPM 84 · Inventaire ${veh}${un ? ' · ' + un.nom : ''}` }),
-          el('span', { text: `Édité le ${new Date().toLocaleDateString('fr-FR')}` }),
-          el('span', { text: 'Réalisé par : ………………………………  le ……/……/………' })),
+          el('strong', { text: `SMPM 84 · Matériel ${veh}${un ? ' · ' + un.nom : ''}` }),
+          el('span', { text: `Contenu théorique au ${new Date().toLocaleDateString('fr-FR')}` })),
         liste.map(c => el('section', { class: 'inv-lst-cont' },
-          el('h3', { text: c.nom + (c.dernier ? `  (dernier inventaire : ${new Date(c.dernier.date).toLocaleDateString('fr-FR')} · ${c.dernier.par})` : '') }),
+          el('h3', { text: c.nom }),
           el('table', null,
-            el('thead', null, el('tr', null, ['Article', 'Détail / n° de série', 'Théorique', 'Réel', 'OK'].map(t => el('th', { text: t })))),
+            el('thead', null, el('tr', null, ['Article', 'Détail / n° de série', 'Quantité'].map(t => el('th', { text: t })))),
             el('tbody', null, c.articles.map(a => el('tr', null,
-              el('td', { text: a.nom + (a.u ? '  (utilisation : FMPA / OPS / non)' : '') }), el('td', { text: a.detail || '' }),
-              el('td', { class: 'num', text: String(a.t) }), el('td', { class: 'box' }), el('td', { class: 'box' })))))),
-          el('p', { class: 'inv-lst-rq', text: 'Remarques : ' }))),
+              el('td', { text: a.nom }), el('td', { text: a.detail || '' }), el('td', { class: 'num', text: String(a.t) })))))))),
     ];
   }
 
