@@ -1666,3 +1666,7 @@ button.inv-card:hover { background: var(--primary-soft); }
   body.inv-print .inv-qr { border-color: #999; }
   body.inv-print .inv-qr-img { max-width: 45mm; }
 }
+
+.inv-edit-dest { grid-column: 1 / -1; margin: 0; padding: 8px 10px; font-size: .85rem; }
+.inv-edit-row.is-moved { border-color: #d97706; border-style: dashed; }
+.inv-edit-move { grid-column: 1 / -1; margin: 0; color: #b45309; font-weight: 600; }
