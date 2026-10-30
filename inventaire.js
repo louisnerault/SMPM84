@@ -514,30 +514,47 @@
   }
 
   // ===== Photos des articles (cache de l'appareil, puis serveur) =====
-  const photoReq = a => new Request(`inv-photo/${encodeURIComponent(a.id)}?v=${encodeURIComponent(a.ph)}`);
-  async function photoUrl(a) {
+  // photo gardée sur l'appareil par identifiant de fichier : un motif commun à plusieurs cordes n'est chargé qu'une fois
+  const photoReq = a => new Request(`inv-photo/${encodeURIComponent(a.ph)}`);
+  const enCours = {};
+  function photoUrl(a) {
+    if (!enCours[a.ph]) enCours[a.ph] = chargerPhoto(a).catch(err => { delete enCours[a.ph]; throw err; });
+    return enCours[a.ph];
+  }
+  async function chargerPhoto(a) {
     let cache = null;
     try { cache = await caches.open(PHOTO_CACHE); } catch (e) { cache = null; }
     if (cache) { const hit = await cache.match(photoReq(a)); if (hit) return URL.createObjectURL(await hit.blob()); }
-    const res = await app().api('inv_photo', { token: app().token(), article: a.id });
+    const res = a.corde
+      ? await app().api('inv_corde_photo', { token: app().token(), corde: a.corde })
+      : await app().api('inv_photo', { token: app().token(), article: a.id });
     const bin = atob(res.data);
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     const blob = new Blob([bytes], { type: res.mime || 'image/jpeg' });
     if (cache) {
       try {
-        (await cache.keys()).filter(r => r.url.includes(`/inv-photo/${encodeURIComponent(a.id)}?`)).forEach(r => cache.delete(r));
         await cache.put(photoReq(a), new Response(blob, { headers: { 'Content-Type': blob.type } }));
       } catch (e) {}
     }
     return URL.createObjectURL(blob);
   }
   // Vignette cliquable (agrandie en plein écran) ; chargée à l'affichage
-  function vignette(a) {
+  function vignette(a, passif) {
     if (!a.ph) return null;
     const img = el('img', { alt: '', class: 'inv-thumb-img' });
-    const b = el('button', { type: 'button', class: 'inv-thumb', 'aria-label': `Photo : ${a.nom}`, onclick: ev => { ev.stopPropagation(); agrandir(a, img.src); } }, img);
+    // passif : dans une carte déjà cliquable (liste des cordes), simple image
+    const b = passif ? el('span', { class: 'inv-thumb' }, img)
+      : el('button', { type: 'button', class: 'inv-thumb', 'aria-label': `Photo : ${a.nom}`, onclick: ev => { ev.stopPropagation(); agrandir(a, img.src); } }, img);
     photoUrl(a).then(u => { img.src = u; }).catch(() => { b.classList.add('is-off'); b.title = 'Photo indisponible hors ligne'; });
+    return b;
+  }
+  const photoCorde = c => (c.ph ? { ph: c.ph, corde: c.id, nom: `Corde n° ${c.num}`, detail: c.motif || '' } : null);
+  function grandePhoto(a) {
+    if (!a) return null;
+    const img = el('img', { alt: a.nom, class: 'inv-photo-grande' });
+    const b = el('button', { type: 'button', class: 'inv-photo-box', 'aria-label': `Agrandir : ${a.nom}`, onclick: () => agrandir(a, img.src) }, img);
+    photoUrl(a).then(u => { img.src = u; }).catch(() => { b.replaceChildren(el('p', { class: 'muted small', text: 'Photo indisponible (hors ligne ou fichier inaccessible).' })); });
     return b;
   }
   function agrandir(a, src) {
@@ -854,6 +871,7 @@
           el('span', { class: 'inv-card-head' },
             el('span', { class: 'inv-corde-titre' },
               c.anomalie && c.statut !== 'reformee' ? el('span', { class: 'inv-excl', 'aria-label': 'Anomalie', title: c.anomalie, text: '!' }) : null,
+              vignette(photoCorde(c) || {}, true),
               el('strong', { text: `N° ${c.num}` + (c.secteur ? ` · ${SECT[c.secteur] || c.secteur}` : '') })),
             el('span', { class: 'inv-badge', text: STATUTS[c.statut] })),
           c.anomalie && c.statut !== 'reformee' && c.anomalie !== 'À surveiller' ? el('span', { class: 'small inv-anom-txt', text: 'Anomalie : ' + c.anomalie }) : null,
@@ -878,6 +896,7 @@
       el('p', { class: 'inv-banner inv-st-' + c.statut + (c.anomalie && c.statut !== 'reformee' ? ' inv-anomalie' : '') },
         c.anomalie && c.statut !== 'reformee' ? el('span', { class: 'inv-excl', 'aria-hidden': 'true', text: '!' }) : null,
         STATUTS[c.statut] + (c.anomalie && c.anomalie !== 'À surveiller' && c.statut !== 'reformee' ? ' · anomalie signalée : ' + c.anomalie : '')),
+      c.ph ? el('figure', { class: 'inv-motif' }, grandePhoto(photoCorde(c)), el('figcaption', { class: 'small muted', text: 'Motif' + (c.motif ? ' : ' + c.motif : '') })) : null,
       c.commentaire ? el('p', { class: 'small', text: c.commentaire }) : null,
       el('dl', { class: 'inv-dl' }, info.map(([k, v]) => [el('dt', { text: k }), el('dd', { text: v })])),
       el('h3', { class: 'inv-sub', text: 'Compteurs' }),
@@ -921,7 +940,7 @@
       el('div', { class: 'inv-chips' }, Object.keys(CTL).map(k => pill(CTL[k], u.ctl.includes(k), () => { toggle(u.ctl, k); render(); }))),
       u.nums.length ? el('h3', { class: 'inv-sub', text: 'Remarques (facultatif)' }) : null,
       el('ul', { class: 'inv-rows' }, u.nums.map(n => el('li', { class: 'inv-row' },
-        el('strong', { text: `Corde n° ${n}` }),
+        el('span', { class: 'inv-corde-titre' }, vignette(photoCorde(dispo.find(c => c.num === n) || {}) || {}), el('strong', { text: `Corde n° ${n}` })),
         el('input', { type: 'text', maxlength: '500', placeholder: 'Usure, point dur… (pas de « RAS »)', value: u.rq[n] || '', 'aria-label': `Remarque corde ${n}`, oninput: e => { u.rq[n] = e.target.value; } }),
         el('label', { class: 'ann-check' }, el('input', { type: 'checkbox', checked: u.ref.includes(n), onchange: () => toggle(u.ref, n) }), 'À faire examiner pour réforme')))),
       u.nums.length ? el('p', { class: 'muted small', text: 'Une remarque (autre que « RAS » ou « OK ») ou la case « réforme » avertit le chef de section du secteur de la corde.' }) : null,
@@ -976,10 +995,30 @@
       champ('N° TEXIS / TECHSYS', 'texis'),
       el('div', { class: 'inv-2col' }, champ('Fabrication', 'fabrication', { type: 'month' }), champ('Mise en service', 'service', { type: 'month' })),
       champ('Caserne', 'caserne'),
+      champ('Motif (couleurs, marque)', 'motif', { placeholder: 'Ex. : Beal Access jaune/gris', maxlength: '80' }),
+      c.id ? el('div', { class: 'inv-edit-photo inv-corde-photo' },
+        vignette(photoCorde(c) || {}),
+        el('label', { class: 'pill inv-file', icon: 'camera' }, c.ph ? 'Changer la photo du motif' : 'Ajouter une photo du motif',
+          el('input', { type: 'file', accept: 'image/*', disabled: S.busy, onchange: ev => { const f = ev.target.files[0]; if (f) photoCordeEnvoyer(c, f); } })),
+        c.ph ? el('button', { type: 'button', icon: 'trash', class: 'link danger small', text: 'Retirer', disabled: S.busy, onclick: () => { if (confirm('Retirer la photo du motif ?')) photoCordeEnvoyer(c, null); } }) : null)
+        : el('p', { class: 'muted small', text: 'Photo du motif : enregistrez d’abord la corde.' }),
       el('label', null, 'Commentaire', el('textarea', { rows: '3', maxlength: '1000', oninput: e => { c.commentaire = e.target.value; } }, c.commentaire || '')),
       el('p', { class: 'error', role: 'alert', text: c.err }),
       el('button', { type: 'button', icon: 'save', class: 'primary inv-submit', disabled: S.busy, text: 'Enregistrer', onclick: saveCorde }),
     ];
+  }
+
+  async function photoCordeEnvoyer(c, file) {
+    try {
+      S.busy = true; c.err = ''; render();
+      const photo = file ? await compresser(file) : '';
+      setData(await app().api('inv_corde_photo_save', { token: app().token(), corde: c.id, photo, motif: c.motif || '' }));
+      const n = cordes().find(x => x.id === c.id);
+      if (n) { c.ph = n.ph; c.motifInit = n.motif; }
+    } catch (err) {
+      if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
+      c.err = err instanceof app().NetworkError ? app().netLabel() + ' : photo non envoyée.' : err.message;
+    } finally { S.busy = false; render(); }
   }
 
   async function saveCorde() {
@@ -988,7 +1027,10 @@
     try {
       const corde = Object.assign({}, c, { fabrication: c.fabrication ? c.fabrication + '-01' : '', service: c.service ? c.service + '-01' : '' });
       delete corde.err; delete corde.hist; delete corde.cpt;
-      const res = await app().api('inv_corde_save', { token: app().token(), corde });
+      let res = await app().api('inv_corde_save', { token: app().token(), corde });
+      // nom du motif changé : enregistré à part (la photo ne change pas)
+      const n0 = (res.cordes || []).find(x => x.famille === c.famille && x.num === Number(c.num));
+      if (n0 && (c.motif || '') !== (n0.motif || '')) res = await app().api('inv_corde_photo_save', { token: app().token(), corde: n0.id, motif: c.motif || '' });
       setData(res);
       const n = cordes().find(x => x.famille === c.famille && x.num === Number(c.num));
       go(n ? 'corde' : 'liste', { corde: n ? n.id : null, cEdit: null, msg: 'Fiche enregistrée.' });
