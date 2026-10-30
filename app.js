@@ -59,9 +59,12 @@
   const canPoiEdit = session => !!session && (isAdm(session) || ['chef_section', 'ctd', 'admin'].includes(session.role));
   // Gestion des listes des points d'intérêt (types et icônes, secteurs et couleurs) : CTD et administrateurs (Poi.gs : POI.ADMIN)
   const canPoiAdmin = session => !!session && (isAdm(session) || ['ctd', 'admin'].includes(session.role));
+  // Contrôleur EPI : casquette cumulable avec n'importe quel rôle (case « Contrôleur EPI » de la Liste du personnel,
+  // renvoyée par le serveur dans session.ctrl_epi) — responsable matériel de son secteur
+  const isCtrlEpi = session => !!session && session.ctrl_epi === true;
   // Inventaire du matériel (à garder cohérent avec Inventaire.gs : INV.GERER) : inventaires et utilisations de cordes
-  // par tous ; contenu théorique des contenants et fiches des cordes : chef de section, CTD, administrateur
-  const canInvGerer = session => !!session && (isAdm(session) || ['chef_section', 'ctd', 'admin'].includes(session.role));
+  // par tous ; contenu théorique des contenants et fiches des cordes : chef de section, contrôleur EPI, CTD, administrateur
+  const canInvGerer = session => !!session && (isAdm(session) || isCtrlEpi(session) || ['chef_section', 'ctd', 'admin'].includes(session.role));
   // Encadrer (déclarer) une FMPA : qualification IMP 3 (fonction renvoyée par le serveur), ou administrateur
   const canEncadrer = data => {
     if (!data || !data.session) return false;
@@ -85,8 +88,12 @@
     return true;
   }
 
-  // Fonction affichée : jamais « administrateur » (droit d'administration invisible)
+  // Fonction affichée : jamais « administrateur » (droit d'administration invisible) ; « · Contrôleur EPI » ajouté si besoin
   function roleLabel(session, me, qualifications, fonction) {
+    const base = baseLabel(session, me, qualifications, fonction);
+    return isCtrlEpi(session) ? [base, 'Contrôleur EPI'].filter(Boolean).join(' · ') : base;
+  }
+  function baseLabel(session, me, qualifications, fonction) {
     if (fonction && fonction.libelle) return fonction.libelle;
     const base = ROLES[session.role] || '';
     if (session.role === 'equipier') {

@@ -4,8 +4,8 @@
 //    avec leur quantité théorique. Inventaire pré-rempli avec les quantités théoriques : on ne corrige que
 //    les écarts. Historique par contenant. Recherche d'un article dans tous les véhicules.
 //  - Cordes : fiches, compteurs d'utilisation et de contrôle, derniers contrôles, déclaration d'utilisation.
-// Tous les membres font des inventaires et déclarent des utilisations de cordes ; chefs de section, CTD et
-// administrateurs modifient le contenu théorique et les fiches des cordes (app.js : canInvGerer).
+// Tous les membres font des inventaires et déclarent des utilisations de cordes ; chefs de section, contrôleurs EPI,
+// CTD et administrateurs modifient le contenu théorique et les fiches des cordes (app.js : canInvGerer).
 // Hors ligne : dernières données gardées sur l'appareil ; inventaires et utilisations en file d'attente.
 // Lien direct vers un contenant (QR code collé sur la caisse) : ?page=inventaire&c=<id du contenant>.
 // QR codes générés dans l'application (vendor/qrcode, chefs de section et au-delà) : étiquettes à imprimer.
@@ -23,8 +23,8 @@
   const SECT = { NORD: 'Nord', CENTRE: 'Centre', SUD: 'Sud' };
   const CONTEXTES = { simple: 'Inventaire simple', fmpa_debut: 'FMPA – début', fmpa_fin: 'FMPA – fin de journée', intervention: 'Après intervention' };
   const QUI = {
-    simple: 'En cas d’écart, le chef de section du secteur du véhicule est averti.',
-    fmpa_debut: 'À faire avant le début de la manœuvre. Un écart avec le contenu théorique est signalé au chef de section.',
+    simple: 'En cas d’écart, le chef de section et le contrôleur EPI du secteur du véhicule sont avertis.',
+    fmpa_debut: 'À faire avant le début de la manœuvre. Un écart avec le contenu théorique est signalé au chef de section et au contrôleur EPI.',
     fmpa_fin: 'À faire en fin de journée. Le matériel manquant par rapport à l’inventaire du matin est signalé au chef d’unité responsable de la FMPA.',
     intervention: 'Le matériel manquant par rapport au dernier inventaire est signalé au chef d’unité de l’intervention.',
   };
@@ -243,7 +243,7 @@
     const ouvertes = liste.filter(x => x.statut !== 'close'), closes = liste.filter(x => x.statut === 'close');
     const carte = x => el('li', null, carteAlerte(x));
     return [
-      el('p', { class: 'muted small', text: 'Inventaires non conformes et cordes à examiner. Le chef d’unité recherche le matériel manquant après une FMPA ou une intervention ; s’il n’est pas retrouvé, l’alerte passe au chef de section, au CTD et aux administrateurs.' }),
+      el('p', { class: 'muted small', text: 'Inventaires non conformes et cordes à examiner. Le chef d’unité recherche le matériel manquant après une FMPA ou une intervention ; s’il n’est pas retrouvé, l’alerte passe au chef de section, au contrôleur EPI du secteur, au CTD et aux administrateurs.' }),
       ouvertes.length ? el('ul', { class: 'inv-list' }, ouvertes.map(carte)) : el('p', { class: 'muted center', text: 'Aucune alerte en cours.' }),
       closes.length ? el('details', { class: 'inv-closes' }, el('summary', { text: `Alertes closes (30 derniers jours) : ${closes.length}` }), el('ul', { class: 'inv-list' }, closes.map(carte))) : null,
     ];
@@ -251,7 +251,7 @@
 
 
   // ----- carte d'alerte en étapes : 1 signalement (quoi, où, quand, qui) · 2 recherches du CU (compte à rebours)
-  //       · 3 chef de section et CTD -----
+  //       · 3 chef de section, contrôleur EPI et CTD -----
   const nomDe = cle => ((((S.data && S.data.cus) || []).find(p => p.cle === cle) || {}).aff) || cle;
   const dateCourte = iso => (iso ? new Date(iso).toLocaleString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '');
   function reste(ms) {
@@ -270,7 +270,7 @@
       const fin = new Date(e.dataset.echeance).getTime(), deb = new Date(e.dataset.debut).getTime();
       const ms = fin - Date.now();
       const t = e.querySelector('.inv-cd-txt'), b = e.querySelector('.inv-cd-fill');
-      if (t) t.textContent = ms > 0 ? `Il reste ${reste(ms)}` : 'Délai dépassé : transmission au chef de section et au CTD en cours';
+      if (t) t.textContent = ms > 0 ? `Il reste ${reste(ms)}` : 'Délai dépassé : transmission au chef de section, au contrôleur EPI et au CTD en cours';
       if (b) b.style.width = Math.min(100, Math.max(0, 100 * (Date.now() - deb) / Math.max(1, fin - deb))) + '%';
       e.classList.toggle('is-urgent', ms > 0 && ms < 6 * 3600e3);
       e.classList.toggle('is-over', ms <= 0);
@@ -290,8 +290,11 @@
     const avecCu = x.type === 'inventaire' && (x.contexte === 'fmpa_fin' || x.contexte === 'intervention');
     const occasion = x.type === 'corde' ? 'Utilisation de cordes' : (CONTEXTES[x.contexte] || '') + (x.type === 'remarque' ? ' · remarque' : '');
     const quoi = x.type === 'inventaire' ? 'Matériel manquant' : x.type === 'remarque' ? 'Remarque' : 'Corde à examiner';
-    const cs = (x.cs || []).map(nomDe), ctd = (x.ctd || []).map(nomDe);
-    const dest = [cs.length ? `Chef de section ${SECT[x.secteur] || x.secteur || ''} : ${cs.join(', ')}` : '', ctd.length ? `CTD : ${ctd.join(', ')}` : ''].filter(Boolean).join(' · ') || 'CTD';
+    const cs = (x.cs || []).map(nomDe), ctd = (x.ctd || []).map(nomDe), epi = (x.epi || []).map(nomDe);
+    const sect = SECT[x.secteur] || x.secteur || '';
+    const lEpi = epi.length ? `Contrôleur${epi.length > 1 ? 's' : ''} EPI ${sect} : ${epi.join(', ')}` : '';
+    const dest = [cs.length ? `Chef de section ${sect} : ${cs.join(', ')}` : '', lEpi, ctd.length ? `CTD : ${ctd.join(', ')}` : ''].filter(Boolean).join(' · ') || 'CTD';
+    const destCs = [cs.length ? cs.join(', ') : '', lEpi].filter(Boolean).join(' · ') || dest;
     const bouton = (act, icon, cls, txt) => (x.peut.includes(act) ? el('button', { type: 'button', icon, class: cls, text: txt, disabled: S.busy, onclick: () => agir(x, act) }) : null);
     const etapes = [];
     // 1. Signalement
@@ -319,14 +322,14 @@
         etapes.push(etape(2, 'fait', `Recherches · ${nomDe(x.cu)}`, el('p', { class: 'small', text: e.cloture ? `Clos : ${e.cloture.txt || ''} (${e.cloture.par}, ${dateCourte(e.cloture.le)})` : 'Clos' })));
       }
     }
-    // dernière étape : chef de section et CTD
+    // dernière étape : chef de section, contrôleur EPI et CTD
     const n = avecCu ? 3 : 2;
-    const titreCs = avecCu ? 'Notification · chef de section et CTD' : 'Chef de section';
+    const titreCs = avecCu ? 'Notification · chef de section, contrôleur EPI et CTD' : 'Chef de section et contrôleur EPI';
     if (x.statut === 'cu') {
       etapes.push(etape(n, 'attente', titreCs, el('p', { class: 'small muted', text: `Prévenus seulement si le matériel n’est pas retrouvé ou sans réponse à l’échéance : ${dest}.` })));
     } else if (x.statut === 'cs') {
       etapes.push(etape(n, 'encours', titreCs,
-        el('p', { class: 'small', text: `${avecCu ? 'Notifiés' : 'Notifié'} : ${avecCu ? dest : (cs.join(', ') || dest)}. Décision et clôture de l’alerte.` }),
+        el('p', { class: 'small', text: `Notifiés : ${avecCu ? dest : destCs}. Décision et clôture de l’alerte.` }),
         el('div', { class: 'inv-actions' }, bouton('clore', 'save', 'primary', 'Clore l’alerte'))));
     } else if (avecCu && e.cu && e.cu.action === 'retrouve') {
       etapes.push(etape(n, 'saute', titreCs, el('p', { class: 'small muted', text: 'Non nécessaire : matériel retrouvé.' })));
@@ -340,13 +343,13 @@
   }
 
   async function agir(x, action) {
-    const q = { retrouve: 'Matériel retrouvé : précisez où (facultatif)', non_retrouve: 'Matériel non retrouvé : précisez les recherches faites (facultatif). L’alerte sera transmise au chef de section, au CTD et aux administrateurs.', clore: 'Clore l’alerte : décision prise (facultatif)' }[action];
+    const q = { retrouve: 'Matériel retrouvé : précisez où (facultatif)', non_retrouve: 'Matériel non retrouvé : précisez les recherches faites (facultatif). L’alerte sera transmise au chef de section, au contrôleur EPI, au CTD et aux administrateurs.', clore: 'Clore l’alerte : décision prise (facultatif)' }[action];
     const commentaire = prompt(q, '');
     if (commentaire === null) return;
     S.busy = true; render();
     try {
       setData(await app().api('inv_alerte_action', { token: app().token(), id: x.id, decision: action, commentaire }));
-      S.msg = action === 'non_retrouve' ? 'Alerte transmise au chef de section, au CTD et aux administrateurs.' : 'Alerte close.';
+      S.msg = action === 'non_retrouve' ? 'Alerte transmise au chef de section, au contrôleur EPI, au CTD et aux administrateurs.' : 'Alerte close.';
     } catch (err) {
       if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
       S.msg = err instanceof app().NetworkError ? app().netLabel() + ' : action impossible hors ligne.' : err.message;
@@ -430,7 +433,7 @@
     ];
   }
 
-  // ===== QR codes à coller sur les contenants (chefs de section, CTD, administrateurs) =====
+  // ===== QR codes à coller sur les contenants (chefs de section, contrôleurs EPI, CTD, administrateurs) =====
   const lienDe = c => new URL('./?page=inventaire&c=' + encodeURIComponent(c.id), location.href).href;
   function qrSvg(texte) {
     const NS = 'http://www.w3.org/2000/svg';
@@ -654,7 +657,7 @@
       el('ul', { class: 'inv-rows' }, rows),
       el('label', null, 'Remarque générale (facultatif)',
         el('textarea', { rows: '2', maxlength: '1000', placeholder: 'Ex. : sac déchiré, marque d’usure…', oninput: e => { s.remarque = e.target.value; } }, s.remarque)),
-      el('p', { class: 'muted small', text: 'Inutile d’écrire « RAS » ou « OK » : sans remarque, rien n’est signalé. Toute autre remarque (usure, détérioration…) est transmise au chef de section, même si l’inventaire est conforme.' }),
+      el('p', { class: 'muted small', text: 'Inutile d’écrire « RAS » ou « OK » : sans remarque, rien n’est signalé. Toute autre remarque (usure, détérioration…) est transmise au chef de section et au contrôleur EPI, même si l’inventaire est conforme.' }),
       el('p', { class: 'error', role: 'alert', text: s.err }),
       el('button', { type: 'button', icon: 'save', class: 'primary inv-submit', id: 'inv-valider', disabled: S.busy,
         text: ecarts ? `Valider l’inventaire (${ecarts} écart${ecarts > 1 ? 's' : ''})` : 'Valider : tout est conforme', onclick: submitSaisie }),
@@ -741,7 +744,7 @@
         (i.lignes || []).some(l => l.u) ? el('p', { class: 'small muted', text: 'Utilisation : ' + i.lignes.filter(l => l.u).map(l => `${l.nom} (${l.u})`).join(', ') }) : null)))));
   }
 
-  // ===== Modifier le contenu d'un contenant (chefs de section, CTD, administrateurs) =====
+  // ===== Modifier le contenu d'un contenant (chefs de section, contrôleurs EPI, CTD, administrateurs) =====
   function vEdit() {
     const e = S.edit;
     if (!e) return vListe();
@@ -991,7 +994,7 @@
         el('span', { class: 'inv-corde-titre' }, vignette(photoCorde(dispo.find(c => c.num === n) || {}) || {}), el('strong', { text: `Corde n° ${n}` })),
         el('input', { type: 'text', maxlength: '500', placeholder: 'Usure, point dur… (pas de « RAS »)', value: u.rq[n] || '', 'aria-label': `Remarque corde ${n}`, oninput: e => { u.rq[n] = e.target.value; } }),
         el('label', { class: 'ann-check' }, el('input', { type: 'checkbox', checked: u.ref.includes(n), onchange: () => toggle(u.ref, n) }), 'À faire examiner pour réforme')))),
-      u.nums.length ? el('p', { class: 'muted small', text: 'Une remarque (autre que « RAS » ou « OK ») ou la case « réforme » avertit le chef de section du secteur de la corde.' }) : null,
+      u.nums.length ? el('p', { class: 'muted small', text: 'Une remarque (autre que « RAS » ou « OK ») ou la case « réforme » avertit le chef de section et le contrôleur EPI du secteur de la corde.' }) : null,
       el('p', { class: 'error', role: 'alert', text: u.err }),
       el('button', { type: 'button', icon: 'save', class: 'primary inv-submit', disabled: S.busy || !u.nums.length, text: 'Enregistrer', onclick: submitUsage }),
     ];
