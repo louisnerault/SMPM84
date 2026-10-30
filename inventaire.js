@@ -8,6 +8,7 @@
 // administrateurs modifient le contenu théorique et les fiches des cordes (app.js : canInvGerer).
 // Hors ligne : dernières données gardées sur l'appareil ; inventaires et utilisations en file d'attente.
 // Lien direct vers un contenant (QR code collé sur la caisse) : ?page=inventaire&c=<id du contenant>.
+// QR codes générés dans l'application (vendor/qrcode, chefs de section et au-delà) : étiquettes à imprimer.
 (() => {
   'use strict';
 
@@ -41,7 +42,7 @@
   const S = {
     data: null, fresh: false, loading: false, err: '',
     p: Object.assign(P0(), store.getJSON(KEY_PREFS) || {}),
-    vue: 'liste', cid: null, q: '', saisie: null, edit: null, histo: null, corde: null, usage: null, cEdit: null,
+    vue: 'liste', cid: null, q: '', saisie: null, edit: null, histo: null, corde: null, usage: null, cEdit: null, qr: null,
     busy: false, msg: '',
   };
 
@@ -148,7 +149,7 @@
     renderState();
     if (!S.data) { root.replaceChildren(); return; }
     const vues = { liste: vListe, contenant: vContenant, saisie: vSaisie, histo: vHisto, edit: vEdit,
-      corde: vCorde, usage: vUsage, cedit: vCordeEdit };
+      corde: vCorde, usage: vUsage, cedit: vCordeEdit, qr: vQr };
     root.replaceChildren(...[].concat((vues[S.vue] || vListe)()).flat(Infinity).filter(x => x !== null && x !== undefined && x !== false));
   }
 
@@ -197,8 +198,10 @@
     const nbOld = liste.filter(c => !c.dernier || jours(c.dernier.date) > VIEUX_JOURS).length;
     out.push(el('p', { class: 'muted small inv-resume', text: `${liste.length} contenant${liste.length > 1 ? 's' : ''}`
       + (nbBad ? ` · ${nbBad} avec écart` : '') + (nbOld ? ` · ${nbOld} à refaire` : '') }));
-    if (droits().gerer) out.push(el('p', null, el('button', { type: 'button', class: 'pill', text: '＋ Nouveau contenant',
-      onclick: () => go('edit', { edit: { id: '', vehicule: S.p.veh, nom: '', articles: [] } }) })));
+    if (droits().gerer) out.push(el('div', { class: 'inv-actions' },
+      el('button', { type: 'button', class: 'pill', text: '＋ Nouveau contenant',
+        onclick: () => go('edit', { edit: { id: '', vehicule: S.p.veh, nom: '', articles: [] } }) }),
+      liste.length ? el('button', { type: 'button', class: 'pill', text: 'QR codes du véhicule', onclick: () => go('qr', { qr: liste.map(c => c.id) }) }) : null));
     out.push(el('ul', { class: 'inv-list' }, liste.map(c => {
       const e = etat(c);
       return el('li', null, el('button', { type: 'button', class: 'inv-card ' + e.cls, onclick: () => go('contenant', { cid: c.id }) },
@@ -229,7 +232,7 @@
         el('button', { type: 'button', class: 'pill', text: 'Historique', onclick: () => openHisto(c) }),
         droits().gerer ? el('button', { type: 'button', class: 'pill', text: 'Modifier le contenu',
           onclick: () => go('edit', { edit: { id: c.id, vehicule: c.vehicule, nom: c.nom, articles: c.articles.map(a => Object.assign({}, a)) } }) }) : null,
-        el('button', { type: 'button', class: 'pill', text: 'Lien QR code', onclick: () => copierLien(c) })),
+        droits().gerer ? el('button', { type: 'button', class: 'pill', text: 'QR code', onclick: () => go('qr', { qr: [c.id] }) }) : null),
       el('h3', { class: 'inv-sub', text: 'Contenu théorique' }),
       el('ul', { class: 'inv-arts' }, c.articles.map(a => {
         const l = last[a.id];
@@ -242,10 +245,61 @@
     ];
   }
 
+  // ===== QR codes à coller sur les contenants (chefs de section, CTD, administrateurs) =====
+  const lienDe = c => new URL('./?page=inventaire&c=' + encodeURIComponent(c.id), location.href).href;
+  function qrSvg(texte) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const q = window.qrcode(0, 'M');
+    q.addData(texte);
+    q.make();
+    const n = q.getModuleCount(), m = 2;
+    let d = '';
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (q.isDark(y, x)) d += `M${x + m} ${y + m}h1v1h-1z`;
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${n + 2 * m} ${n + 2 * m}`);
+    svg.setAttribute('class', 'inv-qr-img');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('shape-rendering', 'crispEdges');
+    const bg = document.createElementNS(NS, 'rect');
+    bg.setAttribute('width', '100%'); bg.setAttribute('height', '100%'); bg.setAttribute('fill', '#fff');
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', d); path.setAttribute('fill', '#000');
+    svg.append(bg, path);
+    return svg;
+  }
+
+  function vQr() {
+    const liste = (S.qr || []).map(contenant).filter(Boolean);
+    if (!liste.length || !droits().gerer) return vListe();
+    const un = liste.length === 1 ? liste[0] : null;
+    return [
+      retour(un ? un.nom : 'Inventaire', () => go(un ? 'contenant' : 'liste', { cid: un ? un.id : S.cid, qr: null })),
+      el('h2', { class: 'inv-title', text: un ? `QR code · ${un.nom}` : `QR codes · ${vehLib(liste[0].vehicule)}` }),
+      el('p', { class: 'muted small', text: 'À imprimer et coller sur le contenant : le scan ouvre directement son inventaire dans l’application (connexion requise).' }),
+      el('div', { class: 'inv-actions' },
+        el('button', { type: 'button', class: 'primary', text: liste.length > 1 ? `Imprimer les ${liste.length} étiquettes` : 'Imprimer', onclick: imprimer }),
+        un ? el('button', { type: 'button', class: 'pill', text: 'Copier le lien', onclick: () => copierLien(un) }) : null),
+      el('div', { class: 'inv-qr-sheet' }, liste.map(c => {
+        let img;
+        try { img = qrSvg(lienDe(c)); } catch (e) { img = el('p', { class: 'error', text: 'QR code indisponible' }); }
+        return el('figure', { class: 'inv-qr' }, img,
+          el('figcaption', null, el('strong', { text: c.nom }), el('span', { text: vehLib(c.vehicule) }), el('small', { text: 'SMPM 84 · Scanner pour l’inventaire' })));
+      })),
+    ];
+  }
+
+  function imprimer() {
+    document.body.classList.add('inv-print');
+    const fin = () => { document.body.classList.remove('inv-print'); window.removeEventListener('afterprint', fin); };
+    window.addEventListener('afterprint', fin);
+    window.print();
+    setTimeout(fin, 1000);
+  }
+
   async function copierLien(c) {
-    const url = new URL('./?page=inventaire&c=' + encodeURIComponent(c.id), location.href).href;
-    try { await navigator.clipboard.writeText(url); S.msg = 'Lien copié : collez-le dans un générateur de QR code à coller sur le contenant.'; }
-    catch (e) { prompt('Lien direct vers ce contenant (à mettre dans un QR code) :', url); }
+    const url = lienDe(c);
+    try { await navigator.clipboard.writeText(url); S.msg = 'Lien copié.'; }
+    catch (e) { prompt('Lien direct vers ce contenant :', url); }
     renderState();
   }
 
@@ -673,7 +727,7 @@
     if (explicit === true) store.del(KEY_OUTBOX);
     store.del(KEY);
     store.del(KEY_PREFS);
-    Object.assign(S, { data: null, fresh: false, loading: false, err: '', p: P0(), vue: 'liste', cid: null, q: '', saisie: null, edit: null, histo: null, corde: null, usage: null, cEdit: null, msg: '' });
+    Object.assign(S, { data: null, fresh: false, loading: false, err: '', p: P0(), vue: 'liste', cid: null, q: '', saisie: null, edit: null, histo: null, corde: null, usage: null, cEdit: null, qr: null, msg: '' });
     const root = $('#inv-root');
     if (root) root.replaceChildren();
     renderPending();
