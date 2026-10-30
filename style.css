@@ -1708,3 +1708,19 @@ label.inv-edit-dest select { margin: 0; padding: 8px 10px; font-size: .85rem; fl
 .inv-prop .inv-sub { margin-top: 0; justify-content: flex-start; }
 .inv-prop-list { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
 .inv-prop-add { margin: 6px 0 0; padding: 8px 10px; font-size: .85rem; }
+
+.inv-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.inv-count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px; background: var(--danger); color: #fff; font-size: .72rem; line-height: 20px; }
+.inv-alert-bar { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0 0 10px; padding: 10px 12px; border: 0; border-radius: 10px; background: #fdecee; color: #8a1023; font-weight: 700; text-align: left; }
+.inv-al-cu { --st: #d97706; }
+.inv-al-cs { --st: var(--danger); }
+.inv-al-close { --st: var(--ok); opacity: .85; }
+.inv-alerte .inv-anom { margin: 4px 0; }
+.inv-suivi { white-space: pre-wrap; font: inherit; margin: 4px 0 0; }
+.inv-closes { margin-top: 14px; }
+.inv-closes summary { cursor: pointer; font-weight: 600; margin-bottom: 8px; }
+.inv-ctx { margin: 6px 0 4px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.inv-ctx .inv-sub { margin-top: 2px; }
+.inv-ctx .muted { margin: 6px 0 0; }
+@media (prefers-color-scheme: dark) { :where(:root:not([data-theme="light"])) .inv-alert-bar { background: #3a1720; color: #ffb3bd; } }
+:where(:root[data-theme="dark"]) .inv-alert-bar { background: #3a1720; color: #ffb3bd; }
