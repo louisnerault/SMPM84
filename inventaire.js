@@ -21,6 +21,14 @@
   const UTIL = { OPS: 'OPS', FMPA: 'FMPA', INVENTAIRE: 'Inventaire' };
   const CTL = { VISUEL: 'Visuel', TACTILE: 'Tactile', NETTOYAGE: 'Nettoyage à l’eau' };
   const SECT = { NORD: 'Nord', CENTRE: 'Centre', SUD: 'Sud' };
+  const CONTEXTES = { simple: 'Inventaire simple', fmpa_debut: 'FMPA – début', fmpa_fin: 'FMPA – fin de journée', intervention: 'Après intervention' };
+  const QUI = {
+    simple: 'En cas d’écart, le chef de section du secteur du véhicule est averti.',
+    fmpa_debut: 'À faire avant le début de la manœuvre. Un écart avec le contenu théorique est signalé au chef de section.',
+    fmpa_fin: 'À faire en fin de journée. Le matériel manquant par rapport à l’inventaire du matin est signalé au chef d’unité responsable de la FMPA.',
+    intervention: 'Le matériel manquant par rapport au dernier inventaire est signalé au chef d’unité de l’intervention.',
+  };
+  const STATUT_AL = { cu: 'Recherches du chef d’unité', cs: 'Chef de section', close: 'Close' };
 
   const $ = sel => document.querySelector(sel);
   const store = {
@@ -80,6 +88,7 @@
     note: 'M5 4.5h14v11H11l-4 4v-4H5z',
     close: 'M6 6l12 12M18 6L6 18',
     copy: 'M8 8h11v11H8zM5 15H4.5V4.5H15V5',
+    alert: 'M12 3.5l9 16H3zM12 10v4.5M12 17.5h.01',
   };
   function ico(name) {
     const NS = 'http://www.w3.org/2000/svg';
@@ -156,7 +165,8 @@
 
   function setData(res) {
     S.data = { vehicules: res.vehicules || [], contenants: res.contenants || [], cordes: res.cordes || [],
-      familles: res.familles || [], droits: res.droits || {}, maj: res.maj || new Date().toISOString() };
+      familles: res.familles || [], droits: res.droits || {}, maj: res.maj || new Date().toISOString(),
+      alertes: res.alertes || [], cus: res.cus || [], moi: res.moi || '', contextes: res.contextes || CONTEXTES };
     if (!S.p.veh || !vehicules().some(v => v.code === S.p.veh)) S.p.veh = (vehicules()[0] || {}).code || '';
     save();
   }
@@ -164,7 +174,7 @@
   function renderState() {
     const p = $('#inv-state');
     if (!p) return;
-    p.textContent = S.loading ? (S.data ? 'Mise à jour…' : 'Chargement de l’inventaire…') : (S.err || S.msg || '');
+    p.textContent = S.loading && !S.data ? 'Chargement de l’inventaire…' : (S.err || S.msg || (S.loading ? 'Mise à jour…' : ''));
     p.classList.toggle('error', !!S.err && !S.data);
   }
 
@@ -198,11 +208,55 @@
   }
 
   // ===== Liste : onglets Contenants / Cordes =====
+  const alertes = () => (S.data && S.data.alertes) || [];
+  const aTraiter = () => alertes().filter(x => x.peut && x.peut.length);
   function vListe() {
-    const tabs = el('div', { class: 'inv-tabs', role: 'tablist' },
-      ['contenants', 'cordes'].map(o => el('button', { type: 'button', role: 'tab', 'aria-selected': String(S.p.onglet === o),
-        text: o === 'contenants' ? 'Contenants' : 'Cordes', onclick: () => { S.p.onglet = o; savePrefs(); render(); } })));
-    return [tabs].concat(S.p.onglet === 'cordes' ? vCordes() : vContenants());
+    const onglets = ['contenants', 'cordes'].concat(alertes().length ? ['alertes'] : []);
+    if (!onglets.includes(S.p.onglet)) S.p.onglet = 'contenants';
+    const n = aTraiter().length;
+    const tabs = el('div', { class: 'inv-tabs', role: 'tablist', style: `grid-template-columns: repeat(${onglets.length}, 1fr)` },
+      onglets.map(o => el('button', { type: 'button', role: 'tab', 'aria-selected': String(S.p.onglet === o), onclick: () => { S.p.onglet = o; savePrefs(); render(); } },
+        o === 'contenants' ? 'Contenants' : o === 'cordes' ? 'Cordes' : 'Alertes',
+        o === 'alertes' && n ? el('span', { class: 'inv-count', text: String(n) }) : null)));
+    const bandeau = n && S.p.onglet !== 'alertes' ? el('button', { type: 'button', class: 'inv-alert-bar', onclick: () => { S.p.onglet = 'alertes'; savePrefs(); render(); } },
+      ico('alert'), `${n} alerte${n > 1 ? 's' : ''} à traiter`) : null;
+    return [tabs, bandeau].concat(S.p.onglet === 'cordes' ? vCordes() : S.p.onglet === 'alertes' ? vAlertes() : vContenants());
+  }
+
+  // ===== Alertes (non-conformités d'inventaire, cordes à examiner) =====
+  function vAlertes() {
+    const liste = alertes();
+    const ouvertes = liste.filter(x => x.statut !== 'close'), closes = liste.filter(x => x.statut === 'close');
+    const carte = x => el('li', null, el('div', { class: 'inv-card inv-alerte inv-al-' + x.statut },
+      el('span', { class: 'inv-card-head' }, el('strong', { text: x.libelle }), el('span', { class: 'inv-badge', text: STATUT_AL[x.statut] || x.statut })),
+      el('span', { class: 'small muted', text: [new Date(x.date).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }),
+        x.type === 'corde' ? 'Corde' : (CONTEXTES[x.contexte] || ''), x.cu ? 'CU : ' + ((((S.data && S.data.cus) || []).find(p => p.cle === x.cu) || {}).aff || x.cu) : '', x.secteur ? 'secteur ' + (SECT[x.secteur] || x.secteur) : ''].filter(Boolean).join(' · ') }),
+      el('pre', { class: 'inv-anom', text: x.detail }),
+      x.statut === 'cu' && x.echeance ? el('p', { class: 'small', text: `Sans réponse le ${new Date(x.echeance).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}, l’alerte sera transmise au chef de section, au CTD et aux administrateurs.` }) : null,
+      x.suivi ? el('details', { class: 'small' }, el('summary', { text: 'Suivi' }), el('pre', { class: 'inv-suivi', text: x.suivi })) : null,
+      x.peut.length ? el('div', { class: 'inv-actions' },
+        x.peut.includes('retrouve') ? el('button', { type: 'button', icon: 'save', class: 'primary', text: 'Retrouvé', disabled: S.busy, onclick: () => agir(x, 'retrouve') }) : null,
+        x.peut.includes('non_retrouve') ? el('button', { type: 'button', icon: 'alert', class: 'pill', text: 'Non retrouvé', disabled: S.busy, onclick: () => agir(x, 'non_retrouve') }) : null,
+        x.peut.includes('clore') ? el('button', { type: 'button', icon: 'save', class: 'pill', text: 'Clore', disabled: S.busy, onclick: () => agir(x, 'clore') }) : null) : null));
+    return [
+      el('p', { class: 'muted small', text: 'Inventaires non conformes et cordes à examiner. Le chef d’unité recherche le matériel manquant après une FMPA ou une intervention ; s’il n’est pas retrouvé, l’alerte passe au chef de section, au CTD et aux administrateurs.' }),
+      ouvertes.length ? el('ul', { class: 'inv-list' }, ouvertes.map(carte)) : el('p', { class: 'muted center', text: 'Aucune alerte en cours.' }),
+      closes.length ? el('details', { class: 'inv-closes' }, el('summary', { text: `Alertes closes (30 derniers jours) : ${closes.length}` }), el('ul', { class: 'inv-list' }, closes.map(carte))) : null,
+    ];
+  }
+
+  async function agir(x, action) {
+    const q = { retrouve: 'Matériel retrouvé : précisez où (facultatif)', non_retrouve: 'Matériel non retrouvé : précisez les recherches faites (facultatif). L’alerte sera transmise au chef de section, au CTD et aux administrateurs.', clore: 'Clore l’alerte : décision prise (facultatif)' }[action];
+    const commentaire = prompt(q, '');
+    if (commentaire === null) return;
+    S.busy = true; render();
+    try {
+      setData(await app().api('inv_alerte_action', { token: app().token(), id: x.id, decision: action, commentaire }));
+      S.msg = action === 'non_retrouve' ? 'Alerte transmise au chef de section, au CTD et aux administrateurs.' : 'Alerte close.';
+    } catch (err) {
+      if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
+      S.msg = err instanceof app().NetworkError ? app().netLabel() + ' : action impossible hors ligne.' : err.message;
+    } finally { S.busy = false; render(); }
   }
 
   function vContenants() {
@@ -434,7 +488,9 @@
   function startSaisie(c) {
     const lignes = {};
     c.articles.forEach(a => { lignes[a.id] = { r: a.t, u: '', rq: '', note: false }; });
-    go('saisie', { saisie: { cid: c.id, lignes, remarque: '', sid: sid(), err: '' } });
+    const moi = (S.data && S.data.moi) || '';
+    const cu = ((S.data && S.data.cus) || []).some(p => p.cle === moi) ? moi : '';
+    go('saisie', { saisie: { cid: c.id, lignes, remarque: '', sid: sid(), err: '', ctx: 'simple', cu } });
   }
 
   function vSaisie() {
@@ -475,6 +531,15 @@
       retour(c.nom, () => { if (!confirm('Abandonner cet inventaire ?')) return; go('contenant', { cid: c.id, saisie: null }); }),
       el('h2', { class: 'inv-title', text: `Inventaire · ${c.nom}` }),
       el('p', { class: 'muted small', text: `${vehLib(c.vehicule)} · quantités pré-remplies avec le contenu théorique : corrigez seulement ce qui manque ou est en trop.` }),
+      el('div', { class: 'inv-ctx' },
+        el('h3', { class: 'inv-sub', text: 'Occasion' }),
+        el('div', { class: 'inv-chips', role: 'group', 'aria-label': 'Occasion de l’inventaire' },
+          Object.keys(CONTEXTES).map(k => pill(CONTEXTES[k], s.ctx === k, () => { s.ctx = k; s.err = ''; render(); }))),
+        s.ctx !== 'simple' ? el('label', null, s.ctx === 'intervention' ? 'Chef d’unité de l’intervention' : 'Chef d’unité responsable de la FMPA',
+          el('select', { onchange: e => { s.cu = e.target.value; } },
+            el('option', { value: '' }, '— choisir —'),
+            ((S.data && S.data.cus) || []).map(p => el('option', { value: p.cle, selected: p.cle === s.cu }, p.aff)))) : null,
+        el('p', { class: 'muted small', text: QUI[s.ctx] })),
       el('ul', { class: 'inv-rows' }, rows),
       el('label', null, 'Remarque générale (facultatif)',
         el('textarea', { rows: '2', maxlength: '1000', oninput: e => { s.remarque = e.target.value; } }, s.remarque)),
@@ -488,16 +553,19 @@
     const s = S.saisie, c = contenant(s.cid);
     if (!c || S.busy) return;
     if (c.articles.some(a => s.lignes[a.id].r === '')) { s.err = 'Indiquez une quantité pour chaque article (0 si absent).'; return render(); }
+    if (s.ctx !== 'simple' && !s.cu) { s.err = 'Choisissez le chef d’unité.'; return render(); }
     const inventaire = {
       contenant: c.id, remarque: s.remarque.trim(), saisi_le: new Date().toISOString(),
+      contexte: { type: s.ctx, cu: s.ctx === 'simple' ? '' : s.cu },
       lignes: c.articles.map(a => ({ a: a.id, r: Number(s.lignes[a.id].r), u: s.lignes[a.id].u, rq: s.lignes[a.id].rq.trim() })),
     };
-    const entry = { sid: s.sid, kind: 'inv', payload: inventaire, label: `${c.nom} · ${vehLib(c.vehicule)}`, ts: Date.now(), erreur: '' };
+    const entry = { sid: s.sid, kind: 'inv', payload: inventaire, label: `${c.nom} · ${vehLib(c.vehicule)} · ${CONTEXTES[s.ctx]}`, ts: Date.now(), erreur: '' };
     S.busy = true; render();
     try {
       const ok = await envoyer(entry);
       S.saisie = null;
-      go('contenant', { cid: c.id, msg: ok ? 'Inventaire enregistré. Merci !' : 'Pas de réseau : inventaire gardé sur l’appareil, envoi automatique au retour du réseau.' });
+      go('contenant', { cid: c.id, msg: ok ? 'Inventaire enregistré. Merci !' + (dernierAvis ? ` Écart signalé : ${dernierAvis}.` : '') : 'Pas de réseau : inventaire gardé sur l’appareil, envoi automatique au retour du réseau.' });
+      dernierAvis = '';
     } catch (err) {
       s.err = err.message;
       render();
@@ -517,9 +585,12 @@
     return false;
   }
 
+  let dernierAvis = '';
   async function envoyerUn(e) {
     if (e.kind === 'inv') {
       const res = await app().api('inv_submit', { token: app().token(), inventaire: e.payload, submission_id: e.sid });
+      dernierAvis = res.alerte || '';
+      if (res.alerte || (S.data && S.data.alertes && S.data.alertes.length)) { S.fresh = false; setTimeout(load, 0); }   // alertes à jour
       const c = S.data && contenant(e.payload.contenant);
       if (c && res.inventaire && (!c.dernier || c.dernier.date <= res.inventaire.date)) { c.dernier = res.inventaire; save(); }
       if (S.histo && S.histo.cid === e.payload.contenant) S.histo = null;
