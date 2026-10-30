@@ -1652,3 +1652,17 @@ button.inv-card:hover { background: var(--primary-soft); }
 :where(:root[data-theme="dark"]) .inv-anom, :where(:root[data-theme="dark"]) .inv-arts li.is-ecart { background: #3a1720; color: #ffb3bd; }
 :where(:root[data-theme="dark"]) .inv-st-a_surveiller .inv-badge { background: #3a3010; color: #fde68a; }
 #tab-inventaire textarea { display: block; width: 100%; margin-top: 6px; padding: 10px 12px; font: inherit; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); resize: vertical; }
+
+.inv-qr-sheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.inv-qr { margin: 0; padding: 10px; background: #fff; color: #000; border: 1px dashed #9aa6b6; border-radius: 10px; text-align: center; break-inside: avoid; }
+.inv-qr-img { display: block; width: 100%; max-width: 180px; margin: 0 auto; }
+.inv-qr figcaption { display: flex; flex-direction: column; gap: 1px; margin-top: 4px; line-height: 1.2; }
+.inv-qr figcaption strong { font-size: .95rem; }
+.inv-qr figcaption span, .inv-qr figcaption small { font-size: .72rem; }
+@media print {
+  body.inv-print * { visibility: hidden !important; }
+  body.inv-print .inv-qr-sheet, body.inv-print .inv-qr-sheet * { visibility: visible !important; }
+  body.inv-print .inv-qr-sheet { position: absolute; left: 0; top: 0; width: 100%; grid-template-columns: repeat(3, 1fr); gap: 6mm; }
+  body.inv-print .inv-qr { border-color: #999; }
+  body.inv-print .inv-qr-img { max-width: 45mm; }
+}
