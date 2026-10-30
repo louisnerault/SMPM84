@@ -230,7 +230,7 @@
     const carte = x => el('li', null, el('div', { class: 'inv-card inv-alerte inv-al-' + x.statut },
       el('span', { class: 'inv-card-head' }, el('strong', { text: x.libelle }), el('span', { class: 'inv-badge', text: STATUT_AL[x.statut] || x.statut })),
       el('span', { class: 'small muted', text: [new Date(x.date).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }),
-        x.type === 'corde' ? 'Corde' : (CONTEXTES[x.contexte] || ''), x.cu ? 'CU : ' + ((((S.data && S.data.cus) || []).find(p => p.cle === x.cu) || {}).aff || x.cu) : '', x.secteur ? 'secteur ' + (SECT[x.secteur] || x.secteur) : ''].filter(Boolean).join(' · ') }),
+        x.type === 'corde' ? 'Corde' : x.type === 'remarque' ? 'Remarque · ' + (CONTEXTES[x.contexte] || '') : (CONTEXTES[x.contexte] || ''), x.cu ? 'CU : ' + ((((S.data && S.data.cus) || []).find(p => p.cle === x.cu) || {}).aff || x.cu) : '', x.secteur ? 'secteur ' + (SECT[x.secteur] || x.secteur) : ''].filter(Boolean).join(' · ') }),
       el('pre', { class: 'inv-anom', text: x.detail }),
       x.statut === 'cu' && x.echeance ? el('p', { class: 'small', text: `Sans réponse le ${new Date(x.echeance).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}, l’alerte sera transmise au chef de section, au CTD et aux administrateurs.` }) : null,
       x.suivi ? el('details', { class: 'small' }, el('summary', { text: 'Suivi' }), el('pre', { class: 'inv-suivi', text: x.suivi })) : null,
@@ -522,7 +522,7 @@
             l.u = v; e.currentTarget.parentNode.querySelectorAll('.pill').forEach(b => b.setAttribute('aria-pressed', String(b === e.currentTarget)));
           }))) : null,
         l.note || l.rq
-          ? el('input', { type: 'text', class: 'inv-rq', maxlength: '300', placeholder: 'Remarque (état, n° manquant…)', value: l.rq, oninput: e => { l.rq = e.target.value; } })
+          ? el('input', { type: 'text', class: 'inv-rq', maxlength: '300', placeholder: 'Remarque (usure, état…) — inutile d’écrire « RAS »', value: l.rq, oninput: e => { l.rq = e.target.value; } })
           : el('button', { type: 'button', icon: 'note', class: 'link small inv-note', text: 'remarque', onclick: () => { l.note = true; render(); } }),
       ].filter(Boolean));
       return li;
@@ -542,7 +542,8 @@
         el('p', { class: 'muted small', text: QUI[s.ctx] })),
       el('ul', { class: 'inv-rows' }, rows),
       el('label', null, 'Remarque générale (facultatif)',
-        el('textarea', { rows: '2', maxlength: '1000', oninput: e => { s.remarque = e.target.value; } }, s.remarque)),
+        el('textarea', { rows: '2', maxlength: '1000', placeholder: 'Ex. : sac déchiré, marque d’usure…', oninput: e => { s.remarque = e.target.value; } }, s.remarque)),
+      el('p', { class: 'muted small', text: 'Inutile d’écrire « RAS » ou « OK » : sans remarque, rien n’est signalé. Toute autre remarque (usure, détérioration…) est transmise au chef de section, même si l’inventaire est conforme.' }),
       el('p', { class: 'error', role: 'alert', text: s.err }),
       el('button', { type: 'button', icon: 'save', class: 'primary inv-submit', id: 'inv-valider', disabled: S.busy,
         text: ecarts ? `Valider l’inventaire (${ecarts} écart${ecarts > 1 ? 's' : ''})` : 'Valider : tout est conforme', onclick: submitSaisie }),
@@ -822,8 +823,9 @@
       u.nums.length ? el('h3', { class: 'inv-sub', text: 'Remarques (facultatif)' }) : null,
       el('ul', { class: 'inv-rows' }, u.nums.map(n => el('li', { class: 'inv-row' },
         el('strong', { text: `Corde n° ${n}` }),
-        el('input', { type: 'text', maxlength: '500', placeholder: 'État, critère de réforme…', value: u.rq[n] || '', 'aria-label': `Remarque corde ${n}`, oninput: e => { u.rq[n] = e.target.value; } }),
+        el('input', { type: 'text', maxlength: '500', placeholder: 'Usure, point dur… (pas de « RAS »)', value: u.rq[n] || '', 'aria-label': `Remarque corde ${n}`, oninput: e => { u.rq[n] = e.target.value; } }),
         el('label', { class: 'ann-check' }, el('input', { type: 'checkbox', checked: u.ref.includes(n), onchange: () => toggle(u.ref, n) }), 'À faire examiner pour réforme')))),
+      u.nums.length ? el('p', { class: 'muted small', text: 'Une remarque (autre que « RAS » ou « OK ») ou la case « réforme » avertit le chef de section du secteur de la corde.' }) : null,
       el('p', { class: 'error', role: 'alert', text: u.err }),
       el('button', { type: 'button', icon: 'save', class: 'primary inv-submit', disabled: S.busy || !u.nums.length, text: 'Enregistrer', onclick: submitUsage }),
     ];
