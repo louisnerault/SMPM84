@@ -520,7 +520,7 @@ body.mode-intervention .landscape img { filter: sepia(1) hue-rotate(-55deg) satu
 /* bascule : bouton gyrophare compact, collé en haut à droite, visible en permanence */
 .mode-bar {
   position: sticky; top: 0; z-index: 8;
-  display: flex; justify-content: flex-end;
+  display: flex; justify-content: space-between; gap: 8px;
   margin: -18px -16px 8px; padding: 6px 16px;
   pointer-events: none;            /* seule la pastille capte le doigt */
 }
@@ -1520,3 +1520,51 @@ label.poi-file input { position: absolute; width: 1px; height: 1px; opacity: 0; 
 .poi-nav-list .link { justify-self: start; padding: 4px 0; }
 .poi-nav-pref .link { padding: 0; font: inherit; }
 .poi-nav-pref:empty { display: none; }
+
+/* ---------- bouton « Accueil » (barre du mode intervention, toujours visible) ---------- */
+.home-pill { color: var(--primary); border-color: var(--primary); padding: 5px 14px 5px 10px; }
+.home-pill svg { flex: none; }
+.home-pill[aria-current="page"] { background: var(--primary-soft); }
+body.mode-intervention .home-pill { color: #c8102e; border-color: #c8102e; }
+
+/* ---------- clochette des notifications (à côté du bouton ☰) ---------- */
+.bell {
+  position: relative; flex: none; width: 44px; height: 44px; padding: 0; margin-left: -4px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 0; border-radius: 10px; color: #fff; cursor: pointer;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.4));
+}
+.bell:hover, .bell[aria-expanded="true"] { background: rgba(255,255,255,.12); }
+.bell-count {
+  position: absolute; top: 1px; right: -3px; height: 20px; min-width: 20px; padding: 0 5px;
+  border-radius: 99px; background: var(--danger); color: #fff;
+  font-size: .7rem; font-weight: 700; line-height: 20px; text-align: center;
+  box-shadow: 0 0 0 2px rgba(6, 20, 40, .55);
+}
+.notif-scrim { z-index: 40; background: rgba(0,0,0,.25); }
+.notif-panel {
+  position: fixed; z-index: 45; left: 8px; right: 8px;
+  top: calc(60px + env(safe-area-inset-top));
+  max-width: 440px; max-height: calc(100vh - 80px - env(safe-area-inset-top));
+  display: flex; flex-direction: column;
+  background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+}
+.notif-head { display: flex; align-items: center; gap: 10px; padding: 10px 8px 8px 14px; border-bottom: 1px solid var(--line); }
+.notif-head strong { flex: 1; font-size: 1rem; }
+.notif-head .link { font-size: .82rem; }
+.notif-head .close { color: var(--muted); }
+.notif-status { margin: 0; padding: 0 14px; font-size: .85rem; }
+.notif-status:empty { display: none; }
+.notif-status:not(:empty) { padding: 12px 14px; }
+.notif-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.notif-item { padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.notif-item:last-child { border-bottom: 0; }
+.notif-item.unread { background: var(--primary-soft); box-shadow: inset 4px 0 0 var(--primary); }
+.notif-body { display: block; width: 100%; padding: 0; margin: 0; text-align: left; font: inherit; color: inherit; background: none; border: 0; }
+button.notif-body { cursor: pointer; }
+.notif-body strong { display: block; font-size: .92rem; }
+.notif-item:not(.unread) .notif-body strong { font-weight: 600; }
+.notif-body p { margin: 2px 0 4px; font-size: .86rem; white-space: pre-line; overflow-wrap: anywhere; }
+.notif-body small { font-size: .75rem; }
+.notif-mark { margin-top: 2px; padding: 6px 0; font-size: .8rem; }
