@@ -358,7 +358,7 @@
     if (name === 'fiches' || name === 'notices') setDocGroup(true);
     window.scrollTo(0, 0);
     if (name === 'bug' && window.SMPM_BUGS) window.SMPM_BUGS.open(state.prevPage);
-    if (name === 'fiches' && window.SMPM_FICHES) window.SMPM_FICHES.open();
+    if ((name === 'fiches' || name === 'notices') && window.SMPM_FICHES) window.SMPM_FICHES.open();
     if (name === 'annuaire' && window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.open();
     if (name === 'poi' && window.SMPM_POI) window.SMPM_POI.open();
     if (name === 'livret' && window.SMPM_CSH) window.SMPM_CSH.home(state.year);
