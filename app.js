@@ -327,6 +327,8 @@
   }
 
   function gotoPage(name) {
+    // notification d'alerte d'inventaire : rubrique Inventaire ouverte sur l'onglet Alertes
+    if (name === 'inventaire-alertes') { if (window.SMPM_INV) window.SMPM_INV.ongletAlertes(); name = 'inventaire'; }
     if (!allowedPage(name, state.data && state.data.session)) name = 'livret';
     showFlash(pendingFlash);
     pendingFlash = null;
