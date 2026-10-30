@@ -1631,8 +1631,8 @@ button.inv-card:hover { background: var(--primary-soft); }
 .inv-st-en_service { --st: var(--ok); }
 .inv-st-a_surveiller { --st: #d97706; }
 .inv-st-a_surveiller .inv-badge { background: #fff3cd; color: #7a5200; }
-.inv-st-reformee { --st: var(--muted); }
-.inv-st-reformee .inv-badge { background: var(--bg); color: var(--muted); }
+.inv-st-inactive { --st: var(--muted); }
+.inv-st-inactive .inv-badge { background: var(--bg); color: var(--muted); }
 .inv-dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 8px 0; font-size: .9rem; }
 .inv-dl dt { color: var(--muted); }
 .inv-dl dd { margin: 0; font-weight: 600; }
@@ -1763,7 +1763,7 @@ label.inv-edit-dest select { margin: 0; padding: 8px 10px; font-size: .85rem; fl
 .inv-card { background: color-mix(in srgb, var(--st) 9%, var(--card)); border-color: color-mix(in srgb, var(--st) 40%, var(--line)); border-left-color: var(--st); }
 button.inv-card:hover { background: color-mix(in srgb, var(--st) 18%, var(--card)); }
 .inv-banner { background: color-mix(in srgb, var(--st, var(--line)) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--st, var(--line)) 40%, var(--line)); border-left: 5px solid var(--st, var(--line)); }
-.inv-st-reformee.inv-card { --st: #8a96a8; }
+.inv-st-inactive.inv-card { --st: #8a96a8; }
 .inv-card .inv-badge { background: color-mix(in srgb, var(--st) 18%, var(--card)); color: color-mix(in srgb, var(--st) 80%, var(--ink)); }
 
 /* corde avec une anomalie : gros point d'exclamation */
@@ -1794,3 +1794,6 @@ button.inv-card:hover { background: color-mix(in srgb, var(--st) 18%, var(--card
 .inv-photo-grande { display: block; width: 100%; max-height: 260px; object-fit: cover; }
 .inv-motif figcaption { margin-top: 4px; }
 .inv-corde-photo { margin-top: 12px; }
+
+.inv-2col > label { min-width: 0; }
+.inv-2col input { min-width: 0; }

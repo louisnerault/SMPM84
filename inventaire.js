@@ -17,7 +17,7 @@
   const KEY_OUTBOX = 'smpm_inv_outbox';
   const PHOTO_CACHE = 'smpm84-inv';          // photos des articles consultées (gardé par sw.js)
   const VIEUX_JOURS = 90;                    // inventaire plus ancien : signalé « à refaire »
-  const STATUTS = { en_service: 'En service', a_surveiller: 'À surveiller', reformee: 'Réformée' };
+  const STATUTS = { en_service: 'En service', a_surveiller: 'À surveiller', inactive: 'Numéro libre' };
   const UTIL = { OPS: 'OPS', FMPA: 'FMPA', INVENTAIRE: 'Inventaire' };
   const CTL = { VISUEL: 'Visuel', TACTILE: 'Tactile', NETTOYAGE: 'Nettoyage à l’eau' };
   const SECT = { NORD: 'Nord', CENTRE: 'Centre', SUD: 'Sud' };
@@ -192,7 +192,7 @@
     renderState();
     if (!S.data) { root.replaceChildren(); return; }
     const vues = { liste: vListe, contenant: vContenant, saisie: vSaisie, histo: vHisto, edit: vEdit,
-      corde: vCorde, usage: vUsage, cedit: vCordeEdit, qr: vQr, listing: vListing };
+      corde: vCorde, usage: vUsage, cedit: vCordeEdit, qr: vQr, listing: vListing, activer: vActiver };
     const nodes = [].concat((vues[S.vue] || vListe)()).flat(Infinity).filter(x => x !== null && x !== undefined && x !== false);
     // page longue : même bouton de retour en bas (copie du bouton du haut)
     const haut = nodes[0] && nodes[0].classList && nodes[0].classList.contains('inv-back-bar') ? nodes[0] : null;
@@ -844,7 +844,7 @@
   function cordesFiltrees() {
     return cordes().filter(c => c.famille === S.p.famille
       && (!S.p.secteur || c.secteur === S.p.secteur)
-      && (S.p.statut === 'toutes' || (S.p.statut === 'actives' ? c.statut !== 'reformee' : c.statut === S.p.statut)));
+      && (S.p.statut === 'toutes' || (S.p.statut === 'actives' ? c.statut !== 'inactive' : c.statut === S.p.statut)));
   }
 
   function vCordes() {
@@ -859,24 +859,26 @@
         [['', 'Tous secteurs']].concat(fam.secteurs.map(s => [s, SECT[s] || s])).map(([v, t]) => pill(t, S.p.secteur === v, () => { S.p.secteur = v; savePrefs(); render(); }))) : null,
       el('div', { class: 'inv-filtres' },
         el('select', { 'aria-label': 'Statut', onchange: e => { S.p.statut = e.target.value; savePrefs(); render(); } },
-          [['actives', 'En service et à surveiller'], ['a_surveiller', 'À surveiller'], ['reformee', 'Réformées'], ['toutes', 'Toutes']]
+          [['actives', 'En service et à surveiller'], ['a_surveiller', 'À surveiller'], ['inactive', 'Numéros libres'], ['toutes', 'Tous les numéros']]
             .map(([v, t]) => el('option', { value: v, selected: S.p.statut === v }, t))),
         el('span', { class: 'small', text: `${liste.length} corde${liste.length > 1 ? 's' : ''}` })),
       el('div', { class: 'inv-actions' },
-        el('button', { type: 'button', icon: 'rope', class: 'primary', text: 'Déclarer une utilisation', disabled: !cordes().some(c => c.famille === S.p.famille && c.statut !== 'reformee'),
+        el('button', { type: 'button', icon: 'rope', class: 'primary', text: 'Déclarer une utilisation', disabled: !cordes().some(c => c.famille === S.p.famille && c.statut !== 'inactive'),
           onclick: () => go('usage', { usage: { famille: S.p.famille, type: 'FMPA', nums: [], ctl: ['VISUEL'], rq: {}, ref: [], sid: sid(), err: '' } }) }),
-        droits().gerer ? el('button', { type: 'button', icon: 'plus', class: 'pill', text: 'Nouvelle corde', onclick: () => editCorde(null) }) : null),
+        droits().gerer && cordes().some(c => c.famille === S.p.famille && c.statut === 'inactive')
+          ? el('button', { type: 'button', icon: 'plus', class: 'pill', text: 'Mettre en service une corde', onclick: () => go('activer', { activer: { famille: S.p.famille } }) }) : null),
       el('ul', { class: 'inv-list' }, liste.map(c => el('li', null,
-        el('button', { type: 'button', class: 'inv-card inv-corde inv-st-' + c.statut + (c.anomalie && c.statut !== 'reformee' ? ' inv-anomalie' : ''), onclick: () => go('corde', { corde: c.id }) },
+        el('button', { type: 'button', class: 'inv-card inv-corde inv-st-' + c.statut + (c.anomalie && c.statut !== 'inactive' ? ' inv-anomalie' : ''), onclick: () => go('corde', { corde: c.id }) },
           el('span', { class: 'inv-card-head' },
             el('span', { class: 'inv-corde-titre' },
-              c.anomalie && c.statut !== 'reformee' ? el('span', { class: 'inv-excl', 'aria-label': 'Anomalie', title: c.anomalie, text: '!' }) : null,
-              vignette(photoCorde(c) || {}, true),
+              c.anomalie && c.statut !== 'inactive' ? el('span', { class: 'inv-excl', 'aria-label': 'Anomalie', title: c.anomalie, text: '!' }) : null,
+              c.statut === 'inactive' ? null : vignette(photoCorde(c) || {}, true),
               el('strong', { text: `N° ${c.num}` + (c.secteur ? ` · ${SECT[c.secteur] || c.secteur}` : '') })),
             el('span', { class: 'inv-badge', text: STATUTS[c.statut] })),
-          c.anomalie && c.statut !== 'reformee' && c.anomalie !== 'À surveiller' ? el('span', { class: 'small inv-anom-txt', text: 'Anomalie : ' + c.anomalie }) : null,
-          el('span', { class: 'small', text: [c.longueur ? c.longueur + ' m' : '', c.diametre ? c.diametre + ' mm' : '', c.fabricant, c.modele].filter(Boolean).join(' · ') || 'Fiche à compléter' }),
-          el('span', { class: 'small muted', text: `FMPA ${c.cpt.FMPA || 0} · OPS ${c.cpt.OPS || 0}` + (c.dernier ? ` · dernier contrôle ${quand(c.dernier)}` : ' · aucun contrôle enregistré') }))))),
+          c.anomalie && c.statut !== 'inactive' && c.anomalie !== 'À surveiller' ? el('span', { class: 'small inv-anom-txt', text: 'Anomalie : ' + c.anomalie }) : null,
+          c.statut === 'inactive' ? el('span', { class: 'small muted', text: 'Numéro disponible pour une nouvelle corde' })
+            : el('span', { class: 'small', text: [c.longueur ? c.longueur + ' m' : '', c.diametre ? c.diametre + ' mm' : '', c.fabricant, c.modele].filter(Boolean).join(' · ') || 'Fiche à compléter' }),
+          c.statut === 'inactive' ? null : el('span', { class: 'small muted', text: `FMPA ${c.cpt.FMPA || 0} · OPS ${c.cpt.OPS || 0}` + (c.dernier ? ` · dernier contrôle ${quand(c.dernier)}` : ' · aucun contrôle enregistré') }))))),
       !liste.length ? el('p', { class: 'muted center', text: 'Aucune corde pour ces critères.' }) : null,
     ];
     return out;
@@ -889,13 +891,27 @@
     const info = [['Secteur', SECT[c.secteur] || c.secteur], ['Longueur', c.longueur && c.longueur + ' m'], ['Diamètre', c.diametre && c.diametre + ' mm'],
       ['Type', c.type], ['Fabricant', c.fabricant], ['Modèle', c.modele], ['N° de série', c.serie], ['N° TEXIS / TECHSYS', c.texis],
       ['Fabrication', moisAn(c.fabrication)], ['Mise en service', moisAn(c.service)], ['Caserne', c.caserne]].filter(x => x[1]);
+    const archivesListe = () => ((c.archives || []).length ? [el('h3', { class: 'inv-sub', text: 'Cordes précédentes sur ce numéro' }),
+      el('ul', { class: 'inv-arts' }, c.archives.slice().reverse().map(x => el('li', null,
+        el('span', { class: 'inv-art-nom' }, el('strong', { text: `Réformée le ${new Date(x.d).toLocaleDateString('fr-FR')}` }),
+          ` · ${x.par}${x.desc ? ' · ' + x.desc : ''}${x.raison ? ' — ' + x.raison : ''}`),
+        x.url ? el('a', { href: x.url, target: '_blank', rel: 'noopener', class: 'pill has-ico' }, ico('print'), 'Fiche PDF') : null)))] : []);
+    // numéro libre : pas d'informations de l'ancienne corde (elles sont dans sa fiche PDF)
+    if (c.statut === 'inactive') return [
+      retour('Liste des cordes', () => go('liste')),
+      el('h2', { class: 'inv-title', text: `N° ${c.num} · numéro libre` }),
+      el('p', { class: 'muted small', text: `${fam.libelle}${c.secteur ? ' · secteur ' + (SECT[c.secteur] || c.secteur) : ''}` }),
+      el('p', { class: 'inv-banner inv-st-inactive', text: 'Aucune corde en service sur ce numéro.' }),
+      archivesListe(),
+      droits().gerer ? el('div', { class: 'inv-actions' }, el('button', { type: 'button', icon: 'plus', class: 'primary', text: 'Mettre en service une nouvelle corde sur ce numéro', onclick: () => editCorde(c, true) })) : null,
+    ];
     return [
       retour('Liste des cordes', () => go('liste')),
       el('h2', { class: 'inv-title', text: `Corde n° ${c.num}` }),
       el('p', { class: 'muted small', text: fam.libelle }),
-      el('p', { class: 'inv-banner inv-st-' + c.statut + (c.anomalie && c.statut !== 'reformee' ? ' inv-anomalie' : '') },
-        c.anomalie && c.statut !== 'reformee' ? el('span', { class: 'inv-excl', 'aria-hidden': 'true', text: '!' }) : null,
-        STATUTS[c.statut] + (c.anomalie && c.anomalie !== 'À surveiller' && c.statut !== 'reformee' ? ' · anomalie signalée : ' + c.anomalie : '')),
+      el('p', { class: 'inv-banner inv-st-' + c.statut + (c.anomalie && c.statut !== 'inactive' ? ' inv-anomalie' : '') },
+        c.anomalie && c.statut !== 'inactive' ? el('span', { class: 'inv-excl', 'aria-hidden': 'true', text: '!' }) : null,
+        STATUTS[c.statut] + (c.anomalie && c.anomalie !== 'À surveiller' && c.statut !== 'inactive' ? ' · anomalie signalée : ' + c.anomalie : '')),
       c.ph ? el('figure', { class: 'inv-motif' }, grandePhoto(photoCorde(c)), el('figcaption', { class: 'small muted', text: 'Motif' + (c.motif ? ' : ' + c.motif : '') })) : null,
       c.commentaire ? el('p', { class: 'small', text: c.commentaire }) : null,
       el('dl', { class: 'inv-dl' }, info.map(([k, v]) => [el('dt', { text: k }), el('dd', { text: v })])),
@@ -909,10 +925,42 @@
         el('span', { class: 'inv-art-nom' }, el('strong', { text: new Date(h.d).toLocaleDateString('fr-FR') }), ` · ${h.par} · ${UTIL[h.type] || h.type}`,
           h.ctl.length ? el('small', { class: 'muted', text: ' · ' + h.ctl.map(k => CTL[k] || k).join(', ') }) : null,
           h.rq ? el('em', { class: 'inv-hrq', text: h.rq }) : null)))) : el('p', { class: 'muted small', text: 'Aucun contrôle enregistré.' }),
+      archivesListe(),
       el('div', { class: 'inv-actions' },
-        c.statut !== 'reformee' ? el('button', { type: 'button', icon: 'rope', class: 'primary', text: 'Déclarer une utilisation',
+        c.statut !== 'inactive' ? el('button', { type: 'button', icon: 'rope', class: 'primary', text: 'Déclarer une utilisation',
           onclick: () => go('usage', { usage: { famille: c.famille, type: 'FMPA', nums: [c.num], ctl: ['VISUEL'], rq: {}, ref: [], sid: sid(), err: '' } }) }) : null,
-        droits().gerer ? el('button', { type: 'button', icon: 'edit', class: 'pill', text: 'Modifier la fiche', onclick: () => editCorde(c) }) : null),
+        droits().gerer && c.statut !== 'inactive' ? el('button', { type: 'button', icon: 'edit', class: 'pill', text: 'Modifier la fiche', onclick: () => editCorde(c) }) : null,
+        droits().gerer && c.statut !== 'inactive' ? el('button', { type: 'button', icon: 'trash', class: 'pill danger-pill', text: 'Réformer cette corde', disabled: S.busy, onclick: () => reformer(c) }) : null),
+    ];
+  }
+
+  async function reformer(c) {
+    const raison = prompt(`Réformer la corde n° ${c.num} ?\n\nSa fiche (informations, compteurs, historique, photo) sera archivée en PDF dans « Cordes reformées » et le numéro ${c.num} deviendra libre pour une nouvelle corde (compteurs à zéro).\n\nMotif de la réforme :`, c.anomalie && c.anomalie !== 'À surveiller' ? c.anomalie : '');
+    if (raison === null) return;
+    S.busy = true; S.msg = 'Réforme et création de la fiche PDF…'; render();
+    try {
+      const res = await app().api('inv_corde_reformer', { token: app().token(), corde: c.id, raison });
+      setData(res);
+      S.msg = `Corde n° ${c.num} réformée, fiche PDF archivée. Le numéro ${c.num} est libre.`;
+    } catch (err) {
+      if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
+      S.msg = err instanceof app().NetworkError ? app().netLabel() + ' : réforme impossible hors ligne.' : err.message;
+    } finally { S.busy = false; render(); }
+  }
+
+  // Choix d'un numéro libre pour une nouvelle corde (pas de création de numéro : 1 à 75 en SMPM, 25 par secteur)
+  function vActiver() {
+    const x = S.activer;
+    const fam = familles().find(f => f.code === x.famille) || { libelle: x.famille, secteurs: [] };
+    const libres = cordes().filter(c => c.famille === x.famille && c.statut === 'inactive');
+    const groupes = fam.secteurs.length ? fam.secteurs.map(sec => [SECT[sec] || sec, libres.filter(c => c.secteur === sec)]).concat([['Sans secteur', libres.filter(c => !fam.secteurs.includes(c.secteur))]]) : [['', libres]];
+    return [
+      retour('Liste des cordes', () => go('liste', { activer: null })),
+      el('h2', { class: 'inv-title', text: 'Mettre en service une corde' }),
+      el('p', { class: 'muted small', text: `${fam.libelle} : choisissez un numéro libre. La nouvelle corde reprend ce numéro avec des compteurs à zéro ; les données de l’ancienne corde restent dans sa fiche PDF.` }),
+      libres.length ? groupes.filter(g => g[1].length).map(([t, l]) => el('div', { class: 'inv-numgrp' },
+        t ? el('p', { class: 'small muted', text: t }) : null,
+        el('div', { class: 'inv-nums' }, l.map(c => pill(String(c.num), false, () => editCorde(c, true)))))) : el('p', { class: 'muted', text: 'Aucun numéro libre : réformez d’abord une corde.' }),
     ];
   }
 
@@ -920,7 +968,7 @@
     const u = S.usage;
     if (!u) return vListe();
     const fam = familles().find(f => f.code === u.famille) || { libelle: u.famille, secteurs: [] };
-    const dispo = cordes().filter(c => c.famille === u.famille && c.statut !== 'reformee');
+    const dispo = cordes().filter(c => c.famille === u.famille && c.statut !== 'inactive');
     const groupes = fam.secteurs.length
       ? fam.secteurs.map(s => [SECT[s] || s, dispo.filter(c => c.secteur === s)]).concat([['Sans secteur', dispo.filter(c => !fam.secteurs.includes(c.secteur))]])
       : [['', dispo]];
@@ -965,13 +1013,13 @@
     finally { S.busy = false; render(); }
   }
 
-  function editCorde(c) {
-    const f = familles().find(x => x.code === (c ? c.famille : S.p.famille)) || familles()[0] || { code: 'SMPM', secteurs: [] };
-    const max = cordes().filter(x => x.famille === f.code).reduce((m, x) => Math.max(m, x.num), 0);
+  // activer : nouvelle corde sur un numéro libre (champs vides, mise en service ce mois-ci)
+  function editCorde(c, activer) {
     const iso = v => (v ? String(v).slice(0, 7) : '');
-    go('cedit', { cEdit: c ? Object.assign({}, c, { fabrication: iso(c.fabrication), service: iso(c.service), err: '' })
-      : { id: '', famille: f.code, num: max + 1, secteur: S.p.secteur || '', statut: 'en_service', longueur: '', diametre: '', type: '',
-        fabricant: '', modele: '', serie: '', texis: '', fabrication: '', service: '', caserne: '', commentaire: '', err: '' } });
+    go('cedit', { cEdit: activer
+      ? { id: c.id, famille: c.famille, num: c.num, secteur: c.secteur, statut: 'en_service', activer: true, longueur: '', diametre: '', type: '',
+        fabricant: '', modele: '', serie: '', texis: '', fabrication: '', service: new Date().toISOString().slice(0, 7), caserne: '', commentaire: '', motif: '', ph: '', err: '' }
+      : Object.assign({}, c, { fabrication: iso(c.fabrication), service: iso(c.service), err: '' }) });
   }
 
   function vCordeEdit() {
@@ -980,15 +1028,12 @@
     const fam = familles().find(f => f.code === c.famille) || { secteurs: [] };
     const champ = (lab, k, attrs) => el('label', null, lab, el('input', Object.assign({ type: 'text', value: c[k] || '', oninput: e => { c[k] = e.target.value; } }, attrs || {})));
     return [
-      retour(c.id ? `Corde n° ${c.num}` : 'Cordes', () => go(c.id ? 'corde' : 'liste', { cEdit: null })),
-      el('h2', { class: 'inv-title', text: c.id ? `Fiche de la corde n° ${c.num}` : 'Nouvelle corde' }),
-      el('label', null, 'Famille', el('select', { disabled: !!c.id, onchange: e => { c.famille = e.target.value; c.secteur = ''; render(); } },
-        familles().map(f => el('option', { value: f.code, selected: f.code === c.famille }, f.libelle)))),
-      champ('Numéro', 'num', { type: 'number', min: '1', inputmode: 'numeric' }),
-      fam.secteurs.length ? el('label', null, 'Secteur', el('select', { onchange: e => { c.secteur = e.target.value; } },
-        [el('option', { value: '' }, '—')].concat(fam.secteurs.map(s => el('option', { value: s, selected: s === c.secteur }, SECT[s] || s))))) : null,
-      el('label', null, 'Statut', el('select', { onchange: e => { c.statut = e.target.value; } },
-        Object.keys(STATUTS).map(k => el('option', { value: k, selected: k === c.statut }, STATUTS[k])))),
+      retour(`Corde n° ${c.num}`, () => go('corde', { corde: c.id, cEdit: null })),
+      el('h2', { class: 'inv-title', text: c.activer ? `Nouvelle corde n° ${c.num}` : `Fiche de la corde n° ${c.num}` }),
+      el('p', { class: 'muted small', text: `${fam.libelle || c.famille} · n° ${c.num}${c.secteur ? ' · secteur ' + (SECT[c.secteur] || c.secteur) : ''}`
+        + (c.activer ? ' · compteurs remis à zéro à la mise en service.' : '') }),
+      c.activer ? null : el('label', null, 'Statut', el('select', { onchange: e => { c.statut = e.target.value; } },
+        ['en_service', 'a_surveiller'].map(k => el('option', { value: k, selected: k === c.statut }, STATUTS[k])))),
       el('div', { class: 'inv-2col' }, champ('Longueur (m)', 'longueur', { inputmode: 'decimal' }), champ('Diamètre (mm)', 'diametre', { inputmode: 'decimal' })),
       el('div', { class: 'inv-2col' }, champ('Type', 'type', { placeholder: 'Semi-stat, A…' }), champ('Fabricant', 'fabricant')),
       el('div', { class: 'inv-2col' }, champ('Modèle', 'modele'), champ('N° de série', 'serie')),
@@ -996,12 +1041,12 @@
       el('div', { class: 'inv-2col' }, champ('Fabrication', 'fabrication', { type: 'month' }), champ('Mise en service', 'service', { type: 'month' })),
       champ('Caserne', 'caserne'),
       champ('Motif (couleurs, marque)', 'motif', { placeholder: 'Ex. : Beal Access jaune/gris', maxlength: '80' }),
-      c.id ? el('div', { class: 'inv-edit-photo inv-corde-photo' },
+      !c.activer ? el('div', { class: 'inv-edit-photo inv-corde-photo' },
         vignette(photoCorde(c) || {}),
         el('label', { class: 'pill inv-file', icon: 'camera' }, c.ph ? 'Changer la photo du motif' : 'Ajouter une photo du motif',
           el('input', { type: 'file', accept: 'image/*', disabled: S.busy, onchange: ev => { const f = ev.target.files[0]; if (f) photoCordeEnvoyer(c, f); } })),
         c.ph ? el('button', { type: 'button', icon: 'trash', class: 'link danger small', text: 'Retirer', disabled: S.busy, onclick: () => { if (confirm('Retirer la photo du motif ?')) photoCordeEnvoyer(c, null); } }) : null)
-        : el('p', { class: 'muted small', text: 'Photo du motif : enregistrez d’abord la corde.' }),
+        : el('p', { class: 'muted small', text: 'Photo du motif : à ajouter depuis la fiche, une fois la corde mise en service.' }),
       el('label', null, 'Commentaire', el('textarea', { rows: '3', maxlength: '1000', oninput: e => { c.commentaire = e.target.value; } }, c.commentaire || '')),
       el('p', { class: 'error', role: 'alert', text: c.err }),
       el('button', { type: 'button', icon: 'save', class: 'primary inv-submit', disabled: S.busy, text: 'Enregistrer', onclick: saveCorde }),
@@ -1027,13 +1072,15 @@
     try {
       const corde = Object.assign({}, c, { fabrication: c.fabrication ? c.fabrication + '-01' : '', service: c.service ? c.service + '-01' : '' });
       delete corde.err; delete corde.hist; delete corde.cpt;
-      let res = await app().api('inv_corde_save', { token: app().token(), corde });
+      let res = c.activer
+        ? await app().api('inv_corde_activer', { token: app().token(), corde })
+        : await app().api('inv_corde_save', { token: app().token(), corde });
       // nom du motif changé : enregistré à part (la photo ne change pas)
       const n0 = (res.cordes || []).find(x => x.famille === c.famille && x.num === Number(c.num));
-      if (n0 && (c.motif || '') !== (n0.motif || '')) res = await app().api('inv_corde_photo_save', { token: app().token(), corde: n0.id, motif: c.motif || '' });
+      if (!c.activer && n0 && (c.motif || '') !== (n0.motif || '')) res = await app().api('inv_corde_photo_save', { token: app().token(), corde: n0.id, motif: c.motif || '' });
       setData(res);
       const n = cordes().find(x => x.famille === c.famille && x.num === Number(c.num));
-      go(n ? 'corde' : 'liste', { corde: n ? n.id : null, cEdit: null, msg: 'Fiche enregistrée.' });
+      go(n ? 'corde' : 'liste', { corde: n ? n.id : null, cEdit: null, msg: c.activer ? `Corde n° ${c.num} mise en service.` : 'Fiche enregistrée.' });
     } catch (err) {
       if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
       c.err = err instanceof app().NetworkError ? app().netLabel() + ' : modification impossible hors ligne.' : err.message;
