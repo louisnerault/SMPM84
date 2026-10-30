@@ -1774,3 +1774,16 @@ button.inv-card:hover { background: color-mix(in srgb, var(--st) 18%, var(--card
 .inv-banner .inv-excl { width: 26px; height: 26px; font-size: 1.15rem; margin-right: 8px; vertical-align: middle; }
 .inv-banner.inv-anomalie { display: flex; align-items: center; }
 .inv-anom-txt { color: #b45309; font-weight: 700; }
+
+/* retour à la rubrique précédente */
+.inv-back-bar { margin: 0 0 10px; }
+.inv-back-bar.is-bottom { margin: 18px 0 0; padding-top: 12px; border-top: 1px solid var(--line); }
+.inv-back { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 16px 6px 10px; border-radius: 99px;
+  border: 1.5px solid var(--primary); background: var(--primary-soft); color: var(--primary-dark); font-weight: 700; text-align: left; max-width: 100%; }
+.inv-back:hover, .inv-back:active { background: var(--primary); color: #fff; }
+.inv-back .inv-ico { width: 22px; height: 22px; stroke-width: 2.6; }
+.inv-back-lbl { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.inv-back-lbl small { font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; opacity: .75; }
+.inv-back-lbl span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (prefers-color-scheme: dark) { :where(:root:not([data-theme="light"])) .inv-back { color: #cfe2fb; } }
+:where(:root[data-theme="dark"]) .inv-back { color: #cfe2fb; }

@@ -89,6 +89,7 @@
     close: 'M6 6l12 12M18 6L6 18',
     copy: 'M8 8h11v11H8zM5 15H4.5V4.5H15V5',
     alert: 'M12 3.5l9 16H3zM12 10v4.5M12 17.5h.01',
+    back: 'M15 5l-7 7 7 7',
   };
   function ico(name) {
     const NS = 'http://www.w3.org/2000/svg';
@@ -192,11 +193,23 @@
     if (!S.data) { root.replaceChildren(); return; }
     const vues = { liste: vListe, contenant: vContenant, saisie: vSaisie, histo: vHisto, edit: vEdit,
       corde: vCorde, usage: vUsage, cedit: vCordeEdit, qr: vQr, listing: vListing };
-    root.replaceChildren(...[].concat((vues[S.vue] || vListe)()).flat(Infinity).filter(x => x !== null && x !== undefined && x !== false));
+    const nodes = [].concat((vues[S.vue] || vListe)()).flat(Infinity).filter(x => x !== null && x !== undefined && x !== false);
+    // page longue : même bouton de retour en bas (copie du bouton du haut)
+    const haut = nodes[0] && nodes[0].classList && nodes[0].classList.contains('inv-back-bar') ? nodes[0] : null;
+    if (haut && S.vue !== 'saisie') {
+      const bas = haut.cloneNode(true);
+      bas.classList.add('is-bottom');
+      bas.querySelector('button').addEventListener('click', () => haut.querySelector('button').click());
+      nodes.push(bas);
+    }
+    root.replaceChildren(...nodes);
     if (root.querySelector('[data-echeance]')) demarrerComptes();
   }
 
-  const retour = (text, onclick) => el('div', { class: 'sub-head' }, el('button', { type: 'button', class: 'link', text: '← ' + text, onclick }));
+  // Retour à la rubrique précédente : bouton bien visible en haut, répété en bas des pages longues
+  const retour = (text, onclick) => el('div', { class: 'inv-back-bar' },
+    el('button', { type: 'button', class: 'inv-back', onclick, 'aria-label': 'Retour : ' + text },
+      ico('back'), el('span', { class: 'inv-back-lbl' }, el('small', { text: 'Retour' }), el('span', { text })))); 
 
   function etat(c) {
     const d = c.dernier;
@@ -391,7 +404,7 @@
     const last = {};
     ((d && d.lignes) || []).forEach(l => { last[l.a] = l; });
     return [
-      retour('Inventaire', () => go('liste')),
+      retour(`${vehLib(c.vehicule)} · contenants`, () => go('liste')),
       el('h2', { class: 'inv-title', text: c.nom }),
       el('p', { class: 'muted small', text: vehLib(c.vehicule) }),
       el('p', { class: 'inv-banner ' + e.cls, text: e.txt }),
@@ -859,7 +872,7 @@
       ['Type', c.type], ['Fabricant', c.fabricant], ['Modèle', c.modele], ['N° de série', c.serie], ['N° TEXIS / TECHSYS', c.texis],
       ['Fabrication', moisAn(c.fabrication)], ['Mise en service', moisAn(c.service)], ['Caserne', c.caserne]].filter(x => x[1]);
     return [
-      retour('Cordes', () => go('liste')),
+      retour('Liste des cordes', () => go('liste')),
       el('h2', { class: 'inv-title', text: `Corde n° ${c.num}` }),
       el('p', { class: 'muted small', text: fam.libelle }),
       el('p', { class: 'inv-banner inv-st-' + c.statut + (c.anomalie && c.statut !== 'reformee' ? ' inv-anomalie' : '') },
