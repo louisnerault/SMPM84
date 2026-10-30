@@ -15,6 +15,7 @@
   const KEY = 'smpm_inv';
   const KEY_PREFS = 'smpm_inv_prefs';
   const KEY_OUTBOX = 'smpm_inv_outbox';
+  const PHOTO_CACHE = 'smpm84-inv';          // photos des articles consultées (gardé par sw.js)
   const VIEUX_JOURS = 90;                    // inventaire plus ancien : signalé « à refaire »
   const STATUTS = { en_service: 'En service', a_surveiller: 'À surveiller', reformee: 'Réformée' };
   const UTIL = { OPS: 'OPS', FMPA: 'FMPA', INVENTAIRE: 'Inventaire' };
@@ -238,6 +239,7 @@
         const l = last[a.id];
         const ecart = l && l.r !== l.t;
         return el('li', { class: ecart ? 'is-ecart' : '' },
+          vignette(a),
           el('span', { class: 'inv-art-nom' }, a.nom, a.detail ? el('small', { class: 'muted', text: ' · ' + a.detail }) : null),
           el('span', { class: 'inv-art-q', text: ecart ? `${l.r} / ${a.t}` : String(a.t) }));
       })),
@@ -303,6 +305,71 @@
     renderState();
   }
 
+  // ===== Photos des articles (cache de l'appareil, puis serveur) =====
+  const photoReq = a => new Request(`inv-photo/${encodeURIComponent(a.id)}?v=${encodeURIComponent(a.ph)}`);
+  async function photoUrl(a) {
+    let cache = null;
+    try { cache = await caches.open(PHOTO_CACHE); } catch (e) { cache = null; }
+    if (cache) { const hit = await cache.match(photoReq(a)); if (hit) return URL.createObjectURL(await hit.blob()); }
+    const res = await app().api('inv_photo', { token: app().token(), article: a.id });
+    const bin = atob(res.data);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const blob = new Blob([bytes], { type: res.mime || 'image/jpeg' });
+    if (cache) {
+      try {
+        (await cache.keys()).filter(r => r.url.includes(`/inv-photo/${encodeURIComponent(a.id)}?`)).forEach(r => cache.delete(r));
+        await cache.put(photoReq(a), new Response(blob, { headers: { 'Content-Type': blob.type } }));
+      } catch (e) {}
+    }
+    return URL.createObjectURL(blob);
+  }
+  // Vignette cliquable (agrandie en plein écran) ; chargée à l'affichage
+  function vignette(a) {
+    if (!a.ph) return null;
+    const img = el('img', { alt: '', class: 'inv-thumb-img' });
+    const b = el('button', { type: 'button', class: 'inv-thumb', 'aria-label': `Photo : ${a.nom}`, onclick: ev => { ev.stopPropagation(); agrandir(a, img.src); } }, img);
+    photoUrl(a).then(u => { img.src = u; }).catch(() => { b.classList.add('is-off'); b.title = 'Photo indisponible hors ligne'; });
+    return b;
+  }
+  function agrandir(a, src) {
+    if (!src) return;
+    const ov = el('div', { class: 'inv-photo-ov', role: 'dialog', 'aria-label': a.nom, onclick: () => ov.remove() },
+      el('img', { src, alt: a.nom }), el('p', { text: a.nom + (a.detail ? ' · ' + a.detail : '') }), el('button', { type: 'button', class: 'pill', text: 'Fermer' }));
+    document.body.append(ov);
+  }
+  // Photo réduite sur l'appareil avant envoi (1280 px max, JPEG)
+  function compresser(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        resolve(c.toDataURL('image/jpeg', 0.75));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image illisible')); };
+      img.src = url;
+    });
+  }
+  async function envoyerPhoto(a, file) {
+    const e = S.edit;
+    try {
+      S.busy = true; e.err = ''; render();
+      const photo = file ? await compresser(file) : '';
+      const res = await app().api('inv_article_photo', { token: app().token(), article: a.id, photo });
+      a.ph = res.ph || '';
+      contenants().forEach(c => c.articles.forEach(x => { if (x.id === a.id) x.ph = a.ph; }));
+      save();
+    } catch (err) {
+      if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
+      e.err = err instanceof app().NetworkError ? app().netLabel() + ' : photo non envoyée.' : err.message;
+    } finally { S.busy = false; render(); }
+  }
+
   // ===== Saisie d'un inventaire =====
   function startSaisie(c) {
     const lignes = {};
@@ -327,6 +394,7 @@
       const step = d => { l.r = Math.max(0, (Number(l.r) || 0) + d); input.value = String(l.r); li.classList.toggle('is-ecart', l.r !== a.t); majBtn(); };
       li.append(...[
         el('div', { class: 'inv-row-main' },
+          vignette(a),
           el('div', { class: 'inv-row-nom' }, el('strong', { text: a.nom }), el('small', { class: 'muted', text: `théorique : ${a.t}${a.detail ? ' · ' + a.detail : ''}` })),
           el('div', { class: 'inv-step' },
             el('button', { type: 'button', class: 'pill', 'aria-label': 'Un de moins', text: '−', onclick: () => step(-1) }),
@@ -447,6 +515,12 @@
       el('input', { type: 'text', maxlength: '200', placeholder: 'Détail, n° de série (facultatif)', value: a.detail || '', class: 'inv-edit-detail', 'aria-label': 'Détail', oninput: ev => { a.detail = ev.target.value; } }),
       a.dest ? el('p', { class: 'inv-edit-move small', text: `→ sera déplacé vers ${(contenant(a.dest) || {}).nom} (${vehLib((contenant(a.dest) || {}).vehicule)}) à l’enregistrement` }) : null,
       a.id && autres.length ? destSelect(a) : null,
+      a.id ? el('div', { class: 'inv-edit-photo' },
+        vignette(a),
+        el('label', { class: 'pill inv-file' }, a.ph ? '📷 Changer la photo' : '📷 Ajouter une photo',
+          el('input', { type: 'file', accept: 'image/*', disabled: S.busy, onchange: ev => { const f = ev.target.files[0]; if (f) envoyerPhoto(a, f); } })),
+        a.ph ? el('button', { type: 'button', class: 'link danger small', text: 'Retirer', disabled: S.busy, onclick: () => { if (confirm(`Retirer la photo de « ${a.nom} » ?`)) envoyerPhoto(a, null); } }) : null)
+        : el('p', { class: 'muted small inv-edit-photo', text: 'Photo : enregistrez d’abord pour pouvoir en ajouter une.' }),
       el('div', { class: 'inv-edit-tools' },
         el('label', { class: 'ann-check' }, el('input', { type: 'checkbox', checked: a.u, onchange: ev => { a.u = ev.target.checked; } }), 'Suivi d’utilisation'),
         el('button', { type: 'button', class: 'link', 'aria-label': 'Monter', text: '↑', disabled: i === 0, onclick: () => { e.articles.splice(i - 1, 0, e.articles.splice(i, 1)[0]); render(); } }),
@@ -738,6 +812,7 @@
     if (explicit === true) store.del(KEY_OUTBOX);
     store.del(KEY);
     store.del(KEY_PREFS);
+    try { caches.delete(PHOTO_CACHE); } catch (e) {}
     Object.assign(S, { data: null, fresh: false, loading: false, err: '', p: P0(), vue: 'liste', cid: null, q: '', saisie: null, edit: null, histo: null, corde: null, usage: null, cEdit: null, qr: null, msg: '' });
     const root = $('#inv-root');
     if (root) root.replaceChildren();
