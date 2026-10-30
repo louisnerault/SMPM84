@@ -125,22 +125,36 @@
     if (label) label.textContent = online ? 'En ligne' : 'Hors ligne';
   }
 
+  // Deux rubriques alimentées par le même dossier Drive : « Notices » (dossier NOTICES)
+  // et « FTE » (tout le reste, dont le dossier FTE SMPM).
+  const NOTICES_ROOT = 'Notices';
+  const isNotice = i => (i.path || '').split('/')[0] === NOTICES_ROOT;
+
   function render() {
     $$('[data-sync-label]').forEach(writeSyncParts);
-    const groups = $('#fiches-groups');
-    if (!groups) return;
-
     const m = state.manifest || readLocal();
     const items = (m && m.items) || [];
-    $('#fiches-empty').hidden = items.length > 0;
+    const favs = readFavs();
+    renderSection($('#fiches-groups'), $('#fiches-empty'), items.filter(i => !isNotice(i)), favs);
+    renderSection($('#notices-groups'), $('#notices-empty'), items.filter(isNotice), favs);
+  }
+
+  // Titre de groupe sans le dossier racine (« Notices › Équipement individuel » → « Équipement individuel »)
+  function groupTitle(cat) {
+    const parts = (cat || 'Divers').split(' › ');
+    return parts.length > 1 ? parts.slice(1).join(' › ') : parts[0];
+  }
+
+  function renderSection(groups, empty, items, favs) {
+    if (!groups) return;
+    if (empty) empty.hidden = items.length > 0;
 
     // Favoris (propres à cet appareil) : groupe « Mes favoris » en tête, puis les catégories
-    const favs = readFavs();
     const byCat = new Map();
     const favItems = [];
     items.forEach(i => {
       if (favs.has(i.id)) { favItems.push(i); return; }
-      const c = i.category || 'Divers';
+      const c = groupTitle(i.category);
       if (!byCat.has(c)) byCat.set(c, []);
       byCat.get(c).push(i);
     });
@@ -188,7 +202,7 @@
     render();
   }
 
-  // Appelé à l'ouverture de la page Fiches techniques
+  // Appelé à l'ouverture des pages FTE et Notices
   function open() {
     render();
     if (!state.syncing) refresh();
