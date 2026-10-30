@@ -275,6 +275,8 @@
   // Une application web ne peut pas savoir quelles applications sont installées : on propose celles qui existent
   // pour le système du téléphone. Plans : iPhone/iPad seulement. Roole et les autres GPS : Android, par le lien « geo: »
   // qui ouvre le sélecteur du téléphone (Roole n'a pas de lien direct public).
+  // Iphigénie et Avenza Maps n'ont pas de lien « naviguer vers » : on leur transmet le point sous forme de fichier GPX
+  // (un repère) par le menu de partage du téléphone, ou en téléchargement si le partage de fichier est refusé.
   const KEY_NAV = 'smpm_poi_nav';
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const isAndroid = /Android/i.test(navigator.userAgent);
@@ -283,11 +285,50 @@
     { id: 'waze', nom: 'Waze', ok: true, url: (la, lo) => `https://waze.com/ul?ll=${la},${lo}&navigate=yes` },
     { id: 'gmaps', nom: 'Google Maps', ok: true, url: (la, lo) => `https://www.google.com/maps/dir/?api=1&destination=${la},${lo}&travelmode=driving` },
     { id: 'geo', nom: 'Roole ou autre GPS du téléphone', ok: isAndroid, url: (la, lo, nom) => `geo:${la},${lo}?q=${la},${lo}(${encodeURIComponent(nom || 'Point')})` },
+    { id: 'iphigenie', nom: 'Iphigénie (repère GPX)', ok: true, gpx: true },
+    { id: 'avenza', nom: 'Avenza Maps (repère GPX)', ok: true, gpx: true },
   ];
   const navApps = () => NAV_APPS.filter(a => a.ok);
   const navPref = () => { const id = store.getJSON(KEY_NAV); return navApps().find(a => a.id === id) || null; };
   const routeUrl = p => `https://www.google.com/maps/dir/?api=1&destination=${p.lat.toFixed(6)},${p.lng.toFixed(6)}`;
+  const xmlEsc = t => String(t == null ? '' : t).replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
+  function gpxFile(p) {
+    const nom = (p.nom || 'Point').trim() || 'Point';
+    const xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+      + '<gpx version="1.1" creator="SMPM 84" xmlns="http://www.topografix.com/GPX/1/1">\n'
+      + `  <wpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">\n`
+      + `    <name>${xmlEsc(nom)}</name>\n`
+      + (p.commentaire ? `    <desc>${xmlEsc(p.commentaire)}</desc>\n` : '')
+      + '  </wpt>\n</gpx>\n';
+    const fname = (nom.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'point') + '.gpx';
+    return new File([xml], fname, { type: 'application/gpx+xml' });
+  }
+  function navMsg(t) {
+    const m = $('#poi-nav-msg');
+    if (!m) return;
+    m.textContent = t;
+    clearTimeout(navMsg.t);
+    navMsg.t = setTimeout(() => { m.textContent = ''; }, 15000);
+  }
+  // Partage du fichier (à appeler directement dans le clic : le partage exige un geste de l'utilisateur)
+  function sendGpx(a, p) {
+    const f = gpxFile(p);
+    const download = () => {
+      const u = URL.createObjectURL(f);
+      const link = el('a', { href: u, download: f.name });
+      document.body.append(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(u), 60000);
+      navMsg(`Fichier « ${f.name} » téléchargé : ouvrez-le depuis la notification ou le dossier Téléchargements et choisissez ${a.nom.replace(/ \(.*$/, '')}.`);
+    };
+    let shareable = false;
+    try { shareable = !!(navigator.canShare && navigator.canShare({ files: [f] })); } catch (e) { shareable = false; }
+    if (!shareable) return download();
+    navigator.share({ files: [f], title: p.nom })
+      .then(() => navMsg(`Point envoyé. Dans ${a.nom.replace(/ \(.*$/, '')}, il apparaît parmi les repères importés.`))
+      .catch(e => { if (!e || e.name !== 'AbortError') download(); });
+  }
   function launchNav(a, p) {
+    if (a.gpx) return sendGpx(a, p);
     const u = a.url(p.lat.toFixed(6), p.lng.toFixed(6), p.nom);
     if (u.startsWith('geo:')) location.href = u; else window.open(u, '_blank', 'noopener');
   }
@@ -303,8 +344,9 @@
     keep.checked = !p || !!navPref();
     $('#poi-nav-title').textContent = p ? `Itinéraire vers « ${p.nom} »` : 'Application de navigation';
     $('#poi-nav-keep-row').hidden = !p;
-    $('#poi-nav-note').textContent = isIOS ? 'Roole n’est pas proposé sur iPhone : il ne peut pas être ouvert depuis une application web.'
-      : isAndroid ? '« Roole ou autre GPS » ouvre le choix des applications de navigation installées sur le téléphone.' : '';
+    $('#poi-nav-note').textContent = (isIOS ? 'Roole n’est pas proposé sur iPhone : il ne peut pas être ouvert depuis une application web. '
+      : isAndroid ? '« Roole ou autre GPS » ouvre le choix des applications de navigation installées sur le téléphone. ' : '')
+      + 'Iphigénie et Avenza Maps : le point est envoyé comme repère (fichier GPX) ; choisissez l’application dans le menu de partage, puis lancez la navigation vers ce repère depuis l’application.';
     const cur = navPref();
     $('#poi-nav-list').replaceChildren(...navApps().map(a => el('button', {
       type: 'button', class: 'poi-nav-app' + (cur && cur.id === a.id ? ' is-cur' : ''), text: a.nom,
