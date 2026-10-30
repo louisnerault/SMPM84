@@ -79,6 +79,7 @@
     move: 'M5 12h13M14 7.5L18.5 12 14 16.5',
     note: 'M5 4.5h14v11H11l-4 4v-4H5z',
     close: 'M6 6l12 12M18 6L6 18',
+    copy: 'M8 8h11v11H8zM5 15H4.5V4.5H15V5',
   };
   function ico(name) {
     const NS = 'http://www.w3.org/2000/svg';
@@ -598,11 +599,33 @@
         e.articles.push({ id: '', nom: '', detail: '', t: 1, u: false }); render();
         const ins = document.querySelectorAll('.inv-edit-row input[type=text]:first-child'); if (ins.length) ins[ins.length - 1].focus();
       } }),
+      e.id ? vPropager(e) : null,
       el('p', { class: 'error', role: 'alert', text: e.err || '' }),
       el('div', { class: 'inv-actions' },
         el('button', { type: 'button', icon: 'save', class: 'primary', text: 'Enregistrer', disabled: S.busy, onclick: () => saveEdit(false) }),
         e.id ? el('button', { type: 'button', icon: 'trash', class: 'link danger', text: 'Supprimer ce contenant', disabled: S.busy, onclick: () => saveEdit(true) }) : null),
     ];
+  }
+
+  // Contenants similaires (même nom dans les autres véhicules, ex. LOT B1) : les ajouts, modifications et retraits
+  // de cette édition y sont reportés si on les coche. On peut aussi en ajouter un autre (nom différent).
+  const cleNom = t => fold(t).toUpperCase().replace(/[^A-Z0-9]+/g, '');
+  function vPropager(e) {
+    if (!e.prop) {
+      const k = cleNom(e.nom);
+      e.prop = contenants().filter(c => c.id !== e.id && cleNom(c.nom) === k).map(c => ({ id: c.id, on: false }));
+    }
+    const autres = contenants().filter(c => c.id !== e.id && !e.prop.some(p => p.id === c.id));
+    return el('div', { class: 'inv-prop' },
+      el('h3', { class: 'inv-sub', icon: 'copy' }, 'Reporter aussi les changements dans'),
+      el('p', { class: 'muted small', text: 'Ajouts, retraits, changements de nom, de quantité ou de suivi : appliqués aux contenants cochés, en retrouvant les articles par leur nom. Le détail / n° de série reste propre à chaque contenant.' }),
+      e.prop.length ? el('div', { class: 'inv-prop-list' }, e.prop.map(p => {
+        const c = contenant(p.id);
+        return c ? el('label', { class: 'ann-check' }, el('input', { type: 'checkbox', checked: p.on, onchange: ev => { p.on = ev.target.checked; } }), `${c.nom} · ${vehLib(c.vehicule)}`) : null;
+      })) : el('p', { class: 'muted small', text: 'Aucun contenant du même nom dans les autres véhicules.' }),
+      autres.length ? el('select', { class: 'inv-prop-add', 'aria-label': 'Ajouter un autre contenant', onchange: ev => { if (ev.target.value) { e.prop.push({ id: ev.target.value, on: true }); render(); } } },
+        el('option', { value: '' }, '＋ Autre contenant…'),
+        vehicules().map(v => el('optgroup', { label: v.libelle }, autres.filter(c => c.vehicule === v.code).map(c => el('option', { value: c.id }, c.nom))))) : null);
   }
 
   async function saveEdit(supprimer) {
@@ -614,15 +637,19 @@
       const res = await app().api('inv_contenant_save', { token: app().token(), contenant: {
         id: e.id, vehicule: e.vehicule, nom: e.nom.trim(), supprimer: !!supprimer,
         articles: e.articles.filter(a => a.nom.trim()).map(a => ({ id: a.id, nom: a.nom.trim(), detail: (a.detail || '').trim(), t: a.t, u: !!a.u, dest: a.dest || '' })),
+        propager: supprimer ? [] : (e.prop || []).filter(p => p.on).map(p => p.id),
       } });
       setData(res);
       if (supprimer) go('liste', { edit: null, msg: 'Contenant supprimé.' });
       else {
         const c = contenants().find(x => x.vehicule === e.vehicule && x.nom.toUpperCase() === e.nom.trim().toUpperCase());
         S.p.veh = e.vehicule; savePrefs();
-        const dep = res.deplaces || [];
+        const dep = res.deplaces || [], pro = res.propages || [];
+        const abs = pro.filter(p => p.absents.length).map(p => `${p.nom} (${vehLib(p.vehicule)}) : ${p.absents.join(', ')}`);
         go(c ? 'contenant' : 'liste', { cid: c ? c.id : null, edit: null,
-          msg: 'Contenu enregistré.' + (dep.length ? ` Déplacé${dep.length > 1 ? 's' : ''} : ${dep.join(', ')}.` : '') });
+          msg: 'Contenu enregistré.' + (dep.length ? ` Déplacé${dep.length > 1 ? 's' : ''} : ${dep.join(', ')}.` : '')
+            + (pro.length ? ` Reporté dans ${pro.map(p => `${p.nom} (${vehLib(p.vehicule)})`).join(', ')}.` : '')
+            + (abs.length ? ` Introuvable${abs.length > 1 ? 's' : ''}, à vérifier : ${abs.join(' ; ')}.` : '') });
       }
     } catch (err) {
       if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
