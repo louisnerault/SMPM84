@@ -9,6 +9,8 @@
   const KEY_META = 'smpm_carte_meta';
   const ZOOM = 15;
   const PARALLEL = 6;                       // requêtes simultanées
+  const TIMEOUT_MS = 15000;                 // délai max par tuile (sans lui, une tuile bloquée fige tout le téléchargement)
+  const TRIES = 3;                          // essais par tuile avant de la compter comme manquante
   const NEED_BYTES = 250 * 1024 * 1024;     // espace libre demandé avant de commencer
   // Zones de relief : sud, nord, ouest, est (degrés)
   const ZONES = [
@@ -71,6 +73,26 @@
       bytes += len > 0 ? len : (await res.blob()).size;
     }
     return { n, bytes };
+  }
+
+  // Récupère une tuile avec délai d'attente et nouvelles tentatives ; false si toutes échouent
+  async function fetchTile(cache, u) {
+    for (let t = 1; t <= TRIES; t++) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+      try {
+        const res = await fetch(u, { signal: ctrl.signal });
+        if (!res.ok) throw new Error(String(res.status));
+        await cache.put(u, res);
+        return true;
+      } catch (e) {
+        if (stopRequested) return false;
+        await new Promise(r => setTimeout(r, 1000 * t));   // pause avant nouvel essai
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+    return false;
   }
 
   function formatMo(bytes) {
@@ -140,13 +162,7 @@
       for (let i = 0; i < urls.length && !stopRequested; i += PARALLEL) {
         await Promise.all(urls.slice(i, i + PARALLEL).map(async u => {
           if (await cache.match(u)) return;                 // déjà présente : on ne la retélécharge pas
-          try {
-            const res = await fetch(u);
-            if (!res.ok) throw new Error(String(res.status));
-            await cache.put(u, res);
-          } catch (e) {
-            missing++;
-          }
+          if (!(await fetchTile(cache, u))) missing++;
         }));
         done = Math.min(i + PARALLEL, urls.length);
         showStatus(`Téléchargement : ${done} / ${urls.length} images…`);
