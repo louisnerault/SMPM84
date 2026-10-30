@@ -1765,3 +1765,12 @@ button.inv-card:hover { background: color-mix(in srgb, var(--st) 18%, var(--card
 .inv-banner { background: color-mix(in srgb, var(--st, var(--line)) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--st, var(--line)) 40%, var(--line)); border-left: 5px solid var(--st, var(--line)); }
 .inv-st-reformee.inv-card { --st: #8a96a8; }
 .inv-card .inv-badge { background: color-mix(in srgb, var(--st) 18%, var(--card)); color: color-mix(in srgb, var(--st) 80%, var(--ink)); }
+
+/* corde avec une anomalie : gros point d'exclamation */
+.inv-anomalie { --st: #d97706; }
+.inv-corde-titre { display: inline-flex; align-items: center; gap: 8px; }
+.inv-excl { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%;
+  background: #d97706; color: #fff; font-size: 1.35rem; font-weight: 900; line-height: 1; }
+.inv-banner .inv-excl { width: 26px; height: 26px; font-size: 1.15rem; margin-right: 8px; vertical-align: middle; }
+.inv-banner.inv-anomalie { display: flex; align-items: center; }
+.inv-anom-txt { color: #b45309; font-weight: 700; }
