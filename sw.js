@@ -6,12 +6,12 @@
 // - Carte hors ligne : cache dédié (smpm84-carte) rempli par carte-hors-ligne.js à la demande ; jamais rempli ici.
 // - Photos des points d'intérêt : cache dédié (smpm84-poi) rempli par poi.js ; jamais rempli ici.
 // Les données personnelles ne passent jamais par ce cache (elles sont dans localStorage).
-const CACHE = 'smpm84-shell-v99';
+const CACHE = 'smpm84-shell-v100';
 const FICHES_CACHE = 'smpm84-fiches';
 const CARTE_CACHE = 'smpm84-carte';
 const POI_CACHE = 'smpm84-poi';         // photos des points d'intérêt consultées (poi.js)
 const SHELL = [
-  './', 'index.html', 'style.css', 'app.js', 'fiches.js', 'fmpa.js', 'fmpa-list.js', 'intervention-list.js', 'annuaire.js', 'poi.js', 'fmpa-valid.js', 'livret-remplir.js', 'livret-themes.js', 'carte-hors-ligne.js', 'push.js', 'bugs.js', 'csh.js', 'personnel.js', 'config.js', 'manifest.webmanifest',
+  './', 'index.html', 'style.css', 'app.js', 'fiches.js', 'fmpa.js', 'fmpa-list.js', 'intervention-list.js', 'annuaire.js', 'poi.js', 'fmpa-valid.js', 'livret-remplir.js', 'livret-themes.js', 'carte-hors-ligne.js', 'push.js', 'notifs.js', 'bugs.js', 'csh.js', 'personnel.js', 'config.js', 'manifest.webmanifest',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'vendor/leaflet/images/layers.png', 'vendor/leaflet/images/layers-2x.png',
   'vendor/leaflet/images/marker-icon.png', 'vendor/leaflet/images/marker-icon-2x.png', 'vendor/leaflet/images/marker-shadow.png',
   'assets/ecusson-132.png', 'assets/sdis84-210.png', 'assets/icon-192.png',
@@ -30,6 +30,9 @@ self.addEventListener('push', e => {
   try { j = e.data ? e.data.json() : {}; } catch (err) { j = { data: { body: e.data ? e.data.text() : '' } }; }
   const d = Object.assign({}, j.notification || {}, j.data || {});
   const title = d.title || 'SMPM 84';
+  // application ouverte : la clochette se met à jour
+  self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    .then(list => list.forEach(c => c.postMessage({ type: 'notif' }))).catch(() => {});
   e.waitUntil(self.registration.showNotification(title, {
     body: d.body || '',
     tag: d.tag || undefined,

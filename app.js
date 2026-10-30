@@ -253,6 +253,7 @@
     $('#mode-bar').hidden = name !== 'app';
     if (name !== 'app') {
       closeMenu();
+      if (window.SMPM_NOTIFS) window.SMPM_NOTIFS.reset();
       setIdentity('SMPM 84', 'Secours en milieu périlleux et montagne');
     }
     $$('.error, .ok').forEach(p => { p.textContent = ''; });
@@ -349,6 +350,8 @@
     $('#tab-fmpa-valid').hidden = name !== 'fmpa-valid';
     $('#tab-interv-new').hidden = !(name === 'interv-new' || name === 'interv-fiche');
     $('#tab-interv-mes').hidden = !(name === 'interv-mes' || name === 'interv-toutes');
+    updateHomeBtn();
+    if (window.SMPM_NOTIFS) window.SMPM_NOTIFS.close();
     if (name.startsWith('fmpa')) setFmpaGroup(true);
     if (name.startsWith('interv-')) setIntervGroup(true);
     if (name.startsWith('livret')) setLivretGroup(true);
@@ -481,7 +484,20 @@
     $('#btn-intervention').setAttribute('aria-pressed', String(on));
     $('#btn-intervention').title = on ? 'Quitter le mode intervention' : 'Activer le mode intervention';
     $('#drawer [data-page="accueil"]').hidden = !on;
+    updateHomeBtn();
     updateMetaTheme();
+  }
+
+  // Bouton « Accueil », toujours visible (barre du mode intervention) :
+  // accueil principal (livret) ou accueil intervention si le mode est activé
+  function updateHomeBtn() {
+    const b = $('#btn-home');
+    if (!b) return;
+    const on = isIntervention();
+    b.title = on ? "Retour à l'accueil intervention" : "Retour à l'accueil";
+    b.setAttribute('aria-label', b.title);
+    if (state.page === (on ? 'accueil' : 'livret')) b.setAttribute('aria-current', 'page');
+    else b.removeAttribute('aria-current');
   }
 
   // ---------- thème clair / sombre ----------
@@ -574,6 +590,7 @@
   // sinon (session expirée) les déclarations de FMPA non envoyées sont conservées
   function logout(explicit) {
     if (window.SMPM_PUSH) window.SMPM_PUSH.reset(store.get(KEY_TOKEN));   // avant la suppression du jeton
+    if (window.SMPM_NOTIFS) window.SMPM_NOTIFS.reset();
     store.del(KEY_TOKEN);
     store.del(KEY_CACHE);          // important sur un appareil partagé
     store.del(KEY_LIVRET);
@@ -693,6 +710,7 @@
     if (window.SMPM_CARTE) window.SMPM_CARTE.setAllowed(canDeclare(data.session));
     if (window.SMPM_PUSH) window.SMPM_PUSH.setSession(data.session);
     show('app');
+    if (window.SMPM_NOTIFS) window.SMPM_NOTIFS.setSession(data.session, offline);
     applyMode(store.get(KEY_MODE) === 'intervention');
     // Au retour du réseau, on rafraîchit sans quitter la page en cours (ex. déclaration de FMPA en cours de saisie)
     if (startPage) {
@@ -1217,6 +1235,7 @@
   $('#btn-menu').addEventListener('click', openMenu);
   $('#btn-identity').addEventListener('click', () => gotoPage('infos'));
   $('#btn-intervention').addEventListener('click', toggleMode);
+  $('#btn-home').addEventListener('click', () => gotoPage(isIntervention() ? 'accueil' : 'livret'));
   $('#btn-sync').addEventListener('click', syncAll);
   document.addEventListener('click', e => {
     const go = e.target.closest('[data-go]');

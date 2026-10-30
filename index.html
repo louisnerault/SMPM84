@@ -26,6 +26,10 @@
   
     <span class="nav-count burger-count" data-cu-count title="Demandes de validation en attente" hidden></span>
   </button>
+  <button type="button" id="btn-notif" class="bell" aria-label="Notifications" aria-controls="notif-panel" aria-expanded="false" hidden>
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>
+    <span class="bell-count" id="notif-count" hidden></span>
+  </button>
   <img src="assets/ecusson-132.png" alt="" class="logo" width="44" height="44">
   <button type="button" id="btn-identity" class="brand" disabled><strong id="top-title">SMPM 84</strong><span id="top-sub">Secours en milieu périlleux et montagne</span></button>
   <div class="status" aria-live="polite">
@@ -136,9 +140,25 @@
   </div>
 </aside>
 
+<!-- Notifications (clochette) -->
+<div id="notif-scrim" class="scrim notif-scrim" hidden></div>
+<section id="notif-panel" class="notif-panel" role="dialog" aria-label="Notifications" hidden>
+  <div class="notif-head">
+    <strong>Notifications</strong>
+    <button type="button" id="notif-all" class="link" hidden>Tout marquer comme lu</button>
+    <button type="button" id="notif-close" class="close" aria-label="Fermer les notifications">×</button>
+  </div>
+  <p id="notif-status" class="muted notif-status"></p>
+  <ul id="notif-list" class="notif-list"></ul>
+</section>
+
 <main>
   <!-- Bascule du mode intervention : toujours visible dans l'application -->
   <div id="mode-bar" class="mode-bar" hidden>
+    <button type="button" id="btn-home" class="mode-btn home-pill" title="Retour à l'accueil">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/></svg>
+      <span id="btn-home-label">Accueil</span>
+    </button>
     <button type="button" id="btn-intervention" class="mode-btn" aria-pressed="false" title="Activer le mode intervention">
       <svg class="beacon" viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
         <g class="beacon-rays" fill="none" stroke-width="2.4" stroke-linecap="round">
@@ -794,6 +814,7 @@
 <script src="livret-themes.js"></script>
 <script src="carte-hors-ligne.js"></script>
 <script src="push.js"></script>
+<script src="notifs.js"></script>
 <script src="bugs.js"></script>
 <script src="csh.js"></script>
 <script src="personnel.js"></script>
