@@ -1703,3 +1703,8 @@ label.inv-edit-dest select { margin: 0; padding: 8px 10px; font-size: .85rem; fl
 .inv-lst-cont td.num { text-align: center; font-weight: 700; width: 56px; }
 .inv-lst-cont td.box { width: 44px; }
 .inv-lst-rq { margin: 4px 0 0; padding-bottom: 18px; border-bottom: 1px dotted #888; }
+
+.inv-prop { margin-top: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.inv-prop .inv-sub { margin-top: 0; justify-content: flex-start; }
+.inv-prop-list { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
+.inv-prop-add { margin: 6px 0 0; padding: 8px 10px; font-size: .85rem; }
