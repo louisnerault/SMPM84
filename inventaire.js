@@ -434,10 +434,19 @@
   function vEdit() {
     const e = S.edit;
     if (!e) return vListe();
-    const rows = e.articles.map((a, i) => el('li', { class: 'inv-edit-row' },
+    // autres contenants (tous véhicules) pour « Déplacer vers… » ; articles existants seulement
+    const autres = contenants().filter(c => c.id !== e.id);
+    const destSelect = a => el('select', { class: 'inv-edit-dest', 'aria-label': 'Déplacer vers un autre contenant',
+      onchange: ev => { a.dest = ev.target.value; render(); } },
+      el('option', { value: '' }, a.dest ? 'Annuler le déplacement' : 'Déplacer vers…'),
+      vehicules().map(v => el('optgroup', { label: v.libelle },
+        autres.filter(c => c.vehicule === v.code).map(c => el('option', { value: c.id, selected: a.dest === c.id }, c.nom)))));
+    const rows = e.articles.map((a, i) => el('li', { class: 'inv-edit-row' + (a.dest ? ' is-moved' : '') },
       el('input', { type: 'text', maxlength: '120', placeholder: 'Article', value: a.nom, 'aria-label': 'Nom de l’article', oninput: ev => { a.nom = ev.target.value; } }),
       el('input', { type: 'number', min: '0', max: '999', inputmode: 'numeric', value: String(a.t), 'aria-label': 'Quantité théorique', class: 'inv-edit-q', oninput: ev => { a.t = Math.max(0, parseInt(ev.target.value, 10) || 0); } }),
       el('input', { type: 'text', maxlength: '200', placeholder: 'Détail, n° de série (facultatif)', value: a.detail || '', class: 'inv-edit-detail', 'aria-label': 'Détail', oninput: ev => { a.detail = ev.target.value; } }),
+      a.dest ? el('p', { class: 'inv-edit-move small', text: `→ sera déplacé vers ${(contenant(a.dest) || {}).nom} (${vehLib((contenant(a.dest) || {}).vehicule)}) à l’enregistrement` }) : null,
+      a.id && autres.length ? destSelect(a) : null,
       el('div', { class: 'inv-edit-tools' },
         el('label', { class: 'ann-check' }, el('input', { type: 'checkbox', checked: a.u, onchange: ev => { a.u = ev.target.checked; } }), 'Suivi d’utilisation'),
         el('button', { type: 'button', class: 'link', 'aria-label': 'Monter', text: '↑', disabled: i === 0, onclick: () => { e.articles.splice(i - 1, 0, e.articles.splice(i, 1)[0]); render(); } }),
@@ -450,7 +459,7 @@
       el('label', null, 'Véhicule', el('select', { onchange: ev => { e.vehicule = ev.target.value; } },
         vehicules().map(v => el('option', { value: v.code, selected: v.code === e.vehicule }, v.libelle)))),
       el('h3', { class: 'inv-sub', text: `Articles (${e.articles.length})` }),
-      el('p', { class: 'muted small', text: '« Suivi d’utilisation » demande à chaque inventaire si l’article a servi (FMPA, OPS). Un article retiré reste dans l’historique.' }),
+      el('p', { class: 'muted small', text: '« Suivi d’utilisation » demande à chaque inventaire si l’article a servi (FMPA, OPS). « Déplacer vers… » transfère l’article dans un autre contenant, même d’un autre véhicule. Un article retiré reste dans l’historique.' }),
       el('ul', { class: 'inv-edit' }, rows),
       el('button', { type: 'button', class: 'pill', text: '＋ Ajouter un article', onclick: () => {
         e.articles.push({ id: '', nom: '', detail: '', t: 1, u: false }); render();
@@ -471,14 +480,16 @@
     try {
       const res = await app().api('inv_contenant_save', { token: app().token(), contenant: {
         id: e.id, vehicule: e.vehicule, nom: e.nom.trim(), supprimer: !!supprimer,
-        articles: e.articles.filter(a => a.nom.trim()).map(a => ({ id: a.id, nom: a.nom.trim(), detail: (a.detail || '').trim(), t: a.t, u: !!a.u })),
+        articles: e.articles.filter(a => a.nom.trim()).map(a => ({ id: a.id, nom: a.nom.trim(), detail: (a.detail || '').trim(), t: a.t, u: !!a.u, dest: a.dest || '' })),
       } });
       setData(res);
       if (supprimer) go('liste', { edit: null, msg: 'Contenant supprimé.' });
       else {
         const c = contenants().find(x => x.vehicule === e.vehicule && x.nom.toUpperCase() === e.nom.trim().toUpperCase());
         S.p.veh = e.vehicule; savePrefs();
-        go(c ? 'contenant' : 'liste', { cid: c ? c.id : null, edit: null, msg: 'Contenu enregistré.' });
+        const dep = res.deplaces || [];
+        go(c ? 'contenant' : 'liste', { cid: c ? c.id : null, edit: null,
+          msg: 'Contenu enregistré.' + (dep.length ? ` Déplacé${dep.length > 1 ? 's' : ''} : ${dep.join(', ')}.` : '') });
       }
     } catch (err) {
       if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
