@@ -84,6 +84,7 @@
       const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
       try {
         const res = await fetch(u, { signal: ctrl.signal });
+        if (res.status === 404) return 'absente';          // pas de tuile à cet endroit (hors couverture) : inutile de réessayer
         if (!res.ok) throw new Error('HTTP ' + res.status);
         await cache.put(u, res);
         return '';
@@ -173,6 +174,7 @@
         await Promise.all(urls.slice(i, i + PARALLEL).map(async u => {
           if (await cache.match(u)) return;                 // déjà présente : on ne la retélécharge pas
           const why = await fetchTile(cache, u);
+          if (why === 'absente') return;                     // hors couverture IGN : rien à télécharger
           if (why) {
             missing++;
             if (failed.length < 10) {
