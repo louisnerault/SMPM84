@@ -3,6 +3,7 @@
 //   y compris pour les membres qui n'ont pas activé les notifications push sur leur téléphone.
 // - Pastille rouge : nombre de notifications non lues.
 // - Chaque notification non lue peut être « marquée comme lue » ; « Tout marquer comme lu » pour toutes.
+// - « Supprimer les lues » retire de la clochette, pour cette personne seulement, les notifications déjà lues.
 //   Toucher une notification ouvre la page concernée (si elle en a une) et la marque comme lue.
 // - Rafraîchie à l'ouverture de l'application, au retour sur l'application, à la réception
 //   d'une notification push (message du service worker) et toutes les 10 minutes.
@@ -45,6 +46,7 @@
     const list = $('#notif-list'), status = $('#notif-status');
     if (!list) return;
     $('#notif-all').hidden = !nonLues();
+    $('#notif-supp').hidden = !S.items.some(x => x.lu);
     status.textContent = S.error || (S.loading && !S.items.length ? 'Chargement…' : (!S.items.length ? 'Aucune notification.' : ''));
     status.classList.toggle('error', !!S.error);
     list.textContent = '';
@@ -109,6 +111,24 @@
     }
   }
 
+  // Retire de la clochette, pour cette personne, les notifications déjà lues (serveur : notif_delete)
+  async function supprimerLues() {
+    const a = app();
+    if (!confirm('Supprimer les notifications lues ? Elles ne seront plus affichées dans votre clochette.')) return;
+    S.items = S.items.filter(x => !x.lu);
+    store.set(S.items);
+    render();
+    if (!a || !navigator.onLine) return;
+    try {
+      const r = await a.api('notif_delete', { token: a.token() });
+      S.items = r.items || S.items;
+      store.set(S.items);
+      render();
+    } catch (e) {
+      if (a.AUTH_ERRORS && a.AUTH_ERRORS.includes(e.message)) return a.logout();
+    }
+  }
+
   function ouvrir(x) {
     if (!x.lu) marquer([x.id], 'liste');
     fermer();
@@ -163,6 +183,7 @@
     $('#notif-close').addEventListener('click', fermer);
     $('#notif-scrim').addEventListener('click', fermer);
     $('#notif-all').addEventListener('click', () => marquer('tout'));
+    $('#notif-supp').addEventListener('click', supprimerLues);
     document.addEventListener('keydown', e => { if (e.key === 'Escape') fermer(); });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && Date.now() - S.last > 60e3) charger();
