@@ -4,6 +4,7 @@
 // - Pastille rouge : nombre de notifications non lues.
 // - Chaque notification non lue peut être « marquée comme lue » ; « Tout marquer comme lu » pour toutes.
 // - « Supprimer les lues » retire de la clochette, pour cette personne seulement, les notifications déjà lues.
+// - Chaque notification peut être cochée pour être supprimée avec « Supprimer la sélection ».
 //   Toucher une notification ouvre la page concernée (si elle en a une) et la marque comme lue.
 // - Rafraîchie à l'ouverture de l'application, au retour sur l'application, à la réception
 //   d'une notification push (message du service worker) et toutes les 10 minutes.
@@ -20,7 +21,7 @@
     del() { try { localStorage.removeItem(KEY); } catch (e) {} },
   };
   const app = () => window.SMPM_APP;
-  const S = { on: false, items: [], loading: false, error: '', last: 0, timer: 0 };
+  const S = { on: false, items: [], sel: new Set(), loading: false, error: '', last: 0, timer: 0 };
 
   const fmtDate = t => {
     const d = new Date(t), now = new Date();
@@ -47,12 +48,19 @@
     if (!list) return;
     $('#notif-all').hidden = !nonLues();
     $('#notif-supp').hidden = !S.items.some(x => x.lu);
+    const nSel = S.sel.size;
+    $('#notif-del-sel').hidden = !nSel;
+    $('#notif-del-sel').textContent = `Supprimer la sélection (${nSel})`;
     status.textContent = S.error || (S.loading && !S.items.length ? 'Chargement…' : (!S.items.length ? 'Aucune notification.' : ''));
     status.classList.toggle('error', !!S.error);
     list.textContent = '';
     S.items.forEach(x => {
       const li = document.createElement('li');
       li.className = 'notif-item' + (x.lu ? '' : ' unread');
+      const ck = document.createElement('input');
+      ck.type = 'checkbox'; ck.className = 'notif-check'; ck.checked = S.sel.has(x.id);
+      ck.setAttribute('aria-label', 'Sélectionner : ' + x.titre);
+      ck.addEventListener('change', () => { if (ck.checked) S.sel.add(x.id); else S.sel.delete(x.id); render(); });
       const body = document.createElement(x.page ? 'button' : 'div');
       body.className = 'notif-body';
       if (x.page) { body.type = 'button'; body.addEventListener('click', () => ouvrir(x)); }
@@ -60,7 +68,7 @@
       const p = document.createElement('p'); p.textContent = x.corps;
       const d = document.createElement('small'); d.className = 'muted'; d.textContent = fmtDate(x.date);
       body.append(t, p, d);
-      li.append(body);
+      li.append(ck, body);
       if (!x.lu) {
         const m = document.createElement('button');
         m.type = 'button'; m.className = 'link notif-mark'; m.textContent = 'Marquer comme lue';
@@ -111,16 +119,21 @@
     }
   }
 
-  // Retire de la clochette, pour cette personne, les notifications déjà lues (serveur : notif_delete)
-  async function supprimerLues() {
+  // Retire de la clochette, pour cette personne : 'lues' (toutes les lues) ou liste d'identifiants choisis (serveur : notif_delete)
+  async function supprimer(ids) {
     const a = app();
-    if (!confirm('Supprimer les notifications lues ? Elles ne seront plus affichées dans votre clochette.')) return;
-    S.items = S.items.filter(x => !x.lu);
+    const tous = ids === 'lues';
+    const n = tous ? 0 : ids.length;
+    const q = tous ? 'Supprimer les notifications lues' : `Supprimer ${n} notification${n > 1 ? 's' : ''}`;
+    if (!confirm(q + ' ? Elles ne seront plus affichées dans votre clochette.')) return;
+    const retire = x => (tous ? x.lu : ids.includes(x.id));
+    S.items = S.items.filter(x => !retire(x));
+    S.sel = new Set([...S.sel].filter(id => S.items.some(x => x.id === id)));
     store.set(S.items);
     render();
     if (!a || !navigator.onLine) return;
     try {
-      const r = await a.api('notif_delete', { token: a.token() });
+      const r = await a.api('notif_delete', { token: a.token(), ids });
       S.items = r.items || S.items;
       store.set(S.items);
       render();
@@ -183,7 +196,8 @@
     $('#notif-close').addEventListener('click', fermer);
     $('#notif-scrim').addEventListener('click', fermer);
     $('#notif-all').addEventListener('click', () => marquer('tout'));
-    $('#notif-supp').addEventListener('click', supprimerLues);
+    $('#notif-supp').addEventListener('click', () => supprimer('lues'));
+    $('#notif-del-sel').addEventListener('click', () => supprimer([...S.sel]));
     document.addEventListener('keydown', e => { if (e.key === 'Escape') fermer(); });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && Date.now() - S.last > 60e3) charger();

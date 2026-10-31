@@ -1568,6 +1568,7 @@ button.notif-body { cursor: pointer; }
 .notif-item:not(.unread) .notif-body strong { font-weight: 600; }
 .notif-body p { margin: 2px 0 4px; font-size: .86rem; white-space: pre-line; overflow-wrap: anywhere; }
 .notif-body small { font-size: .75rem; }
+.notif-check { float: left; margin: 4px 10px 0 0; }
 .notif-mark { margin-top: 2px; padding: 6px 0; font-size: .8rem; }
 
 /* Signaler un problème : photos et message vocal */
