@@ -653,6 +653,20 @@
       M.map = makeMap(L, $('#poi-map'), VAUCLUSE, 9);
       M.group = L.featureGroup().addTo(M.map);
       M.map.on('zoomend moveend', majSecondaires);
+      // Plein écran : clic droit (ou appui long) sur la carte = nouveau point à cet endroit
+      M.map.on('contextmenu', e => {
+        if (!plein() || !droits().creer) return;
+        const ll = [e.latlng.lat, e.latlng.lng];
+        L.popup({ closeButton: true }).setLatLng(e.latlng).setContent(el('div', { class: 'poi-pop' },
+          el('div', { class: 'small', text: fmtLL(ll[0], ll[1]) }),
+          el('button', { type: 'button', class: 'pill poi-add', text: '＋ Nouveau point ici', onclick: () => {
+            M.map.closePopup();
+            pleinEcran(false);
+            openForm(null);
+            $('#poi-f-gps').value = fmtLL(ll[0], ll[1]);
+            $('#poi-f-gps').dispatchEvent(new Event('input'));
+          } }))).openOn(M.map);
+      });
       M.group.on('layeradd', majSecondaires);
       // Plein écran (ordinateur surtout) : la carte occupe toute la fenêtre, Échap pour sortir
       const Fs = L.Control.extend({
@@ -665,6 +679,16 @@
         },
       });
       M.map.addControl(new Fs());
+      const Aide = L.Control.extend({
+        options: { position: 'bottomright' },
+        onAdd: () => {
+          const d = el('div', { id: 'poi-fs-aide', class: 'poi-fs-aide', hidden: true });
+          const dr = droits();
+          d.textContent = [dr.creer ? 'Clic droit (ou appui long) : nouveau point' : '', dr.modifier ? 'Faire glisser une épingle : la déplacer' : ''].filter(Boolean).join(' · ');
+          return d;
+        },
+      });
+      M.map.addControl(new Aide());
       const Me = L.Control.extend({
         options: { position: 'topleft' },
         onAdd: () => {
@@ -685,7 +709,8 @@
         el('div', { class: 'small' }, el('button', { type: 'button', class: 'link', text: 'Itinéraire', onclick: () => openRoute(p) }), ' · ',
           el('button', { type: 'button', class: 'link', text: 'Fiche', onclick: () => showInList(p) })));
       const icon = L.divIcon({ className: 'poi-pin', html: pinPoint(p), iconSize: [25, 34], iconAnchor: [12.5, 34], popupAnchor: [0, -30] });
-      const m = L.marker([p.lat, p.lng], { title: p.nom, icon }).bindPopup(pop);
+      const m = L.marker([p.lat, p.lng], { title: p.nom, icon, draggable: droits().modifier && plein() }).bindPopup(pop);
+      m.on('dragend', () => deplacer(p, m));
       m.poiId = p.id;
       m.poiSec = estSecondaire(p) && !rechercheActive();
       m.poiEch = echPoint(p);
@@ -724,6 +749,33 @@
   const FS_OFF = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>';
   // La carte est déplacée sous <body> pendant le plein écran (un parent transformé empêcherait position:fixed)
   let fsPlace = null;
+  const plein = () => document.body.classList.contains('poi-plein');
+  // Rend les épingles déplaçables (ou non) selon le plein écran et les droits
+  function majDrag() {
+    if (!M.group) return;
+    const ok = plein() && droits().modifier;
+    M.group.eachLayer(l => { if (l.dragging) ok ? l.dragging.enable() : l.dragging.disable(); });
+  }
+  // Épingle déplacée : confirmation, puis enregistrement de la nouvelle position (réseau nécessaire)
+  async function deplacer(p, m) {
+    const ll = m.getLatLng();
+    const d = distanceKm([p.lat, p.lng], [ll.lat, ll.lng]);
+    if (!confirm(`Déplacer « ${p.nom} » de ${fmtKm(d)} ?\n\nNouvelle position : ${fmtLL(ll.lat, ll.lng)}`)) { m.setLatLng([p.lat, p.lng]); return; }
+    const note = $('#poi-map-note');
+    try {
+      const poi = { id: p.id, nom: p.nom, lat: ll.lat, lng: ll.lng, secteurs: p.secteurs, caracs: p.caracs, commentaire: p.commentaire };
+      const res = await app().api('poi_save', { token: app().token(), poi });
+      S.data.points = S.data.points.filter(x => x.id !== res.point.id).concat(res.point);
+      save();
+      Object.assign(p, res.point);
+      setState(`Point « ${p.nom} » déplacé.`);
+    } catch (e) {
+      m.setLatLng([p.lat, p.lng]);
+      if (app().AUTH_ERRORS.includes(e.message)) return app().logout();
+      alert(e instanceof app().NetworkError ? app().netLabel() + ' : déplacement impossible pour l’instant (réseau nécessaire).' : e.message);
+    }
+  }
+
   function pleinEcran(on) {
     const box = $('#poi-map');
     if (on && !fsPlace) { fsPlace = document.createComment('poi-map'); box.before(fsPlace); document.body.append(box); }
@@ -737,6 +789,9 @@
       if (!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
     } catch (e) {}
     setTimeout(() => M.map && M.map.invalidateSize(), 120);
+    majDrag();
+    const n = $('#poi-fs-aide');
+    if (n) n.hidden = !on || !(droits().creer || droits().modifier);
   }
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('poi-plein')) pleinEcran(false); });
   document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && document.body.classList.contains('poi-plein')) pleinEcran(false); });
