@@ -1,12 +1,18 @@
-// Carte hors ligne : télécharge la Photo aérienne IGN des zones de relief du Vaucluse
-// (Ventoux et Dentelles, Monts de Vaucluse, Luberon) au zoom 15, dans le cache « smpm84-carte ».
+// Carte hors ligne : télécharge la Photo aérienne IGN et/ou la Carte IGN 1:25 000 (SCAN 25) des zones de relief
+// du Vaucluse (Ventoux et Dentelles, Monts de Vaucluse, Luberon) au zoom 15, dans le cache « smpm84-carte ».
+// Chaque fond se télécharge et se supprime séparément (cases à cocher dans Mon profil).
 // Lu par sw.js : la carte « Pointer sur la carte » fonctionne ensuite sans réseau.
 // Téléchargement uniquement à la demande de l'utilisateur, en ligne.
 (() => {
   'use strict';
 
   const CACHE = 'smpm84-carte';
-  const KEY_META = 'smpm_carte_meta';
+  const KEY_META = 'smpm_carte_meta';        // { photo: {at,count,missing,failed}, scan25: {…} } (ancien format : celui de la photo)
+  const KEY_CHOIX = 'smpm_carte_choix';
+  const FONDS = [
+    { id: 'photo', nom: 'Photo aérienne', libelle: 'Photo aérienne IGN' },
+    { id: 'scan25', nom: 'Carte IGN 1:25 000', libelle: 'Carte IGN 1:25 000 (SCAN 25)' },
+  ];
   const ZOOM = 15;
   const PARALLEL = 6;                       // requêtes simultanées
   const TIMEOUT_MS = 15000;                 // délai max par tuile (sans lui, une tuile bloquée fige tout le téléchargement)
@@ -19,10 +25,9 @@
     { name: 'Luberon', s: 43.75, n: 43.97, w: 5.15, e: 5.55 },
   ];
 
-  // URL identique à celle de la carte (fmpa.js) : c'est elle qui sert de clé de cache
-  const tileUrl = (x, y) =>
-    `https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS` +
-    `&STYLE=normal&FORMAT=image/jpeg&TILEMATRIXSET=PM&TILEMATRIX=${ZOOM}&TILEROW=${y}&TILECOL=${x}`;
+  // URL identique à celle des cartes (config.js › SMPM_FONDS) : c'est elle qui sert de clé de cache
+  let fondEnCours = FONDS[0];
+  const tileUrl = (x, y, f = fondEnCours) => window.SMPM_FONDS.tuile(f.nom, ZOOM, x, y);
 
   const tileX = lon => Math.floor((lon + 180) / 360 * 2 ** ZOOM);
   const tileY = lat => {
@@ -30,13 +35,13 @@
     return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * 2 ** ZOOM);
   };
 
-  function allTileUrls() {
+  function allTileUrls(f = fondEnCours) {
     const seen = new Set();
     const urls = [];
     for (const z of ZONES) {
       for (let x = tileX(z.w); x <= tileX(z.e); x++) {
         for (let y = tileY(z.n); y <= tileY(z.s); y++) {
-          const u = tileUrl(x, y);
+          const u = tileUrl(x, y, f);
           if (!seen.has(u)) { seen.add(u); urls.push(u); }
         }
       }
@@ -46,11 +51,24 @@
 
   const $ = sel => document.querySelector(sel);
 
-  function readMeta() {
-    try { return JSON.parse(localStorage.getItem(KEY_META) || 'null'); } catch (e) { return null; }
+  function readAll() {
+    let m = null;
+    try { m = JSON.parse(localStorage.getItem(KEY_META) || 'null'); } catch (e) { m = null; }
+    if (m && m.at) m = { photo: m };                       // ancien format (photo aérienne seule)
+    return m || {};
   }
-  function writeMeta(m) {
-    try { localStorage.setItem(KEY_META, JSON.stringify(m)); } catch (e) {}
+  const readMeta = (f = fondEnCours) => readAll()[f.id] || null;
+  function writeMeta(v, f = fondEnCours) {
+    const m = readAll();
+    if (v) m[f.id] = v; else delete m[f.id];
+    try {
+      if (Object.keys(m).length) localStorage.setItem(KEY_META, JSON.stringify(m)); else localStorage.removeItem(KEY_META);
+    } catch (e) {}
+  }
+  function choix() {
+    let c = null;
+    try { c = JSON.parse(localStorage.getItem(KEY_CHOIX) || 'null'); } catch (e) { c = null; }
+    return Array.isArray(c) ? c : ['photo', 'scan25'];
   }
 
   function formatWhen(iso) {
@@ -112,10 +130,10 @@
     return `${mo.toFixed(1).replace('.', ',')} Mo`;
   }
 
-  async function hasRoomFor() {
+  async function hasRoomFor(n = 1) {
     if (!navigator.storage || !navigator.storage.estimate) return true;
     const { quota, usage } = await navigator.storage.estimate();
-    return !quota || quota - usage > NEED_BYTES;
+    return !quota || quota - usage > NEED_BYTES * n;
   }
 
   function showStatus(text, note) {
@@ -123,44 +141,87 @@
     $('#carte-note').textContent = note || '';
   }
 
+  // Cases à cocher (un fond par ligne) avec l'état de chacun
+  function renderChoix() {
+    const box = $('#carte-fonds');
+    if (!box) return;
+    const c = choix();
+    box.replaceChildren(...FONDS.map(f => {
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = f.id;
+      cb.checked = c.includes(f.id);
+      cb.disabled = busy;
+      cb.addEventListener('change', () => {
+        const v = FONDS.map(x => x.id).filter(id => id === f.id ? cb.checked : choix().includes(id));
+        try { localStorage.setItem(KEY_CHOIX, JSON.stringify(v)); } catch (e) {}
+        render();
+      });
+      const etat = document.createElement('small');
+      etat.className = 'muted carte-fond-etat';
+      etat.id = 'carte-etat-' + f.id;
+      const m = readMeta(f);
+      etat.textContent = m ? `téléchargée le ${formatWhen(m.at)} (${m.count} images, calcul du poids…)` : 'non téléchargée';
+      const lab = document.createElement('label');
+      lab.className = 'carte-fond';
+      lab.append(cb, document.createTextNode(' ' + f.libelle + ' '), etat);
+      return lab;
+    }));
+  }
+
   function render() {
-    const meta = readMeta();
+    const c = choix();
+    const metas = FONDS.map(f => readMeta(f));
     const btn = $('#btn-carte');
     const stop = $('#btn-carte-stop');
     const del = $('#btn-carte-del');
     stop.hidden = !busy;
-    del.hidden = !meta || busy;
-    btn.disabled = busy || !navigator.onLine;
-    btn.textContent = meta && !busy ? 'Mettre à jour la carte' : 'Télécharger la carte';
+    del.hidden = busy || !FONDS.some((f, i) => metas[i] && c.includes(f.id));
+    del.textContent = 'Supprimer la sélection de l’appareil';
+    btn.disabled = busy || !navigator.onLine || !c.length;
+    const tous = FONDS.filter(f => c.includes(f.id)).every(f => readMeta(f));
+    btn.textContent = c.length && tous ? 'Mettre à jour la sélection' : 'Télécharger la sélection';
     if (busy) return;
-    if (!meta) {
-      showStatus('Carte non téléchargée sur cet appareil.');
-    } else {
-      showStatus(`Téléchargée le ${formatWhen(meta.at)} (${meta.count} images, calcul du poids…).`, missingNote(meta));
-      refreshSize(meta);
-    }
+    renderChoix();
+    showStatus(c.length ? '' : 'Cochez au moins un fond de carte.', FONDS.map(f => readMeta(f) ? missingNote(readMeta(f)) : '').filter(Boolean).join(' '));
+    FONDS.forEach(f => { const m = readMeta(f); if (m) refreshSize(m, f); });
   }
 
-  // Calcule le poids réel occupé dans le cache et met à jour le statut
-  async function refreshSize(meta) {
+  // Calcule le poids réel occupé dans le cache et met à jour l'état du fond
+  async function refreshSize(meta, f) {
     try {
-      const { n, bytes } = await cacheStats(allTileUrls());
-      if (busy || readMeta()?.at !== meta.at) return;
-      showStatus(`Téléchargée le ${formatWhen(meta.at)} (${n} images, ${formatMo(bytes)} sur l’appareil).`, missingNote(meta));
-    } catch (e) { /* cache indisponible : on garde le statut sans poids */ }
+      const { n, bytes } = await cacheStats(allTileUrls(f));
+      if (busy || readMeta(f)?.at !== meta.at) return;
+      const el = $('#carte-etat-' + f.id);
+      if (el) el.textContent = `téléchargée le ${formatWhen(meta.at)} (${n} images, ${formatMo(bytes)} sur l’appareil)`;
+    } catch (e) { /* cache indisponible : on garde l'état sans poids */ }
   }
 
   async function download() {
     if (busy) return;
-    const urls = allTileUrls();
+    const sel = FONDS.filter(f => choix().includes(f.id));
+    if (!sel.length) return;
+    const total = sel.reduce((n, f) => n + allTileUrls(f).length, 0);
     if (!navigator.onLine) { showStatus('Connexion nécessaire pour télécharger la carte.'); return; }
-    if (!confirm(`Téléchargement d’environ ${urls.length} images, à faire de préférence en Wi-Fi. ` +
+    if (!confirm(`Téléchargement de ${sel.map(f => f.libelle).join(' et ')} : environ ${total} images, à faire de préférence en Wi-Fi. ` +
       'Ne fermez pas l’application pendant le téléchargement. Continuer ?')) return;
-    if (!(await hasRoomFor())) {
+    if (!(await hasRoomFor(sel.length))) {
       showStatus('Espace de stockage insuffisant sur cet appareil pour la carte.');
       return;
     }
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+    for (const f of sel) {
+      fondEnCours = f;
+      const fini = await downloadFond(f);
+      if (!fini) break;
+    }
+    fondEnCours = FONDS[0];
+    render();
+  }
+
+  // Télécharge un fond ; renvoie false si l'utilisateur a arrêté
+  async function downloadFond(f) {
+    const urls = allTileUrls(f);
 
     busy = true;
     stopRequested = false;
@@ -184,26 +245,39 @@
           }
         }));
         done = Math.min(i + PARALLEL, urls.length);
-        showStatus(`Téléchargement : ${done} / ${urls.length} images…`);
+        showStatus(`${f.libelle} : ${done} / ${urls.length} images…`);
       }
     } finally {
       busy = false;
     }
 
-    if (stopRequested) {
-      showStatus(`Téléchargement arrêté (${done} / ${urls.length} images). Relancez pour terminer.`);
-      render();
-      return;
-    }
     const { n: count } = await cacheStats(urls);
-    writeMeta({ at: new Date().toISOString(), count, missing: urls.length - count, failed });
-    render();
+    if (stopRequested) {
+      if (count) writeMeta({ at: new Date().toISOString(), count, missing: urls.length - count, failed }, f);
+      render();
+      showStatus(`Téléchargement arrêté (${f.libelle} : ${done} / ${urls.length} images). Relancez pour terminer.`);
+      return false;
+    }
+    writeMeta({ at: new Date().toISOString(), count, missing: urls.length - count, failed }, f);
+    // clé SCAN 25 refusée : toutes les images manquent avec une erreur HTTP 401/403
+    if (!count && failed.some(x => /HTTP 40[13]/.test(x.why))) {
+      writeMeta(null, f);
+      render();
+      showStatus('', `${f.libelle} : accès refusé par l’IGN (clé d’accès). Prévenez l’administrateur de l’application.`);
+      return false;
+    }
+    return true;
   }
 
   async function remove() {
-    if (busy || !confirm('Supprimer la carte hors ligne de cet appareil ?')) return;
-    await caches.delete(CACHE);
-    try { localStorage.removeItem(KEY_META); } catch (e) {}
+    const sel = FONDS.filter(f => choix().includes(f.id) && readMeta(f));
+    if (busy || !sel.length || !confirm(`Supprimer de cet appareil : ${sel.map(f => f.libelle).join(' et ')} ?`)) return;
+    const cache = await caches.open(CACHE);
+    for (const f of sel) {
+      await Promise.all(allTileUrls(f).map(u => cache.delete(u)));
+      writeMeta(null, f);
+    }
+    if (!Object.keys(readAll()).length) await caches.delete(CACHE);
     render();
   }
 

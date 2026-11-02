@@ -1036,15 +1036,7 @@
         const L = window.L;
         const ll = parseLatLng(input.value);
         map = L.map(mapBox, { center: ll || VAUCLUSE, zoom: ll ? 15 : 9, zoomControl: true });
-        const wmts = (layer, fmt) => `https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=${layer}&STYLE=normal&FORMAT=${fmt}&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}`;
-        const ign = '&copy; <a href="https://www.ign.fr/" target="_blank" rel="noopener">IGN</a>';
-        const layers = {
-          'Plan IGN': L.tileLayer(wmts('GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2', 'image/png'), { maxZoom: 19, attribution: ign }),
-          'Photo aérienne': L.tileLayer(wmts('ORTHOIMAGERY.ORTHOPHOTOS', 'image/jpeg'), { maxZoom: 19, attribution: ign }),
-          'OpenStreetMap': L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }),
-        };
-        layers['Plan IGN'].addTo(map);
-        L.control.layers(layers, null, { collapsed: true }).addTo(map);
+        window.SMPM_FONDS.ajouter(L, map);
         L.control.scale({ imperial: false }).addTo(map);
         if (ll) marker = makeMarker(ll);
         map.on('click', e => { if (!box.closest('.fmpa-ro')) set([e.latlng.lat, e.latlng.lng], 'map'); });
