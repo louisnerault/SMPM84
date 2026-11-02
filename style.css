@@ -1600,3 +1600,12 @@ button.notif-body { cursor: pointer; }
   background: none; border: 0; color: inherit; opacity: .65; cursor: pointer;
 }
 .pwd-toggle:hover, .pwd-toggle:focus-visible { opacity: 1; }
+
+/* Points d'intérêt : filtre des types à cocher */
+.poi-types-filtre { border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.poi-types-filtre summary { padding: 10px 12px; font-weight: 600; cursor: pointer; }
+.poi-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 2px 10px; padding: 0 12px 10px; }
+.poi-check { display: flex; align-items: center; gap: 8px; margin: 0; padding: 6px 0; font-weight: 500; min-height: 40px; }
+.poi-check input { width: 20px; height: 20px; margin: 0; flex: none; }
+.poi-check svg { color: var(--muted); display: block; }
+.poi-check small { margin-left: auto; }

@@ -23,7 +23,7 @@
   const app = () => window.SMPM_APP;
   const fold = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-  const F0 = () => ({ q: '', secteurs: [], carac: '', tri: 'nom', vue: 'liste' });
+  const F0 = () => ({ q: '', secteurs: [], caracs: [], tri: 'nom', vue: 'liste' });
   const S = {
     data: null, loadedAt: 0, loading: false, pos: null,
     f: Object.assign(F0(), store.getJSON(KEY_FILTRES) || {}),
@@ -207,16 +207,35 @@
         changed();
       },
     })));
-    const sel = $('#poi-carac');
-    sel.replaceChildren(el('option', { value: '', text: 'Toutes les caractéristiques' }), ...L.caracs.map(c => el('option', { value: c, text: c })));
-    sel.value = L.caracs.includes(S.f.carac) ? S.f.carac : '';
-    S.f.carac = sel.value;
+    // Types : cases à cocher (plusieurs = l'un ou l'autre) ; seuls les types présents dans les points sont proposés
+    if (!Array.isArray(S.f.caracs)) S.f.caracs = S.f.carac ? [S.f.carac] : [];
+    delete S.f.carac;
+    const typesPresents = L.caracs.filter(c => points.some(p => p.caracs.includes(c)));
+    S.f.caracs = S.f.caracs.filter(c => typesPresents.includes(c));
+    $('#poi-caracs').replaceChildren(...typesPresents.map(c => {
+      const cb = el('input', { type: 'checkbox', value: c });
+      cb.checked = S.f.caracs.includes(c);
+      cb.addEventListener('change', () => {
+        S.f.caracs = cb.checked ? [...S.f.caracs, c] : S.f.caracs.filter(x => x !== c);
+        paintTypesN();
+        changed();
+      });
+      const n = points.filter(p => p.caracs.includes(c)).length;
+      return el('label', { class: 'poi-check' }, cb, el('span', { html: icoSvg(caracIcone(c), 16) }), el('span', { text: c }), el('small', { class: 'muted', text: String(n) }));
+    }));
+    $('#poi-types-box').hidden = !typesPresents.length;
+    paintTypesN();
     $('#poi-tri').value = S.f.tri === 'distance' && !S.pos ? 'nom' : S.f.tri;
     if (S.f.tri === 'distance' && !S.pos) S.f.tri = 'nom';
     $('#poi-search').value = S.f.q;
     document.querySelectorAll('.poi-view [data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === S.f.vue)));
     $('#poi-add').hidden = !droits().creer;
     $('#poi-gerer').hidden = !droits().gerer;
+  }
+
+  function paintTypesN() {
+    const n = S.f.caracs.length;
+    $('#poi-types-n').textContent = n ? `(${n} coché${n > 1 ? 's' : ''})` : '(tous)';
   }
 
   function changed() {
@@ -227,7 +246,7 @@
   function match(p) {
     const f = S.f;
     if (f.secteurs.length && !f.secteurs.some(c => p.secteurs.includes(c))) return false;
-    if (f.carac && !p.caracs.includes(f.carac)) return false;
+    if (f.caracs.length && !f.caracs.some(c => p.caracs.includes(c))) return false;
     const words = fold(f.q).split(/\s+/).filter(Boolean);
     if (!words.length) return true;
     const hay = fold([p.nom, p.commentaire, p.caracs.join(' '), p.secteurs.join(' '), p.secteurs.map(secteurLib).join(' '), p.cree_par].join(' '));
@@ -250,7 +269,7 @@
     const all = (S.data && S.data.points) || [];
     const list = filtered();
     const f = S.f;
-    $('#poi-reset').hidden = !(f.q || f.secteurs.length || f.carac);
+    $('#poi-reset').hidden = !(f.q || f.secteurs.length || f.caracs.length);
     $('#poi-count').textContent = all.length ? `${list.length} / ${all.length}` : '';
     const empty = $('#poi-empty');
     empty.hidden = list.length > 0 || !S.data;
@@ -1053,7 +1072,6 @@
   // ---------- événements ----------
   let t;
   $('#poi-search').addEventListener('input', e => { S.f.q = e.target.value; clearTimeout(t); t = setTimeout(render, 120); });
-  $('#poi-carac').addEventListener('change', e => { S.f.carac = e.target.value; changed(); });
   $('#poi-tri').addEventListener('change', async e => {
     const v = e.target.value;
     if (v === 'distance') {

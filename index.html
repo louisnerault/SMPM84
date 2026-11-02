@@ -326,8 +326,11 @@
         <div class="ann-tools" id="poi-tools">
           <input type="search" id="poi-search" placeholder="Nom, commentaire, caractéristique…" autocomplete="off" aria-label="Rechercher un point">
           <div class="ann-qualifs" id="poi-secteurs" role="group" aria-label="Secteurs"></div>
+          <details class="poi-types-filtre" id="poi-types-box">
+            <summary>Types <span id="poi-types-n" class="muted small"></span></summary>
+            <div class="poi-checks" id="poi-caracs" role="group" aria-label="Types de points"></div>
+          </details>
           <div class="ann-filters">
-            <select id="poi-carac" aria-label="Caractéristique"><option value="">Toutes les caractéristiques</option></select>
             <select id="poi-tri" aria-label="Tri">
               <option value="nom">Tri : nom</option>
               <option value="distance">Tri : les plus proches</option>
