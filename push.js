@@ -104,10 +104,10 @@
       'unsupported': "Ce navigateur ne permet pas de recevoir des notifications. Sur Android, utilisez Chrome ; sur iPhone, iOS 16.4 ou plus récent.",
       'denied': "Les notifications sont bloquées pour l'application. Autorisez-les dans les réglages du téléphone (Notifications > SMPM 84), puis rouvrez l'application.",
       'default': "Recevez sur ce téléphone, même application fermée : les demandes de validation à traiter, la réponse à vos demandes et les messages de l'encadrement.",
-      'granted': store.get(KEY_FCM) ? 'Notifications activées sur ce téléphone.' : 'Notifications autorisées : finalisation de l\'abonnement…',
+      'granted': store.get(KEY_FCM) ? 'Notifications activées sur ce téléphone.' : 'Notifications autorisées, mais ce téléphone n\'est pas encore abonné : touchez « Activer les notifications ».',
     }[e];
     $('#push-text').textContent = txt;
-    $('#btn-push-on').hidden = e !== 'default';
+    $('#btn-push-on').hidden = !(e === 'default' || (e === 'granted' && !store.get(KEY_FCM)));
     $('#btn-push-test').hidden = !(e === 'granted' && store.get(KEY_FCM));
     $('#btn-push-off').hidden = !(e === 'granted' && store.get(KEY_FCM));
     renderEnvoi();
@@ -221,7 +221,7 @@
       S.session = session || null;
       if (changed) { const sel = $('#push-cible'); if (sel) delete sel.dataset.done; }
       render();
-      if (session && etat() === 'granted') enregistrer(false).then(render).catch(() => {});
+      if (session && etat() === 'granted') enregistrer(!store.get(KEY_FCM)).then(render).catch(err => { if (!store.get(KEY_FCM)) msg(err.message || 'Abonnement impossible', true); });
     },
     /** Déconnexion : désabonne l'appareil (appel avant la suppression du jeton de session). */
     reset(sessionToken) {
@@ -242,6 +242,13 @@
     if (test) test.addEventListener('click', tester);
     if (form) form.addEventListener('submit', envoyer);
     // Retour sur l'application (ex. après avoir autorisé les notifications dans les réglages)
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') render(); });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      render();
+      if (S.session && !S.busy && etat() === 'granted' && !store.get(KEY_FCM)) {
+        enregistrer(true).then(() => { msg('Notifications activées.'); render(); })
+          .catch(err => msg(err.message || 'Abonnement impossible', true));
+      }
+    });
   });
 })();
