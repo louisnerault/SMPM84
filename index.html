@@ -371,11 +371,7 @@
         <p class="muted small">Touchez l'icône pour la changer. L'icône du premier type d'un point s'affiche au centre de son épingle. Renommer un type le renomme sur tous les points ; le supprimer le retire des points.</p>
         <ul id="poi-adm-types" class="poi-adm-list"></ul>
         <button type="button" class="pill" id="poi-adm-type-add">＋ Ajouter un type</button>
-        <h2 class="section-title">Points secondaires</h2>
-        <p class="muted small">Un point dont tous les types sont cochés « Secondaire » n'apparaît sur la carte qu'à partir de cette échelle (en zoomant). Il reste toujours dans la liste, et s'affiche sur la carte dès qu'on le cherche ou qu'on filtre.</p>
-        <label for="poi-adm-zoom">Visibles à partir du zoom <output id="poi-adm-zoom-lib" class="muted small"></output></label>
-        <input type="range" id="poi-adm-zoom" min="9" max="17" step="1" value="13">
-        <div class="poi-zoom-graduation small muted"><span>département</span><span>massif</span><span>vallon</span><span>site</span></div>
+        <p class="muted small"><strong>Primaire</strong> : toujours visible sur la carte. <strong>Secondaire</strong> : visible seulement quand la barre d'échelle de la carte (en bas à gauche) indique la distance choisie ou moins, c'est-à-dire en zoomant. Un point n'est masqué que si tous ses types sont secondaires ; il reste dans la liste et s'affiche dès qu'on le cherche ou qu'on filtre.</p>
         <h2 class="section-title">Secteurs</h2>
         <p class="muted small">Couleur de l'épingle, libellé et accès. Un secteur « réservé » n'est visible que des personnels qualifiés (ex. ISS pour #SPELEO). L'ordre de la liste est celui des bandes de couleur d'une épingle à plusieurs secteurs. Un secteur utilisé par des points ne peut pas être supprimé.</p>
         <ul id="poi-adm-secteurs" class="poi-adm-list"></ul>

@@ -567,15 +567,25 @@
   // Points secondaires : leurs types sont tous « secondaires » (écran de gestion) ; ils n'apparaissent sur la carte
   // qu'à partir du zoom réglé, sauf quand une recherche ou un filtre est en cours (le point cherché s'affiche toujours).
   const listesSec = () => (S.data && S.data.listes && S.data.listes.secondaires) || {};
-  const zoomSec = () => Number(S.data && S.data.listes && S.data.listes.zoomSec) || 13;
-  const estSecondaire = p => p.caracs.length > 0 && p.caracs.every(c => listesSec()[c]);
+  // Échelle d'un type secondaire en mètres : valeur de la barre d'échelle (≈ 100 px à l'écran) à partir de
+  // laquelle il apparaît. Un point apparaît dès qu'un de ses types est visible (le moins restrictif l'emporte).
+  const ECHELLES = [50, 100, 200, 500, 1000, 2000, 5000, 10000];
+  const echType = c => { const v = listesSec()[c]; return v === true ? 1000 : Number(v) || 0; };
+  const echPoint = p => (p.caracs.length && p.caracs.every(c => echType(c) > 0)) ? Math.max(...p.caracs.map(echType)) : 0;
+  const estSecondaire = p => echPoint(p) > 0;
+  const metresParBarre = () => {
+    const c = M.map.getCenter(), z = M.map.getZoom();
+    return 156543.03 * Math.cos(c.lat * Math.PI / 180) / Math.pow(2, z) * 100;
+  };
+  const fmtM = m => m >= 1000 ? `${(m / 1000).toLocaleString('fr-FR')} km` : `${m} m`;
   const rechercheActive = () => !!(S.f.q.trim() || S.f.caracs.length || S.f.secteurs.length);
   function majSecondaires() {
     if (!M.map || !M.group) return;
-    const voir = M.map.getZoom() >= zoomSec();
+    const ech = metresParBarre();
     let caches = 0;
     M.group.eachLayer(l => {
       if (!l.poiSec) return;
+      const voir = ech <= l.poiEch;
       const el2 = l.getElement && l.getElement();
       if (el2) el2.style.display = voir ? '' : 'none';
       if (!voir) caches++;
@@ -594,7 +604,7 @@
     if (!M.map) {
       M.map = makeMap(L, $('#poi-map'), VAUCLUSE, 9);
       M.group = L.featureGroup().addTo(M.map);
-      M.map.on('zoomend', majSecondaires);
+      M.map.on('zoomend moveend', majSecondaires);
       M.group.on('layeradd', majSecondaires);
       // Plein écran (ordinateur surtout) : la carte occupe toute la fenêtre, Échap pour sortir
       const Fs = L.Control.extend({
@@ -630,6 +640,7 @@
       const m = L.marker([p.lat, p.lng], { title: p.nom, icon }).bindPopup(pop);
       m.poiId = p.id;
       m.poiSec = estSecondaire(p) && !rechercheActive();
+      m.poiEch = echPoint(p);
       m.addTo(M.group);
     });
     majSecondaires();
@@ -904,8 +915,7 @@
     if (!droits().gerer || !S.data || !S.data.listes) return;
     const L = S.data.listes;
     const usage = code => ((S.data && S.data.points) || []).filter(p => p.secteurs.includes(code)).length;
-    A.types = L.caracs.map(c => ({ libelle: c, ancien: c, icone: caracIcone(c), secondaire: !!(L.secondaires || {})[c] }));
-    A.zoomSec = Number(L.zoomSec) || 13;
+    A.types = L.caracs.map(c => ({ libelle: c, ancien: c, icone: caracIcone(c), secondaire: echType(c) }));
     A.secteurs = L.secteurs.map(s => ({ code: s.code, libelle: s.libelle, reserve: s.reserve || '', couleur: s.couleur || '#5d6b7a', existant: true, usage: usage(s.code) }));
     $('#poi-adm-error').textContent = '';
     $('#poi-main').hidden = true;
@@ -936,10 +946,17 @@
         el('input', { type: 'text', value: t.libelle, maxlength: '40', placeholder: 'Nom du type', 'aria-label': 'Nom du type',
           oninput: e => { t.libelle = e.target.value; } }),
         (() => {
-          const cb = el('input', { type: 'checkbox' });
-          cb.checked = !!t.secondaire;
-          cb.addEventListener('change', () => { t.secondaire = cb.checked; });
-          return el('label', { class: 'poi-adm-sec', title: 'Secondaire : visible sur la carte seulement à partir de l’échelle réglée plus bas' }, cb, 'Secondaire');
+          const sel = el('select', { class: 'poi-adm-prio', 'aria-label': `Affichage de ${t.libelle || 'ce type'} sur la carte` },
+            el('option', { value: 'p', text: 'Primaire' }), el('option', { value: 's', text: 'Secondaire' }));
+          sel.value = t.secondaire ? 's' : 'p';
+          const ech = el('select', { class: 'poi-adm-ech', 'aria-label': 'Visible à partir de l’échelle', title: 'Visible quand la barre d’échelle de la carte indique cette distance ou moins' },
+            ...ECHELLES.map(m => el('option', { value: String(m), text: `≤ ${fmtM(m)}` })));
+          if (t.secondaire && !ECHELLES.includes(t.secondaire)) ech.prepend(el('option', { value: String(t.secondaire), text: `≤ ${fmtM(t.secondaire)}` }));
+          ech.value = String(t.secondaire || 1000);
+          ech.hidden = !t.secondaire;
+          sel.addEventListener('change', () => { t.secondaire = sel.value === 's' ? Number(ech.value) || 1000 : 0; ech.hidden = !t.secondaire; });
+          ech.addEventListener('change', () => { t.secondaire = Number(ech.value); });
+          return el('span', { class: 'poi-adm-prio-box' }, sel, ech);
         })(),
         moveBtns(A.types, i),
         el('button', { type: 'button', class: 'poi-adm-ico danger', title: 'Supprimer', 'aria-label': `Supprimer ${t.libelle}`, text: '✕',
@@ -950,8 +967,6 @@
           } }),
         grid);
     }));
-    const zs = $('#poi-adm-zoom');
-    if (zs) { zs.value = String(A.zoomSec); $('#poi-adm-zoom-lib').textContent = echelleLib(A.zoomSec); }
     $('#poi-adm-secteurs').replaceChildren(...A.secteurs.map((s, i) => el('li', { class: 'poi-adm-row poi-adm-sect' },
       el('input', { type: 'color', value: s.couleur, class: 'poi-adm-color', title: 'Couleur de l’épingle', 'aria-label': `Couleur de #${s.code || 'nouveau secteur'}`,
         oninput: e => { s.couleur = e.target.value; renderApercu(); } }),
@@ -987,7 +1002,7 @@
   async function saveAdmin() {
     const err = $('#poi-adm-error');
     err.textContent = '';
-    const types = A.types.map(t => ({ libelle: t.libelle.trim(), icone: t.icone, secondaire: !!t.secondaire, ancien: t.ancien || '' })).filter(t => t.libelle);
+    const types = A.types.map(t => ({ libelle: t.libelle.trim(), icone: t.icone, secondaire: Number(t.secondaire) || 0, ancien: t.ancien || '' })).filter(t => t.libelle);
     const secteurs = A.secteurs.map(s => ({ code: s.code, libelle: s.libelle.trim(), reserve: s.reserve, couleur: s.couleur })).filter(s => s.code);
     if (!types.length) { err.textContent = 'Gardez au moins un type de point.'; return; }
     if (!secteurs.length) { err.textContent = 'Gardez au moins un secteur.'; return; }
@@ -998,7 +1013,7 @@
     btn.disabled = true;
     btn.textContent = 'Enregistrement…';
     try {
-      const res = await app().api('poi_listes_save', { token: app().token(), listes: { caracs: types, secteurs, zoomSec: A.zoomSec } });
+      const res = await app().api('poi_listes_save', { token: app().token(), listes: { caracs: types, secteurs } });
       S.data = { points: res.points || [], listes: res.listes, droits: res.droits || null, maj: res.maj || new Date().toISOString() };
       S.loadedAt = Date.now();
       save();
@@ -1013,13 +1028,6 @@
     } finally { btn.disabled = false; btn.textContent = 'Enregistrer'; }
   }
 
-  // Échelle approximative d'un zoom de carte (latitude du Vaucluse, écran courant)
-  function echelleLib(z) {
-    const den = Math.round(156543.03 * Math.cos(44 * Math.PI / 180) / Math.pow(2, z) / 0.00028 / 1000) * 1000;
-    const km = Math.round(40075 * Math.cos(44 * Math.PI / 180) / Math.pow(2, z) * 4) / 10;
-    return `≈ 1 : ${den.toLocaleString('fr-FR')} (environ ${km.toLocaleString('fr-FR')} km de large à l’écran)`;
-  }
-  $('#poi-adm-zoom').addEventListener('input', e => { A.zoomSec = Number(e.target.value); $('#poi-adm-zoom-lib').textContent = echelleLib(A.zoomSec); });
   $('#poi-gerer').addEventListener('click', openAdmin);
   $('#poi-nav-cancel').addEventListener('click', () => { const d = $('#poi-nav'); d.close ? d.close() : d.removeAttribute('open'); });
   $('#poi-adm-cancel').addEventListener('click', closeAdmin);
