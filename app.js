@@ -1476,3 +1476,35 @@
   }
   init();
 })();
+
+/* Bouton « afficher / masquer » sur chaque champ mot de passe */
+(function () {
+  const EYE = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const EYE_OFF = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.1 10.1 0 0 1 12 19C5 19 1 12 1 12a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 11 7 11 7a18.6 18.6 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+  function setState(input, btn, visible) {
+    input.type = visible ? 'text' : 'password';
+    btn.innerHTML = visible ? EYE_OFF : EYE;
+    btn.setAttribute('aria-label', visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+    btn.setAttribute('aria-pressed', visible ? 'true' : 'false');
+  }
+  document.querySelectorAll('input[type="password"]').forEach(input => {
+    const wrap = document.createElement('span');
+    wrap.className = 'pwd-wrap';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pwd-toggle';
+    wrap.appendChild(btn);
+    setState(input, btn, false);
+    btn.addEventListener('click', () => {
+      setState(input, btn, input.type === 'password');
+      input.focus();
+    });
+    // Remasquer après envoi ou réinitialisation du formulaire
+    if (input.form) {
+      input.form.addEventListener('submit', () => setState(input, btn, false));
+      input.form.addEventListener('reset', () => setState(input, btn, false));
+    }
+  });
+})();
