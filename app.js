@@ -58,7 +58,7 @@
   const canPoiCreate = session => !!session && (isAdm(session) || ['chef_unite', 'chef_section', 'ctd', 'admin'].includes(session.role));
   const canPoiEdit = session => !!session && (isAdm(session) || ['chef_section', 'ctd', 'admin'].includes(session.role));
   // Gestion des listes des points d'intérêt (types et icônes, secteurs et couleurs) : CTD et administrateurs (Poi.gs : POI.ADMIN)
-  const canPoiAdmin = session => !!session && (isAdm(session) || ['ctd', 'admin'].includes(session.role));
+  const canPoiAdmin = session => !!session && (isAdm(session) || ['chef_section', 'ctd', 'admin'].includes(session.role));
   // Encadrer (déclarer) une FMPA : qualification IMP 3 (fonction renvoyée par le serveur), ou administrateur
   const canEncadrer = data => {
     if (!data || !data.session) return false;
@@ -681,7 +681,7 @@
       const form = $('#form-profil');
       // ne pas écraser une saisie en cours dans « Mon profil »
       if (!(form && form.contains(document.activeElement))) renderApp();
-      if (window.SMPM_CARTE) window.SMPM_CARTE.setAllowed(canDeclare(data.session));
+      if (window.SMPM_CARTE) window.SMPM_CARTE.setAllowed(true);
       if (window.SMPM_PUSH) window.SMPM_PUSH.setSession(data.session);
       if (state.page && !allowedPage(state.page, data.session)) gotoPage(isIntervention() ? 'accueil' : 'livret');
     } catch (e) {
@@ -720,7 +720,7 @@
     state.options = options;
     setOffline(offline);
     renderApp();
-    if (window.SMPM_CARTE) window.SMPM_CARTE.setAllowed(canDeclare(data.session));
+    if (window.SMPM_CARTE) window.SMPM_CARTE.setAllowed(true);
     if (window.SMPM_PUSH) window.SMPM_PUSH.setSession(data.session);
     show('app');
     if (window.SMPM_NOTIFS) window.SMPM_NOTIFS.setSession(data.session, offline);

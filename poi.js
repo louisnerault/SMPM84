@@ -104,6 +104,37 @@
     pont: ['Pont / passerelle', '<path d="M2 15h20"/><path d="M3 15c3-6 15-6 18 0"/><path d="M8 15v5M16 15v5"/>'],
     drapeau: ['Repère', '<path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/>'],
     etoile: ['Autre', '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>'],
+    // --- catalogue élargi (les clés doivent exister aussi dans POI.ICONES de Poi.gs) ---
+    canyon: ['Canyon', '<path d="M3 3v18M21 3v18"/><path d="M3 8c3 0 3 3 6 3M21 6c-3 0-3 4-6 4"/><path d="M8 21c0-3 2-4 4-4s4 1 4 4"/><path d="M11 12v3M13 11v4"/>'],
+    escalade: ['Escalade / falaise', '<path d="M4 21L9 3h6l5 18z"/><circle cx="12.5" cy="8" r="1.4"/><path d="M12.5 9.5L11 13l2.5 2M11 13l-2 1M13.5 11l2-1.5"/>'],
+    viaferrata: ['Via ferrata', '<path d="M5 3v18"/><path d="M5 6h6M5 11h6M5 16h6"/><path d="M11 4v14"/><path d="M14 4c4 3 4 13 0 16"/>'],
+    parapente: ['Parapente', '<path d="M3 8c4-5 14-5 18 0"/><path d="M5 7.5l7 9 7-9"/><path d="M12 16.5v2"/><circle cx="12" cy="20" r="1.3"/>'],
+    rando: ['Randonnée', '<circle cx="12" cy="4.5" r="1.8"/><path d="M12 7l-1.5 6 3 2.5V21M10.5 13L8 21M12 9l3 2"/><path d="M17 8v13"/>'],
+    vtt: ['VTT', '<circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16l4-7h5l3 7M10 9l2 7h-6M14 6h2"/>'],
+    ski: ['Ski', '<circle cx="15" cy="4.5" r="1.7"/><path d="M3 18l18 3M13 8l-3 4 3 3-2 4M13 8l3 3h3"/>'],
+    raquettes: ['Raquettes', '<ellipse cx="8" cy="10" rx="3.5" ry="6"/><ellipse cx="16" cy="14" rx="3.5" ry="6"/><path d="M8 6v8M16 10v8"/>'],
+    lac: ['Lac', '<path d="M3 13c0-4 4-7 9-7s9 3 9 7-4 6-9 6-9-2-9-6z"/><path d="M7 12c1.5 0 1.5 1 3 1s1.5-1 3-1 1.5 1 3 1"/>'],
+    riviere: ['Rivière', '<path d="M3 6c3 0 3 2 6 2s3-2 6-2 3 2 6 2"/><path d="M3 12c3 0 3 2 6 2s3-2 6-2 3 2 6 2"/><path d="M3 18c3 0 3 2 6 2s3-2 6-2 3 2 6 2"/>'],
+    gue: ['Gué', '<path d="M3 15c3 0 3 2 6 2s3-2 6-2 3 2 6 2"/><circle cx="7" cy="11" r="1.5"/><circle cx="12" cy="10" r="1.5"/><circle cx="17" cy="11" r="1.5"/>'],
+    source: ['Source', '<path d="M12 4s4 4.5 4 7.5a4 4 0 0 1-8 0C8 8.5 12 4 12 4z"/><path d="M4 20h16"/><path d="M7 17c1.5 0 1.5 1 3 1s1.5-1 3-1 1.5 1 3 1"/>'],
+    eboulis: ['Éboulis / chutes de pierres', '<path d="M3 20L14 4"/><circle cx="15" cy="12" r="2"/><circle cx="19" cy="17" r="1.6"/><circle cx="11" cy="17" r="1.4"/><path d="M3 20h18"/>'],
+    col: ['Col', '<path d="M2 19l6-10 4 5 4-5 6 10z"/><path d="M12 14v-3"/><path d="M12 11h3l-1 1.5 1 1.5h-3"/>'],
+    gorge: ['Gorge', '<path d="M3 3c2 6 2 12 0 18M21 3c-2 6-2 12 0 18"/><path d="M9 3c1 6 1 12 0 18M15 3c-1 6-1 12 0 18"/>'],
+    citerne: ['Citerne DFCI', '<rect x="3" y="8" width="18" height="10" rx="5"/><path d="M8 18v3M16 18v3"/><path d="M12 5v3"/><path d="M8 13h8"/>'],
+    dz: ['DZ / hélisurface', '<path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7"/><path d="M9 9v6M15 9v6M9 12h6"/>'],
+    pma: ['PMA / poste médical', '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 8v8M8 12h8"/>'],
+    regroupement: ['Point de regroupement victimes', '<path d="M12 3l9 16H3z"/><path d="M12 10v4M10 12h4"/>'],
+    caserne: ['Caserne / CIS', '<path d="M3 21V9l9-5 9 5v12"/><path d="M8 21v-6h8v6"/><path d="M12 7v3"/>'],
+    hopital: ['Hôpital', '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 7v6M9 10h6"/><path d="M9 21v-4h6v4"/>'],
+    portail: ['Portail', '<path d="M3 21V5M21 21V5"/><path d="M3 8h18M3 13h18M8 8v5M13 8v5M18 8v5"/>'],
+    piste4x4: ['Piste 4×4', '<rect x="3" y="9" width="18" height="7" rx="2"/><path d="M6 9l2-4h8l2 4"/><circle cx="7.5" cy="17.5" r="2"/><circle cx="16.5" cy="17.5" r="2"/>'],
+    retournement: ['Aire de retournement', '<path d="M7 20V9a5 5 0 0 1 10 0v4"/><path d="M14 10l3 3 3-3"/>'],
+    hydrant: ['Poteau incendie', '<path d="M8 21h8M9 21V9h6v12"/><path d="M8 9a4 4 0 0 1 8 0"/><path d="M6 13h3M15 13h3"/>'],
+    chapelle: ['Chapelle', '<path d="M12 2v4M10 4h4"/><path d="M5 21V11l7-5 7 5v10"/><path d="M10 21v-4a2 2 0 0 1 4 0v4"/>'],
+    ruine: ['Ruine', '<path d="M3 21h18"/><path d="M5 21V10l3-2v3l3-3v13"/><path d="M15 21v-7l4-2v9"/>'],
+    relais: ['Relais radio', '<path d="M12 9l-5 12M12 9l5 12M9 16h6"/><circle cx="12" cy="7" r="1.5"/><path d="M8 4a6 6 0 0 0 0 6M16 4a6 6 0 0 1 0 6"/>'],
+    zoneblanche: ['Zone blanche (pas de réseau)', '<path d="M4 20h2v-3H4zM9 20h2v-6H9zM14 20h2v-9h-2zM19 20h2V8h-2z"/><path d="M3 3l18 18"/>'],
+    camera: ['Point de vue', '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'],
   };
   const icoSvg = (key, size = 18) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${(POI_ICONES[key] || POI_ICONES.etoile)[1]}</svg>`;
   const caracIcone = c => ((S.data && S.data.listes && S.data.listes.icones) || {})[c] || 'etoile';
@@ -533,6 +564,25 @@
   }
 
   const M = { map: null, group: null, me: null, focus: null };
+  // Points secondaires : leurs types sont tous « secondaires » (écran de gestion) ; ils n'apparaissent sur la carte
+  // qu'à partir du zoom réglé, sauf quand une recherche ou un filtre est en cours (le point cherché s'affiche toujours).
+  const listesSec = () => (S.data && S.data.listes && S.data.listes.secondaires) || {};
+  const zoomSec = () => Number(S.data && S.data.listes && S.data.listes.zoomSec) || 13;
+  const estSecondaire = p => p.caracs.length > 0 && p.caracs.every(c => listesSec()[c]);
+  const rechercheActive = () => !!(S.f.q.trim() || S.f.caracs.length || S.f.secteurs.length);
+  function majSecondaires() {
+    if (!M.map || !M.group) return;
+    const voir = M.map.getZoom() >= zoomSec();
+    let caches = 0;
+    M.group.eachLayer(l => {
+      if (!l.poiSec) return;
+      const el2 = l.getElement && l.getElement();
+      if (el2) el2.style.display = voir ? '' : 'none';
+      if (!voir) caches++;
+    });
+    const note = $('#poi-map-note');
+    if (note && !note.dataset.fixe) note.textContent = caches ? `${caches} point${caches > 1 ? 's' : ''} secondaire${caches > 1 ? 's' : ''} masqué${caches > 1 ? 's' : ''} à cette échelle : zoomez pour ${caches > 1 ? 'les' : 'le'} voir.` : '';
+  }
   async function renderMap(list) {
     const note = $('#poi-map-note');
     try { await loadLeaflet(); }
@@ -544,6 +594,19 @@
     if (!M.map) {
       M.map = makeMap(L, $('#poi-map'), VAUCLUSE, 9);
       M.group = L.featureGroup().addTo(M.map);
+      M.map.on('zoomend', majSecondaires);
+      M.group.on('layeradd', majSecondaires);
+      // Plein écran (ordinateur surtout) : la carte occupe toute la fenêtre, Échap pour sortir
+      const Fs = L.Control.extend({
+        options: { position: 'topleft' },
+        onAdd: () => {
+          const b = el('button', { type: 'button', class: 'poi-locate poi-fs-btn', title: 'Plein écran', 'aria-label': 'Carte en plein écran', html: FS_ICO });
+          L.DomEvent.disableClickPropagation(b);
+          b.addEventListener('click', () => pleinEcran(!document.body.classList.contains('poi-plein')));
+          return b;
+        },
+      });
+      M.map.addControl(new Fs());
       const Me = L.Control.extend({
         options: { position: 'topleft' },
         onAdd: () => {
@@ -566,8 +629,10 @@
       const icon = L.divIcon({ className: 'poi-pin', html: pinPoint(p), iconSize: [25, 34], iconAnchor: [12.5, 34], popupAnchor: [0, -30] });
       const m = L.marker([p.lat, p.lng], { title: p.nom, icon }).bindPopup(pop);
       m.poiId = p.id;
+      m.poiSec = estSecondaire(p) && !rechercheActive();
       m.addTo(M.group);
     });
+    majSecondaires();
     setTimeout(() => {
       M.map.invalidateSize();
       const focus = M.focus && list.find(p => p.id === M.focus);
@@ -579,7 +644,7 @@
         M.map.fitBounds(M.group.getBounds(), { padding: [30, 30], maxZoom: 14 });
       }
     }, 50);
-    note.textContent = list.length ? '' : 'Aucun point à afficher.';
+    if (!list.length) note.textContent = 'Aucun point à afficher.';
     renderLegend(list);
   }
 
@@ -595,6 +660,27 @@
       list.some(p => p.secteurs.length > 1) ? el('span', { class: 'poi-leg muted', text: 'Épingle à plusieurs bandes = plusieurs secteurs' }) : null);
     box.hidden = !list.length;
   }
+
+  const FS_ICO = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+  const FS_OFF = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>';
+  // La carte est déplacée sous <body> pendant le plein écran (un parent transformé empêcherait position:fixed)
+  let fsPlace = null;
+  function pleinEcran(on) {
+    const box = $('#poi-map');
+    if (on && !fsPlace) { fsPlace = document.createComment('poi-map'); box.before(fsPlace); document.body.append(box); }
+    if (!on && fsPlace) { fsPlace.replaceWith(box); fsPlace = null; }
+    document.body.classList.toggle('poi-plein', on);
+    const b = document.querySelector('.poi-fs-btn');
+    if (b) { b.innerHTML = on ? FS_OFF : FS_ICO; b.title = on ? 'Quitter le plein écran (Échap)' : 'Plein écran'; }
+    // vrai plein écran du navigateur si possible (ordinateur, Android) ; sinon la carte remplit la fenêtre
+    try {
+      if (on && !document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+      if (!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    } catch (e) {}
+    setTimeout(() => M.map && M.map.invalidateSize(), 120);
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('poi-plein')) pleinEcran(false); });
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && document.body.classList.contains('poi-plein')) pleinEcran(false); });
 
   async function showMe() {
     const note = $('#poi-map-note');
@@ -818,7 +904,8 @@
     if (!droits().gerer || !S.data || !S.data.listes) return;
     const L = S.data.listes;
     const usage = code => ((S.data && S.data.points) || []).filter(p => p.secteurs.includes(code)).length;
-    A.types = L.caracs.map(c => ({ libelle: c, ancien: c, icone: caracIcone(c) }));
+    A.types = L.caracs.map(c => ({ libelle: c, ancien: c, icone: caracIcone(c), secondaire: !!(L.secondaires || {})[c] }));
+    A.zoomSec = Number(L.zoomSec) || 13;
     A.secteurs = L.secteurs.map(s => ({ code: s.code, libelle: s.libelle, reserve: s.reserve || '', couleur: s.couleur || '#5d6b7a', existant: true, usage: usage(s.code) }));
     $('#poi-adm-error').textContent = '';
     $('#poi-main').hidden = true;
@@ -848,6 +935,12 @@
           onclick: () => { A.types.forEach(x => { if (x !== t) x.choix = false; }); t.choix = !t.choix; renderAdmin(); } }),
         el('input', { type: 'text', value: t.libelle, maxlength: '40', placeholder: 'Nom du type', 'aria-label': 'Nom du type',
           oninput: e => { t.libelle = e.target.value; } }),
+        (() => {
+          const cb = el('input', { type: 'checkbox' });
+          cb.checked = !!t.secondaire;
+          cb.addEventListener('change', () => { t.secondaire = cb.checked; });
+          return el('label', { class: 'poi-adm-sec', title: 'Secondaire : visible sur la carte seulement à partir de l’échelle réglée plus bas' }, cb, 'Secondaire');
+        })(),
         moveBtns(A.types, i),
         el('button', { type: 'button', class: 'poi-adm-ico danger', title: 'Supprimer', 'aria-label': `Supprimer ${t.libelle}`, text: '✕',
           onclick: () => {
@@ -857,6 +950,8 @@
           } }),
         grid);
     }));
+    const zs = $('#poi-adm-zoom');
+    if (zs) { zs.value = String(A.zoomSec); $('#poi-adm-zoom-lib').textContent = echelleLib(A.zoomSec); }
     $('#poi-adm-secteurs').replaceChildren(...A.secteurs.map((s, i) => el('li', { class: 'poi-adm-row poi-adm-sect' },
       el('input', { type: 'color', value: s.couleur, class: 'poi-adm-color', title: 'Couleur de l’épingle', 'aria-label': `Couleur de #${s.code || 'nouveau secteur'}`,
         oninput: e => { s.couleur = e.target.value; renderApercu(); } }),
@@ -892,7 +987,7 @@
   async function saveAdmin() {
     const err = $('#poi-adm-error');
     err.textContent = '';
-    const types = A.types.map(t => ({ libelle: t.libelle.trim(), icone: t.icone, ancien: t.ancien || '' })).filter(t => t.libelle);
+    const types = A.types.map(t => ({ libelle: t.libelle.trim(), icone: t.icone, secondaire: !!t.secondaire, ancien: t.ancien || '' })).filter(t => t.libelle);
     const secteurs = A.secteurs.map(s => ({ code: s.code, libelle: s.libelle.trim(), reserve: s.reserve, couleur: s.couleur })).filter(s => s.code);
     if (!types.length) { err.textContent = 'Gardez au moins un type de point.'; return; }
     if (!secteurs.length) { err.textContent = 'Gardez au moins un secteur.'; return; }
@@ -903,7 +998,7 @@
     btn.disabled = true;
     btn.textContent = 'Enregistrement…';
     try {
-      const res = await app().api('poi_listes_save', { token: app().token(), listes: { caracs: types, secteurs } });
+      const res = await app().api('poi_listes_save', { token: app().token(), listes: { caracs: types, secteurs, zoomSec: A.zoomSec } });
       S.data = { points: res.points || [], listes: res.listes, droits: res.droits || null, maj: res.maj || new Date().toISOString() };
       S.loadedAt = Date.now();
       save();
@@ -918,6 +1013,13 @@
     } finally { btn.disabled = false; btn.textContent = 'Enregistrer'; }
   }
 
+  // Échelle approximative d'un zoom de carte (latitude du Vaucluse, écran courant)
+  function echelleLib(z) {
+    const den = Math.round(156543.03 * Math.cos(44 * Math.PI / 180) / Math.pow(2, z) / 0.00028 / 1000) * 1000;
+    const km = Math.round(40075 * Math.cos(44 * Math.PI / 180) / Math.pow(2, z) * 4) / 10;
+    return `≈ 1 : ${den.toLocaleString('fr-FR')} (environ ${km.toLocaleString('fr-FR')} km de large à l’écran)`;
+  }
+  $('#poi-adm-zoom').addEventListener('input', e => { A.zoomSec = Number(e.target.value); $('#poi-adm-zoom-lib').textContent = echelleLib(A.zoomSec); });
   $('#poi-gerer').addEventListener('click', openAdmin);
   $('#poi-nav-cancel').addEventListener('click', () => { const d = $('#poi-nav'); d.close ? d.close() : d.removeAttribute('open'); });
   $('#poi-adm-cancel').addEventListener('click', closeAdmin);
