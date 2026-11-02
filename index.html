@@ -355,11 +355,10 @@
         <p id="poi-nav-msg" class="muted small" role="status"></p>
         <dialog id="poi-nav" class="ann-dialog" aria-labelledby="poi-nav-title">
           <h2 id="poi-nav-title">Itinéraire</h2>
-          <p class="muted small">Ouvrir avec :</p>
+          <p class="muted small" id="poi-nav-lead">Ouvrir avec :</p>
           <div id="poi-nav-list" class="poi-nav-list"></div>
-          <label class="ann-check" id="poi-nav-keep-row"><input type="checkbox" id="poi-nav-keep"> Mémoriser mon choix sur ce téléphone</label>
-          <p class="muted small" id="poi-nav-note"></p>
-          <div class="ann-dialog-btns"><button type="button" id="poi-nav-cancel">Annuler</button></div>
+          <p class="muted small" id="poi-nav-note" role="status"></p>
+          <div class="ann-dialog-btns"><button type="button" id="poi-nav-cancel">Annuler</button><button type="button" class="primary" id="poi-nav-ok" hidden>Enregistrer</button></div>
         </dialog>
       </div>
 
@@ -654,6 +653,13 @@
           <button type="button" data-theme-choice="dark" aria-pressed="false">Sombre</button>
         </div>
         <p class="muted small">« Automatique » suit le réglage du téléphone. Choix enregistré sur cet appareil.</p>
+      </section>
+      <section class="theme-card" aria-labelledby="nav-apps-title">
+        <h2 class="section-title" id="nav-apps-title">Applications de navigation</h2>
+        <p class="muted small">Cochez les applications installées sur ce téléphone : elles vous seront proposées à chaque itinéraire vers un point d'intérêt (une seule cochée : elle s'ouvre directement).</p>
+        <div id="nav-apps-prof" class="poi-nav-list"></div>
+        <p id="nav-apps-status" class="ok small" role="status"></p>
+        <p id="nav-apps-note" class="muted small"></p>
       </section>
       <h2 class="section-title">Qualifications</h2>
       <ul id="list-qualifs" class="qualifs"></ul>

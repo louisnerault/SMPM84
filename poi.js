@@ -329,7 +329,10 @@
   // Iphigénie : lien d'import « gpxs:// » vers le back-end (doGet ?gpx=1 → fichier GPX), sans fichier sur le téléphone.
   // Avenza : partage d'un fichier (GPX, ou CSV sur Android où Chrome refuse de partager un .gpx).
   // En dernier recours (hors ligne pour Iphigénie, partage impossible) : partage ou téléchargement du GPX.
+  // Applications choisies par l'utilisateur (Mon profil › Applications de navigation), gardées sur l'appareil.
+  // KEY_NAV : ancien choix unique (« Mémoriser mon choix »), repris une fois comme premier choix.
   const KEY_NAV = 'smpm_poi_nav';
+  const KEY_NAVS = 'smpm_poi_navs';
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const isAndroid = /Android/i.test(navigator.userAgent);
   const NAV_APPS = [
@@ -339,9 +342,25 @@
     { id: 'geo', nom: 'Roole ou autre GPS du téléphone', ok: isAndroid, url: (la, lo, nom) => `geo:${la},${lo}?q=${la},${lo}(${encodeURIComponent(nom || 'Point')})` },
     { id: 'iphigenie', nom: 'Iphigénie (repère)', ok: true, gpx: true, lien: true },
     { id: 'avenza', nom: 'Avenza Maps (repère)', ok: true, gpx: true, csv: true },
+    { id: 'globexplorus', nom: 'GlobeXplorus (repère)', ok: true, gpx: true },
   ];
   const navApps = () => NAV_APPS.filter(a => a.ok);
-  const navPref = () => { const id = store.getJSON(KEY_NAV); return navApps().find(a => a.id === id) || null; };
+  // Liste des applications choisies (dans l'ordre de NAV_APPS) ; null si aucun choix n'a encore été fait
+  function navChoix() {
+    let ids = store.getJSON(KEY_NAVS);
+    if (!Array.isArray(ids)) {
+      const old = store.getJSON(KEY_NAV);
+      if (!old) return null;
+      ids = [old];
+      store.set(KEY_NAVS, JSON.stringify(ids)); store.del(KEY_NAV);
+    }
+    const sel = navApps().filter(a => ids.includes(a.id));
+    return sel.length ? sel : null;
+  }
+  function setNavChoix(ids) {
+    store.set(KEY_NAVS, JSON.stringify(ids));
+    renderNavPref(); renderNavProfil();
+  }
   const routeUrl = p => `https://www.google.com/maps/dir/?api=1&destination=${p.lat.toFixed(6)},${p.lng.toFixed(6)}`;
   const xmlEsc = t => String(t == null ? '' : t).replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
   const safeName = nom => (nom.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'point');
@@ -411,41 +430,70 @@
     const u = a.url(p.lat.toFixed(6), p.lng.toFixed(6), p.nom);
     if (u.startsWith('geo:')) location.href = u; else window.open(u, '_blank', 'noopener');
   }
+  const closeNav = () => { const d = $('#poi-nav'); d.close ? d.close() : d.removeAttribute('open'); };
+  const openNav = () => { const d = $('#poi-nav'); if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', ''); };
+  const navNote = () => (isIOS ? 'Roole n’est pas proposé sur iPhone : il ne peut pas être ouvert depuis une application web. '
+    : isAndroid ? '« Roole ou autre GPS » ouvre le choix des applications de navigation installées sur le téléphone. ' : '')
+    + 'Iphigénie, Avenza Maps et GlobeXplorus reçoivent le point comme repère : lancez ensuite la navigation vers ce repère depuis l’application.';
   function openRoute(p) {
-    const pref = navPref();
-    if (pref) return launchNav(pref, p);
-    chooseNav(p);
+    const sel = navChoix();
+    if (!sel) return setupNav(p);
+    if (sel.length === 1) return launchNav(sel[0], p);
+    chooseNav(p, sel);
   }
-  // p absent : simple changement de l'application mémorisée
-  function chooseNav(p) {
-    const d = $('#poi-nav');
-    const keep = $('#poi-nav-keep');
-    keep.checked = !p || !!navPref();
-    $('#poi-nav-title').textContent = p ? `Itinéraire vers « ${p.nom} »` : 'Application de navigation';
-    $('#poi-nav-keep-row').hidden = !p;
-    $('#poi-nav-note').textContent = (isIOS ? 'Roole n’est pas proposé sur iPhone : il ne peut pas être ouvert depuis une application web. '
-      : isAndroid ? '« Roole ou autre GPS » ouvre le choix des applications de navigation installées sur le téléphone. ' : '')
-      + 'Iphigénie et Avenza Maps : le point est envoyé comme repère (Iphigénie s’ouvre directement ; pour Avenza, choisissez-la dans le menu de partage), puis lancez la navigation vers ce repère depuis l’application.';
-    const cur = navPref();
-    $('#poi-nav-list').replaceChildren(...navApps().map(a => el('button', {
-      type: 'button', class: 'poi-nav-app' + (cur && cur.id === a.id ? ' is-cur' : ''), text: a.nom,
-      onclick: () => {
-        if (!p || keep.checked) store.set(KEY_NAV, JSON.stringify(a.id)); else store.del(KEY_NAV);
-        d.close ? d.close() : d.removeAttribute('open');
-        renderNavPref();
-        if (p) launchNav(a, p);
-      },
-    })), !p && cur ? el('button', { type: 'button', class: 'link', text: 'Toujours me demander',
-      onclick: () => { store.del(KEY_NAV); d.close ? d.close() : d.removeAttribute('open'); renderNavPref(); } }) : '');
-    if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
+  // Choix de l'application parmi celles retenues par l'utilisateur
+  function chooseNav(p, sel) {
+    $('#poi-nav-title').textContent = `Itinéraire vers « ${p.nom} »`;
+    $('#poi-nav-lead').textContent = 'Ouvrir avec :';
+    $('#poi-nav-note').textContent = '';
+    $('#poi-nav-list').replaceChildren(
+      ...sel.map(a => el('button', { type: 'button', class: 'poi-nav-app', text: a.nom, onclick: () => { closeNav(); launchNav(a, p); } })),
+      el('button', { type: 'button', class: 'link', text: 'Modifier mes applications', onclick: () => setupNav(p) }));
+    $('#poi-nav-ok').hidden = true;
+    openNav();
+  }
+  // Sélection (plusieurs possibles) des applications installées ; p présent : on enchaîne sur l'itinéraire
+  function setupNav(p) {
+    const cur = (navChoix() || []).map(a => a.id);
+    $('#poi-nav-title').textContent = 'Mes applications de navigation';
+    $('#poi-nav-lead').textContent = 'Cochez les applications installées sur ce téléphone : elles vous seront proposées à chaque itinéraire.';
+    $('#poi-nav-note').textContent = navNote();
+    $('#poi-nav-list').replaceChildren(...navApps().map(a => el('label', { class: 'ann-check poi-nav-check' },
+      el('input', { type: 'checkbox', value: a.id, checked: cur.includes(a.id) }), ' ' + a.nom)));
+    const ok = $('#poi-nav-ok');
+    ok.hidden = false;
+    ok.onclick = () => {
+      const ids = [...$('#poi-nav-list').querySelectorAll('input:checked')].map(i => i.value);
+      if (!ids.length) { $('#poi-nav-note').textContent = 'Cochez au moins une application.'; return; }
+      setNavChoix(ids);
+      closeNav();
+      if (!p) return;
+      const sel = navChoix();
+      if (sel.length === 1) launchNav(sel[0], p); else chooseNav(p, sel);
+    };
+    openNav();
   }
   function renderNavPref() {
     const box = $('#poi-nav-pref');
     if (!box) return;
-    const a = navPref();
-    box.replaceChildren('Itinéraire : ', el('strong', { text: a ? a.nom : 'choix à chaque fois' }), ' · ',
-      el('button', { type: 'button', class: 'link', text: 'changer', onclick: () => chooseNav(null) }));
+    const sel = navChoix();
+    box.replaceChildren('Itinéraire : ', el('strong', { text: sel ? sel.map(a => a.nom.replace(/ \(.*$/, '')).join(', ') : 'applications à choisir' }), ' · ',
+      el('button', { type: 'button', class: 'link', text: sel ? 'modifier' : 'choisir', onclick: () => setupNav(null) }));
   }
+  // Encart « Applications de navigation » de Mon profil : enregistrement à chaque case cochée
+  function renderNavProfil() {
+    const box = $('#nav-apps-prof');
+    if (!box) return;
+    const cur = (navChoix() || []).map(a => a.id);
+    box.replaceChildren(...navApps().map(a => el('label', { class: 'ann-check poi-nav-check' },
+      el('input', { type: 'checkbox', value: a.id, checked: cur.includes(a.id), onchange: () => {
+        store.set(KEY_NAVS, JSON.stringify([...box.querySelectorAll('input:checked')].map(i => i.value)));
+        renderNavPref();
+        $('#nav-apps-status').textContent = navChoix() ? 'Enregistré sur cet appareil.' : 'Aucune application : le choix vous sera demandé au prochain itinéraire.';
+      } }), ' ' + a.nom)));
+    $('#nav-apps-note').textContent = navNote();
+  }
+  renderNavProfil();
 
   function card(p) {
     const dist = S.pos ? distanceKm(S.pos, [p.lat, p.lng]) : null;

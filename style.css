@@ -1521,6 +1521,7 @@ label.poi-file input { position: absolute; width: 1px; height: 1px; opacity: 0; 
 .poi-nav-list .link { justify-self: start; padding: 4px 0; }
 .poi-nav-pref .link { padding: 0; font: inherit; }
 .poi-nav-pref:empty { display: none; }
+.poi-nav-check { min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); display: flex; align-items: center; gap: 8px; font-weight: 600; }
 
 /* ---------- bouton « Accueil » (barre du mode intervention, toujours visible) ---------- */
 .home-pill { color: var(--primary); border-color: var(--primary); padding: 5px 14px 5px 10px; }
