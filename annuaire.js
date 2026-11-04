@@ -7,7 +7,8 @@
 
   const KEY = 'smpm_annuaire';
   const KEY_FILTRES = 'smpm_annuaire_filtres';
-  const QUALIFS = ['IMP 1', 'IMP 2', 'IMP 3', 'NEIGE', 'ISS', 'SSH', 'CAN', 'SSSM'];
+  const QUALIFS = ['IMP 1', 'IMP 2', 'IMP 3', 'NEIGE', 'ISS', 'SSH', 'CAN', 'SSSM', 'EPI'];
+  const QLABEL = q => (q === 'EPI' ? 'Contrôleur EPI' : q);
   const SECTEURS = { NORD: 'Nord', SUD: 'Sud', CENTRE: 'Centre' };
 
   const $ = sel => document.querySelector(sel);
@@ -109,7 +110,7 @@
     const list = present.length ? present : QUALIFS;
     S.f.qualifs = S.f.qualifs.filter(q => list.includes(q));
     $('#ann-qualifs').replaceChildren(...list.map(q => el('button', {
-      type: 'button', class: 'ann-qf', 'aria-pressed': String(S.f.qualifs.includes(q)), text: q,
+      type: 'button', class: 'ann-qf', 'aria-pressed': String(S.f.qualifs.includes(q)), text: QLABEL(q),
       onclick: e => {
         const on = !S.f.qualifs.includes(q);
         S.f.qualifs = on ? [...S.f.qualifs, q] : S.f.qualifs.filter(x => x !== q);
@@ -132,7 +133,7 @@
     if (f.qualifs.length && !f.qualifs.every(q => (p.qualifs || []).includes(q))) return false;
     const words = fold(f.q).split(/\s+/).filter(Boolean);
     if (!words.length) return true;
-    const hay = fold([p.nom, p.prenom, p.grade, p.secteur, p.centre, (p.qualifs || []).join(' '), (p.qualifs || []).join(' ').replace(/\s/g, ''), (p.fonctions || []).join(' '), digits(p.tel)].join(' '));
+    const hay = fold([p.nom, p.prenom, p.grade, p.secteur, p.centre, (p.qualifs || []).join(' '), (p.qualifs || []).join(' ').replace(/\s/g, ''), (p.qualifs || []).map(QLABEL).join(' '), (p.fonctions || []).join(' '), digits(p.tel)].join(' '));
     return words.every(w => hay.includes(w) || (/^\d{2,}$/.test(w) && digits(p.tel).includes(w)));
   }
 
@@ -195,7 +196,7 @@
         (p.fonctions || []).length ? el('span', { class: 'ann-fct', text: p.fonctions.join(' · ') }) : null),
       el('p', { class: 'ann-meta', text: meta.join(' · ') || 'Affectation non renseignée' }),
       (p.qualifs || []).length
-        ? el('ul', { class: 'chips ann-chips' }, ...p.qualifs.map(q => el('li', { text: q })))
+        ? el('ul', { class: 'chips ann-chips' }, ...p.qualifs.map(q => el('li', { text: QLABEL(q) })))
         : el('p', { class: 'ann-meta muted', text: 'Aucune qualification renseignée' }),
       tel ? el('p', { class: 'ann-num', text: pretty(p.tel) }) : null,
       el('div', { class: 'ann-actions' },

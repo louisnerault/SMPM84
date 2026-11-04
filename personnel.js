@@ -8,7 +8,8 @@
 (() => {
   'use strict';
 
-  const QUALIFS = ['IMP 1', 'IMP 2', 'IMP 3', 'NEIGE', 'ISS', 'SSH', 'CAN', 'SSSM'];
+  const QUALIFS = ['IMP 1', 'IMP 2', 'IMP 3', 'NEIGE', 'ISS', 'SSH', 'CAN', 'SSSM', 'EPI'];
+  const QLABEL = q => (q === 'EPI' ? 'Contrôleur EPI' : q.replace(' ', ''));
   const SECTEURS = { NORD: 'Nord', CENTRE: 'Centre', SUD: 'Sud' };
   const SECTIONS = { NORD: 'Nord', SUD: 'Sud', CENTRE: 'Centre', NEIGE: 'Neige', ISS: 'ISS', SSSM: 'SSSM' };
 
@@ -97,7 +98,7 @@
 
   function card(p) {
     const qualifs = QUALIFS.filter(q => p.qualifs[q] && p.qualifs[q].acquis)
-      .map(q => el('li', { text: q.replace(' ', '') + (p.qualifs[q].annee ? ' ' + p.qualifs[q].annee : '') }));
+      .map(q => el('li', { text: QLABEL(q) + (p.qualifs[q].annee ? ' ' + p.qualifs[q].annee : '') }));
     return el('li', { class: 'ann-card' + (p.actif ? '' : ' pers-inactif') },
       el('div', { class: 'ann-head' },
         el('h3', { class: 'ann-name' }, `${p.nom} ${p.prenom}`, el('span', { class: 'ann-grade', text: p.grade })),
@@ -136,7 +137,7 @@
       const year = v.annee === null ? null
         : el('input', { type: 'number', inputmode: 'numeric', min: 1970, max: an, step: 1, placeholder: 'Année', 'data-an': q, 'aria-label': 'Année d’obtention ' + q, value: v.annee || '' });
       if (year) { year.disabled = !v.acquis; box.addEventListener('change', () => { year.disabled = !box.checked; }); }
-      return el('div', { class: 'pers-q' }, el('label', { class: 'ann-check' }, box, ' ' + q.replace(' ', '')), year);
+      return el('div', { class: 'pers-q' }, el('label', { class: 'ann-check' }, box, ' ' + QLABEL(q)), year);
     }));
     $('#pers-error').textContent = '';
     $('#pers-save').disabled = false;
@@ -210,10 +211,10 @@
     const an = new Date().getFullYear();
     $('#pers-new-qualifs').replaceChildren(...QUALIFS.map(q => {
       const box = el('input', { type: 'checkbox', 'data-q': q });
-      const year = q === 'SSSM' ? null
+      const year = q === 'SSSM' || q === 'EPI' ? null
         : el('input', { type: 'number', inputmode: 'numeric', min: 1970, max: an, step: 1, placeholder: 'Année', 'data-an': q, 'aria-label': 'Année d’obtention ' + q, disabled: true });
       if (year) box.addEventListener('change', () => { year.disabled = !box.checked; if (box.checked && !year.value) year.value = an; });
-      return el('div', { class: 'pers-q' }, el('label', { class: 'ann-check' }, box, ' ' + q.replace(' ', '')), year);
+      return el('div', { class: 'pers-q' }, el('label', { class: 'ann-check' }, box, ' ' + QLABEL(q)), year);
     }));
     $('#pers-new-error').textContent = '';
     $('#pers-new-save').disabled = false;
