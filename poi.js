@@ -23,10 +23,17 @@
   const app = () => window.SMPM_APP;
   const fold = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-  const F0 = () => ({ q: '', secteurs: [], caracs: [], tri: 'nom', vue: 'liste' });
+  const F0 = () => ({ q: '', secteurs: [], caracs: [], tri: 'distance', vue: 'liste' });
+  // tri par défaut : les plus proches (filtres enregistrés avant ce changement : tri remis à « distance » une fois)
+  const filtresGardes = () => {
+    const g = store.getJSON(KEY_FILTRES) || {};
+    if (!g.triV2) { g.tri = 'distance'; g.triV2 = true; }
+    return g;
+  };
   const S = {
     data: null, loadedAt: 0, loading: false, pos: null,
-    f: Object.assign(F0(), store.getJSON(KEY_FILTRES) || {}),
+    f: Object.assign(F0(), filtresGardes()),
+    posT: 0,
     edit: null,                              // point en cours de modification (null = création)
     ajouts: [],                              // fichiers ajoutés dans le formulaire : { nom, mime, data: 'data:…', taille }
     suppr: [],                               // indices des fichiers existants à retirer
@@ -188,6 +195,22 @@
     buildFilters();
     if (S.data) render();
     if (!S.loading && Date.now() - S.loadedAt > STALE) load();
+    if (S.f.tri === 'distance') majPosition();
+  }
+
+  // Tri « les plus proches » : position relevée à l'ouverture (rafraîchie au bout de 2 min) ; en attendant, tri par nom
+  let posEnCours = false;
+  async function majPosition() {
+    if (posEnCours || (S.pos && Date.now() - S.posT < 120000)) return;
+    posEnCours = true;
+    if (!S.pos) setState('Recherche de votre position pour trier les points les plus proches…');
+    try {
+      S.pos = (await locate()).ll; S.posT = Date.now();
+      if (!S.loading) setState('');
+      render();
+    } catch (err) {
+      if (!S.pos) { setState(err.message + ' Points triés par nom.', true); S.f.tri = 'nom'; $('#poi-tri').value = 'nom'; render(); }
+    } finally { posEnCours = false; }
   }
 
   // silent : chargement en arrière-plan (démarrage, synchronisation) — aucun message si la rubrique est fermée
@@ -257,8 +280,7 @@
     }));
     $('#poi-types-box').hidden = !typesPresents.length;
     paintTypesN();
-    $('#poi-tri').value = S.f.tri === 'distance' && !S.pos ? 'nom' : S.f.tri;
-    if (S.f.tri === 'distance' && !S.pos) S.f.tri = 'nom';
+    $('#poi-tri').value = S.f.tri;
     $('#poi-search').value = S.f.q;
     document.querySelectorAll('.poi-view [data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === S.f.vue)));
     $('#poi-add').hidden = !droits().creer;
@@ -271,7 +293,7 @@
   }
 
   function changed() {
-    store.set(KEY_FILTRES, JSON.stringify(Object.assign({}, S.f, { q: '', tri: S.f.tri === 'distance' ? 'nom' : S.f.tri })));
+    store.set(KEY_FILTRES, JSON.stringify(Object.assign({}, S.f, { q: '', triV2: true })));
     render();
   }
 
@@ -828,7 +850,7 @@
     note.textContent = 'Recherche de votre position…';
     try {
       const r = await locate();
-      S.pos = r.ll;
+      S.pos = r.ll; S.posT = Date.now();
       const L = window.L;
       if (M.me) M.me.remove();
       M.me = L.layerGroup([
@@ -1342,7 +1364,7 @@
     const v = e.target.value;
     if (v === 'distance') {
       setState('Recherche de votre position…');
-      try { S.pos = (await locate()).ll; setState(''); }
+      try { S.pos = (await locate()).ll; S.posT = Date.now(); setState(''); }
       catch (err) { setState(err.message, true); e.target.value = S.f.tri; return; }
     }
     S.f.tri = v;
