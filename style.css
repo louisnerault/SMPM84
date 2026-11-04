@@ -1361,6 +1361,19 @@ button.ann-btn { width: 100%; padding: 0; cursor: pointer; font: inherit; }
 .poi-photo-box:empty { display: none; }
 .poi-photo-box { margin-top: 8px; }
 .poi-photo { display: block; max-width: 100%; max-height: 60vh; border-radius: 10px; border: 1px solid var(--line); cursor: zoom-in; }
+.poi-gal { display: grid; gap: 8px; }
+.poi-gal-item { margin: 0; }
+.poi-docs { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+.poi-doc { padding: 4px 0; font-weight: 600; text-align: left; overflow-wrap: anywhere; }
+.poi-btn-files { position: relative; }
+.poi-nb { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; border-radius: 9px; background: var(--primary); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
+.poi-files { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 6px; }
+.poi-files li { display: flex; align-items: center; gap: 10px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+.poi-files li.is-out { opacity: .5; }
+.poi-files li.is-out .poi-fn { text-decoration: line-through; }
+.poi-fv { flex: none; width: 44px; height: 44px; border-radius: 6px; background: var(--primary-soft) center / cover no-repeat; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--primary-dark); }
+.poi-fn { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: .9rem; }
+.poi-files .link { flex: none; padding: 6px 0; font-weight: 600; }
 .poi-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0 0; flex-wrap: wrap; }
 .poi-foot .link { padding: 6px 0; font-weight: 600; }
 .ann-btn.is-done { color: var(--ok); }

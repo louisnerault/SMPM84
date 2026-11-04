@@ -28,7 +28,8 @@
     data: null, loadedAt: 0, loading: false, pos: null,
     f: Object.assign(F0(), store.getJSON(KEY_FILTRES) || {}),
     edit: null,                              // point en cours de modification (null = création)
-    photo: undefined,                        // undefined : inchangée ; null : retirée ; 'data:…' : nouvelle
+    ajouts: [],                              // fichiers ajoutés dans le formulaire : { nom, mime, data: 'data:…', taille }
+    suppr: [],                               // indices des fichiers existants à retirer
   };
 
   function el(tag, attrs, ...children) {
@@ -498,10 +499,11 @@
   function card(p) {
     const dist = S.pos ? distanceKm(S.pos, [p.lat, p.lng]) : null;
     const photoBox = el('div', { class: 'poi-photo-box' });
-    const btnPhoto = p.photo
-      ? el('button', { type: 'button', class: 'ann-btn', 'aria-label': `Voir la photo de ${p.nom}`, title: 'Photo', html: ICONS.photo,
+    const nf = fichiersDe(p).length;
+    const btnPhoto = nf
+      ? el('button', { type: 'button', class: 'ann-btn poi-btn-files', 'aria-label': `Photos et fichiers de ${p.nom} (${nf})`, title: `Photos et fichiers (${nf})`, html: ICONS.photo + (nf > 1 ? `<b class="poi-nb">${nf}</b>` : ''),
         onclick: e => togglePhoto(p, photoBox, e.currentTarget) })
-      : el('span', { class: 'ann-btn is-off', 'aria-disabled': 'true', title: 'Pas de photo', 'aria-label': 'Pas de photo', html: ICONS.photo });
+      : el('span', { class: 'ann-btn is-off', 'aria-disabled': 'true', title: 'Pas de photo ni de fichier', 'aria-label': 'Pas de photo ni de fichier', html: ICONS.photo });
     const gps = fmtLL(p.lat, p.lng);
     const auteur = [p.cree_par ? `Ajouté par ${p.cree_par}` : 'Ajouté', p.cree_le ? `le ${fmtDate(p.cree_le)}` : ''].filter(Boolean).join(' ');
     const modif = p.modifie_le ? ` · modifié${p.modifie_par ? ' par ' + p.modifie_par : ''} le ${fmtDate(p.modifie_le)}` : '';
@@ -535,45 +537,81 @@
     setTimeout(() => { btn.title = t; btn.classList.remove('is-done'); }, 1500);
   }
 
-  // ---------- photos (cache de l'appareil, puis serveur) ----------
-  const photoReq = p => new Request(`poi-photo/${encodeURIComponent(p.id)}?v=${encodeURIComponent(p.modifie_le || p.cree_le || '')}`);
-  async function photoUrl(p) {
+  // ---------- photos et fichiers (cache de l'appareil, puis serveur) ----------
+  // fichiers d'un point ; ancienne liste gardée sur l'appareil : simple indicateur « photo »
+  const fichiersDe = p => (p && p.fichiers) || (p && p.photo ? [{ n: 'photo.jpg', m: 'image/jpeg', t: 0 }] : []);
+  const estImage = f => /^image\//.test(f.m || '');
+  const fmtTaille = t => !t ? '' : t < 1024 * 1024 ? `${Math.max(1, Math.round(t / 1024))} Ko` : `${(t / 1048576).toFixed(1).replace('.', ',')} Mo`;
+  const photoReq = (p, i) => new Request(`poi-photo/${encodeURIComponent(p.id)}/${i}?v=${encodeURIComponent(p.modifie_le || p.cree_le || '')}`);
+  const cacheDuPoint = (r, id) => r.url.includes(`/poi-photo/${encodeURIComponent(id)}/`) || r.url.includes(`/poi-photo/${encodeURIComponent(id)}?`);
+  async function fichierBlob(p, i) {
     let cache = null;
     try { cache = await caches.open(PHOTO_CACHE); } catch (e) { cache = null; }
     if (cache) {
-      const hit = await cache.match(photoReq(p));
-      if (hit) return URL.createObjectURL(await hit.blob());
+      const hit = await cache.match(photoReq(p, i));
+      if (hit) return hit.blob();
     }
-    const res = await app().api('poi_photo', { token: app().token(), id: p.id });
+    const res = await app().api('poi_photo', { token: app().token(), id: p.id, n: i });
     const bin = atob(res.data);
     const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    const blob = new Blob([bytes], { type: res.mime || 'image/jpeg' });
+    for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+    const blob = new Blob([bytes], { type: res.mime || 'application/octet-stream' });
     if (cache) {
       try {
-        // anciennes versions de la photo de ce point retirées
-        (await cache.keys()).filter(r => r.url.includes(`/poi-photo/${encodeURIComponent(p.id)}?`)).forEach(r => cache.delete(r));
-        await cache.put(photoReq(p), new Response(blob, { headers: { 'Content-Type': blob.type } }));
+        // anciennes versions des fichiers de ce point retirées
+        const v = photoReq(p, i).url.split('?')[1];
+        (await cache.keys()).filter(r => cacheDuPoint(r, p.id) && !r.url.endsWith('?' + v)).forEach(r => cache.delete(r));
+        await cache.put(photoReq(p, i), new Response(blob, { headers: { 'Content-Type': blob.type } }));
       } catch (e) {}
     }
-    return URL.createObjectURL(blob);
+    return blob;
+  }
+  const photoUrl = (p, i) => fichierBlob(p, i || 0).then(b => URL.createObjectURL(b));
+
+  function erreurFichier(err) {
+    if (app().AUTH_ERRORS.includes(err.message)) { app().logout(); return ''; }
+    return err instanceof app().NetworkError ? app().netLabel() + ' : non disponible (jamais consulté sur cet appareil).' : err.message;
+  }
+
+  // Ouvre un document (PDF, GPX…) : nouvel onglet ; à défaut, téléchargement
+  async function ouvrirFichier(p, i, btn) {
+    const f = fichiersDe(p)[i];
+    const lib = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Chargement…';
+    try {
+      const blob = await fichierBlob(p, i);
+      const url = URL.createObjectURL(blob);
+      const ouvrable = /^(application\/pdf|text\/plain|image\/)/.test(blob.type);
+      if (!ouvrable || !window.open(url, '_blank')) {
+        const a = el('a', { href: url, download: f.n }); document.body.append(a); a.click(); a.remove();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) { const m = erreurFichier(err); if (m) setState(m, true); }
+    finally { btn.disabled = false; btn.textContent = lib; }
   }
 
   async function togglePhoto(p, box, btn) {
     if (box.firstChild) { box.replaceChildren(); btn.setAttribute('aria-expanded', 'false'); return; }
     btn.setAttribute('aria-expanded', 'true');
-    const note = el('p', { class: 'muted small', text: 'Chargement de la photo…' });
-    box.replaceChildren(note);
-    try {
-      const url = await photoUrl(p);
-      const img = el('img', { class: 'poi-photo', src: url, alt: `Photo : ${p.nom}`, loading: 'lazy' });
-      img.addEventListener('click', () => window.open(url, '_blank'));
-      box.replaceChildren(img);
-    } catch (err) {
-      if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
-      note.textContent = err instanceof app().NetworkError ? app().netLabel() + ' : photo non disponible (jamais consultée sur cet appareil).' : err.message;
-      note.classList.add('error');
-    }
+    const fichiers = fichiersDe(p);
+    const imgs = el('div', { class: 'poi-gal' });
+    const docs = el('ul', { class: 'poi-docs' });
+    fichiers.forEach((f, i) => {
+      if (estImage(f)) {
+        const fig = el('figure', { class: 'poi-gal-item' }, el('span', { class: 'muted small', text: 'Chargement…' }));
+        imgs.append(fig);
+        photoUrl(p, i).then(url => {
+          const img = el('img', { class: 'poi-photo', src: url, alt: `Photo ${i + 1} : ${p.nom}`, loading: 'lazy' });
+          img.addEventListener('click', () => window.open(url, '_blank'));
+          fig.replaceChildren(img);
+        }).catch(err => { const m = erreurFichier(err); fig.replaceChildren(el('span', { class: 'muted small error', text: m || '' })); });
+      } else {
+        docs.append(el('li', {},
+          el('button', { type: 'button', class: 'link poi-doc', text: f.n, onclick: e => ouvrirFichier(p, i, e.currentTarget) }),
+          f.t ? el('span', { class: 'muted small', text: ' · ' + fmtTaille(f.t) }) : null));
+      }
+    });
+    box.replaceChildren(...[imgs.firstChild ? imgs : null, docs.firstChild ? docs : null].filter(Boolean));
   }
 
   // ---------- carte ----------
@@ -832,7 +870,7 @@
     if (p ? !d.modifier : !d.creer) return;
     if (!S.data || !S.data.listes) { setState('Liste des secteurs indisponible : ouvrez la rubrique avec du réseau.', true); return; }
     S.edit = p || null;
-    S.photo = undefined;
+    S.ajouts = []; S.suppr = [];
     const f = $('#poi-form');
     f.reset();
     $('#poi-form-title').textContent = p ? 'Modifier le point' : 'Nouveau point d’intérêt';
@@ -863,18 +901,7 @@
       onclick: e => e.currentTarget.setAttribute('aria-pressed', String(e.currentTarget.getAttribute('aria-pressed') !== 'true')),
     }, c)));
 
-    // photo existante
-    const prev = $('#poi-f-preview');
-    prev.hidden = true;
-    prev.removeAttribute('src');
-    $('#poi-f-photo-del').hidden = true;
-    if (p && p.photo) {
-      $('#poi-f-photo-note').textContent = 'Chargement de la photo…';
-      photoUrl(p).then(url => {
-        if (S.edit !== p || S.photo !== undefined) return;
-        prev.src = url; prev.hidden = false; $('#poi-f-photo-del').hidden = false; $('#poi-f-photo-note').textContent = '';
-      }).catch(() => { if (S.edit === p) $('#poi-f-photo-note').textContent = 'Photo existante (non affichable hors ligne) : elle est conservée.'; });
-    }
+    renderFichiers();
 
     closePick();
     showForm(true);
@@ -884,7 +911,7 @@
   function closeForm() {
     closePick();
     S.edit = null;
-    S.photo = undefined;
+    S.ajouts = []; S.suppr = [];
     showForm(false);
     render();
   }
@@ -928,6 +955,41 @@
     $('#poi-f-pick').setAttribute('aria-expanded', 'false');
   }
 
+  // Liste des fichiers du formulaire : existants (retirables) et ajoutés
+  const FICHIERS_MAX = 10, DOC_MAX = 5 * 1024 * 1024;
+  function renderFichiers() {
+    const ul = $('#poi-f-files');
+    const exist = S.edit ? fichiersDe(S.edit) : [];
+    const items = [];
+    exist.forEach((f, i) => {
+      const out = S.suppr.includes(i);
+      const vign = el('span', { class: 'poi-fv' + (estImage(f) ? '' : ' is-doc'), text: estImage(f) ? '' : (f.n.split('.').pop() || '').slice(0, 4).toUpperCase() });
+      if (estImage(f) && S.edit) photoUrl(S.edit, i).then(u => { vign.style.backgroundImage = `url("${u}")`; }).catch(() => { vign.textContent = 'IMG'; vign.classList.add('is-doc'); });
+      items.push(el('li', { class: out ? 'is-out' : '' }, vign,
+        el('span', { class: 'poi-fn' }, f.n, el('small', { class: 'muted', text: out ? ' · sera retiré' : (f.t ? ' · ' + fmtTaille(f.t) : '') })),
+        el('button', { type: 'button', class: 'link', text: out ? 'Garder' : 'Retirer', onclick: () => {
+          S.suppr = out ? S.suppr.filter(x => x !== i) : S.suppr.concat(i); renderFichiers();
+        } })));
+    });
+    S.ajouts.forEach((f, k) => {
+      const img = /^image\//.test(f.mime);
+      const vign = el('span', { class: 'poi-fv' + (img ? '' : ' is-doc'), text: img ? '' : (f.nom.split('.').pop() || '').slice(0, 4).toUpperCase() });
+      if (img) vign.style.backgroundImage = `url("${f.data}")`;
+      items.push(el('li', { class: 'is-new' }, vign,
+        el('span', { class: 'poi-fn' }, f.nom, el('small', { class: 'muted', text: ' · nouveau · ' + fmtTaille(f.taille) })),
+        el('button', { type: 'button', class: 'link', text: 'Retirer', onclick: () => { S.ajouts.splice(k, 1); renderFichiers(); } })));
+    });
+    ul.replaceChildren(...items);
+    ul.hidden = !items.length;
+  }
+  const nbFichiers = () => (S.edit ? fichiersDe(S.edit).length - S.suppr.length : 0) + S.ajouts.length;
+  const lireDataUrl = file => new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(new Error('Fichier illisible'));
+    r.readAsDataURL(file);
+  });
+
   // Photo réduite sur l'appareil avant envoi (1280 px max, JPEG) : envoi rapide même en 4G faible
   function compressPhoto(file) {
     return new Promise((resolve, reject) => {
@@ -963,8 +1025,8 @@
 
     const poi = { nom, lat: ll[0], lng: ll[1], secteurs, caracs, commentaire: f.elements.commentaire.value.trim() };
     if (S.edit) poi.id = S.edit.id;
-    if (typeof S.photo === 'string') poi.photo = S.photo;
-    if (S.photo === null && S.edit && S.edit.photo) poi.photo_suppr = true;
+    if (S.ajouts.length) poi.ajouts = S.ajouts.map(x => ({ nom: x.nom, data: x.data }));
+    if (S.edit && S.suppr.length) poi.suppr = S.suppr.slice();
 
     const btn = $('#poi-f-save');
     const sid = S.edit ? undefined : (S.sid = S.sid || ('poi-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)));
@@ -1146,9 +1208,9 @@
     let note = '';
     if (!setOutbox(list.concat(entry))) {
       // mémoire de l'appareil pleine (photo) : le point est gardé sans sa photo
-      delete entry.poi.photo;
+      delete entry.poi.ajouts;
       if (!setOutbox(list.concat(entry))) { $('#poi-f-error').textContent = 'Mémoire de l’appareil pleine : point non enregistré.'; return; }
-      note = ' La photo n’a pas pu être gardée (mémoire de l’appareil pleine) : ajoutez-la ensuite.';
+      note = ' Les photos et fichiers n’ont pas pu être gardés (mémoire de l’appareil pleine) : ajoutez-les ensuite.';
     }
     S.sid = null;
     closeForm();
@@ -1209,7 +1271,7 @@
         const when = new Date(e.ts).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
         const li = el('li', { class: e.erreur ? 'is-error' : '' },
           el('span', { text: `${e.poi.nom} · ${(e.poi.secteurs || []).map(c => '#' + c).join(' ')}` }),
-          el('small', { text: e.erreur ? `Refusé : ${e.erreur}` : `${fmtLL(e.poi.lat, e.poi.lng)} · saisi le ${when}${e.poi.photo ? ' · avec photo' : ''}` }));
+          el('small', { text: e.erreur ? `Refusé : ${e.erreur}` : `${fmtLL(e.poi.lat, e.poi.lng)} · saisi le ${when}${e.poi.ajouts && e.poi.ajouts.length ? ` · ${e.poi.ajouts.length} fichier${e.poi.ajouts.length > 1 ? 's' : ''}` : ''}` }));
         if (e.erreur) li.append(el('div', { class: 'outbox-actions' },
           el('button', { type: 'button', class: 'link', text: 'Réessayer', onclick: () => { setOutbox(outbox().map(x => (x.sid === e.sid ? Object.assign(x, { erreur: '' }) : x))); flush(); } }),
           el('button', { type: 'button', class: 'link', text: 'Reprendre', onclick: () => resume(e) }),
@@ -1231,7 +1293,9 @@
     f.elements.commentaire.value = p.commentaire || '';
     document.querySelectorAll('#poi-f-secteurs [data-code]').forEach(b => b.setAttribute('aria-pressed', String((p.secteurs || []).includes(b.dataset.code))));
     document.querySelectorAll('#poi-f-caracs [data-v]').forEach(b => b.setAttribute('aria-pressed', String((p.caracs || []).includes(b.dataset.v))));
-    if (p.photo) { S.photo = p.photo; const prev = $('#poi-f-preview'); prev.src = p.photo; prev.hidden = false; $('#poi-f-photo-del').hidden = false; }
+    if (p.photo) p.ajouts = [{ nom: 'photo.jpg', data: p.photo }];   // point mis en attente par une version précédente
+    S.ajouts = (p.ajouts || []).map(x => ({ nom: x.nom, data: x.data, mime: (/^data:([^;]+)/.exec(x.data) || [])[1] || '', taille: Math.round(x.data.length * 0.75) }));
+    renderFichiers();
     S.sid = e.sid;
     $('#poi-f-error').textContent = e.erreur ? `Refusé par le serveur : ${e.erreur}` : '';
   }
@@ -1245,7 +1309,7 @@
       await app().api('poi_delete', { token: app().token(), id: p.id });
       S.data.points = S.data.points.filter(x => x.id !== p.id);
       save();
-      try { const c = await caches.open(PHOTO_CACHE); (await c.keys()).filter(r => r.url.includes(`/poi-photo/${encodeURIComponent(p.id)}?`)).forEach(r => c.delete(r)); } catch (e) {}
+      try { const c = await caches.open(PHOTO_CACHE); (await c.keys()).filter(r => cacheDuPoint(r, p.id)).forEach(r => c.delete(r)); } catch (e) {}
       closeForm();
       buildFilters();
       render();
@@ -1263,7 +1327,7 @@
     store.del(KEY);
     store.del(KEY_FILTRES);
     try { caches.delete(PHOTO_CACHE); } catch (e) {}
-    Object.assign(S, { data: null, loadedAt: 0, loading: false, pos: null, f: F0(), edit: null, photo: undefined, sid: null });
+    Object.assign(S, { data: null, loadedAt: 0, loading: false, pos: null, f: F0(), edit: null, ajouts: [], suppr: [], sid: null });
     $('#poi-list').replaceChildren();
     if (M.group) M.group.clearLayers();
     showForm(false);
@@ -1309,27 +1373,28 @@
     $('#poi-f-gps-note').textContent = e.target.value.trim() && !ll ? 'Format attendu : latitude, longitude en degrés décimaux (ex. 44.174130, 5.278690).' : '';
   });
   $('#poi-f-photo').addEventListener('change', async e => {
-    const file = e.target.files && e.target.files[0];
+    const files = Array.from(e.target.files || []);
     e.target.value = '';
-    if (!file) return;
+    if (!files.length) return;
     const note = $('#poi-f-photo-note');
-    note.textContent = 'Préparation de la photo…';
-    try {
-      S.photo = await compressPhoto(file);
-      const prev = $('#poi-f-preview');
-      prev.src = S.photo;
-      prev.hidden = false;
-      $('#poi-f-photo-del').hidden = false;
-      note.textContent = `Photo prête (${Math.round(S.photo.length * 0.75 / 1024)} Ko).`;
-    } catch (err) { note.textContent = 'Cette image n’a pas pu être lue. Essayez une autre photo.'; }
-  });
-  $('#poi-f-photo-del').addEventListener('click', () => {
-    S.photo = null;
-    const prev = $('#poi-f-preview');
-    prev.hidden = true;
-    prev.removeAttribute('src');
-    $('#poi-f-photo-del').hidden = true;
-    $('#poi-f-photo-note').textContent = S.edit && S.edit.photo ? 'La photo sera retirée à l’enregistrement.' : '';
+    const refus = [];
+    for (const file of files) {
+      if (nbFichiers() >= FICHIERS_MAX) { refus.push(`${file.name} (${FICHIERS_MAX} fichiers au plus)`); continue; }
+      note.textContent = `Préparation de « ${file.name} »…`;
+      try {
+        if (/^image\//.test(file.type) && !/svg|gif/.test(file.type)) {
+          const data = await compressPhoto(file);
+          const nom = (file.name || 'photo').replace(/\.[^.]*$/, '') + '.jpg';
+          S.ajouts.push({ nom, mime: 'image/jpeg', data, taille: Math.round(data.length * 0.75) });
+        } else {
+          if (file.size > DOC_MAX) { refus.push(`${file.name} (5 Mo au plus)`); continue; }
+          const data = await lireDataUrl(file);
+          S.ajouts.push({ nom: file.name || 'fichier', mime: file.type || 'application/octet-stream', data, taille: file.size });
+        }
+      } catch (err) { refus.push(`${file.name} (illisible)`); }
+      renderFichiers();
+    }
+    note.textContent = refus.length ? `Non ajouté : ${refus.join(', ')}.` : '';
   });
 
   window.addEventListener('online', () => { renderPending(); flush(); });
