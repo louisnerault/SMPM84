@@ -660,7 +660,88 @@
     return map;
   }
 
-  const M = { map: null, group: null, me: null, focus: null, traces: null, liste: [] };
+  const M = { map: null, group: null, me: null, focus: null, traces: null, liste: [], scan: null, scanRes: [], scanFocus: null };
+
+  // ---------- coordonnées scannées (photo ou texte collé, coord-scan.js) ----------
+  const scanPoint = (r, i) => ({ id: 'scan-' + i, nom: `Coordonnées scannées ${i + 1}`, lat: r.lat, lng: r.lng, commentaire: r.texte, caracs: [], secteurs: [] });
+  function dessinerScan() {
+    if (!M.map) return;
+    const L = window.L;
+    if (!M.scan) M.scan = L.featureGroup().addTo(M.map);
+    M.scan.clearLayers();
+    M.scanRes.forEach((r, i) => {
+      const icon = L.divIcon({ className: 'poi-scan-pin', html: `<span>${i + 1}</span>`, iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -14] });
+      const m = L.marker([r.lat, r.lng], { icon, title: `Coordonnées scannées ${i + 1}`, zIndexOffset: 1000 });
+      m.scanIdx = i;
+      m.bindPopup(() => scanActions(r, i, true));
+      m.addTo(M.scan);
+    });
+  }
+  function scanActions(r, i, carte) {
+    const p = scanPoint(r, i);
+    const gps = fmtLL(r.lat, r.lng);
+    return el('div', { class: 'poi-pop' },
+      el('strong', { text: `${i + 1}. ${gps}` }),
+      el('div', { class: 'small muted', text: `Lu : « ${r.texte} » (${r.format})` }),
+      el('div', { class: 'small poi-scan-acts' },
+        carte ? null : el('button', { type: 'button', class: 'link', text: 'Voir sur la carte', onclick: () => voirScan(i) }),
+        el('button', { type: 'button', class: 'link', text: 'Itinéraire', onclick: () => openRoute(p) }),
+        el('button', { type: 'button', class: 'link', text: 'Copier', onclick: e => copyGps(gps, e.currentTarget) }),
+        droits().creer ? el('button', { type: 'button', class: 'link', text: 'Nouveau point ici', onclick: () => {
+          fermerScan(); if (M.map) M.map.closePopup(); if (plein()) pleinEcran(false);
+          openForm(null);
+          $('#poi-f-gps').value = gps;
+          $('#poi-f-gps').dispatchEvent(new Event('input'));
+        } }) : null,
+        carte ? el('button', { type: 'button', class: 'link danger', text: 'Effacer les repères', onclick: () => { M.scanRes = []; dessinerScan(); } }) : null));
+  }
+  function voirScan(i) {
+    fermerScan();
+    M.scanFocus = i;
+    if (S.f.vue === 'carte' && M.map) { dessinerScan(); render(); } else setView('carte');
+    $('#poi-map').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function ouvrirScan() {
+    $('#poi-scan-etat').textContent = '';
+    $('#poi-scan-res').replaceChildren();
+    const d = $('#poi-scan');
+    d.showModal ? d.showModal() : d.setAttribute('open', '');
+  }
+  function fermerScan() { const d = $('#poi-scan'); d.close ? d.close() : d.removeAttribute('open'); }
+  function afficherScan(res, source) {
+    const etat = $('#poi-scan-etat');
+    M.scanRes = res;
+    if (M.map) dessinerScan();
+    if (!res.length) {
+      etat.textContent = source === 'photo'
+        ? 'Aucune coordonnée reconnue dans la photo. Recadrez au plus près du texte, bien à plat et éclairé, ou corrigez le texte lu ci-dessous puis « Chercher ».'
+        : 'Aucune coordonnée reconnue. Formats attendus : 44°10,25\' N 5°16,70\' E ou 44°10\'15" N 5°16\'42" E.';
+      $('#poi-scan-res').replaceChildren();
+      return;
+    }
+    etat.textContent = `${res.length} coordonnée${res.length > 1 ? 's' : ''} trouvée${res.length > 1 ? 's' : ''}. Vérifiez-les avant de vous en servir.`;
+    $('#poi-scan-res').replaceChildren(...res.map((r, i) => el('li', {}, scanActions(r, i, false))));
+    if (res.length > 1) $('#poi-scan-res').append(el('li', {}, el('button', { type: 'button', class: 'pill', text: 'Tout voir sur la carte', onclick: () => {
+      fermerScan(); M.scanFocus = null; setView('carte');
+      setTimeout(() => { if (M.map && M.scan && M.scan.getLayers().length) M.map.fitBounds(M.scan.getBounds(), { padding: [40, 40], maxZoom: 15 }); }, 400);
+    } })));
+  }
+  async function scanPhoto(fichier) {
+    const etat = $('#poi-scan-etat');
+    const txt = $('#poi-scan-texte');
+    $('#poi-scan-res').replaceChildren();
+    etat.textContent = 'Préparation de la lecture…';
+    try {
+      const texte = await window.SMPM_COORD.lireImage(fichier, m => {
+        if (m.status === 'recognizing text') etat.textContent = `Lecture du texte… ${Math.round(m.progress * 100)} %`;
+        else if (/load|initializ/.test(m.status)) etat.textContent = 'Chargement du module de lecture (la première fois, quelques Mo)…';
+      });
+      txt.value = texte.trim();
+      afficherScan(window.SMPM_COORD.analyser(texte), 'photo');
+    } catch (e) {
+      etat.textContent = (e && e.message) || 'La lecture a échoué.';
+    }
+  }
 
   // ---------- traces GPX (fichiers .gpx joints aux points) ----------
   // Dessinées sur la carte quand la barre d'échelle indique l'échelle réglée (écran de gestion) ou moins ;
@@ -842,10 +923,17 @@
     });
     majSecondaires();
     majTraces();
+    dessinerScan();
     setTimeout(() => {
       M.map.invalidateSize();
       const focus = M.focus && list.find(p => p.id === M.focus);
-      if (focus) {
+      if (M.scanFocus !== null && M.scanRes[M.scanFocus]) {
+        const r = M.scanRes[M.scanFocus];
+        M.map.setView([r.lat, r.lng], 15);
+        M.scan.eachLayer(l => { if (l.scanIdx === M.scanFocus) l.openPopup(); });
+        M.scanFocus = null;
+        M.focus = null;
+      } else if (focus) {
         // point secondaire : zoom suffisant pour qu'il soit visible à son échelle
         let z = 15;
         const e = echPoint(focus);
@@ -1304,6 +1392,14 @@
   }
 
   $('#poi-gerer').addEventListener('click', openAdmin);
+  $('#poi-scan-btn').addEventListener('click', ouvrirScan);
+  $('#poi-scan-close').addEventListener('click', fermerScan);
+  ['#poi-scan-photo', '#poi-scan-image'].forEach(id => $(id).addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (f) scanPhoto(f);
+  }));
+  $('#poi-scan-go').addEventListener('click', () => afficherScan(window.SMPM_COORD.analyser($('#poi-scan-texte').value), 'texte'));
   $('#poi-nav-cancel').addEventListener('click', () => { const d = $('#poi-nav'); d.close ? d.close() : d.removeAttribute('open'); });
   $('#poi-adm-cancel').addEventListener('click', closeAdmin);
   $('#poi-adm-save').addEventListener('click', saveAdmin);

@@ -316,6 +316,7 @@
         <div class="poi-head">
           <h1>Points d'intérêt</h1>
           <div class="poi-head-btns">
+            <button type="button" class="pill" id="poi-scan-btn" title="Lire des coordonnées sur une photo ou un texte">Scanner des coordonnées</button>
             <button type="button" class="pill" id="poi-gerer" hidden>Gérer les types et secteurs</button>
             <button type="button" class="pill poi-add" id="poi-add" hidden>＋ Nouveau point</button>
           </div>
@@ -353,6 +354,21 @@
         <ul id="poi-list" class="ann-list"></ul>
         <p id="poi-nav-pref" class="muted small poi-nav-pref"></p>
         <p id="poi-nav-msg" class="muted small" role="status"></p>
+        <dialog id="poi-scan" class="ann-dialog poi-scan" aria-labelledby="poi-scan-title">
+          <h2 id="poi-scan-title">Scanner des coordonnées</h2>
+          <p class="muted small">Photographiez un message, un écran ou un papier portant des coordonnées en <strong>degrés minutes</strong> (44°10,25' N 5°16,70' E) ou <strong>degrés minutes secondes</strong> (44°10'15" N 5°16'42" E). Le texte autour est ignoré ; plusieurs coordonnées peuvent être lues d'un coup. La lecture se fait sur le téléphone.</p>
+          <div class="gps-actions">
+            <label class="pill poi-file">Prendre une photo<input type="file" id="poi-scan-photo" accept="image/*" capture="environment"></label>
+            <label class="pill poi-file">Choisir une image<input type="file" id="poi-scan-image" accept="image/*"></label>
+          </div>
+          <label class="small">Texte lu (corrigeable) ou collé
+            <textarea id="poi-scan-texte" rows="3" placeholder="Ou collez ici un SMS, un message…"></textarea>
+          </label>
+          <button type="button" class="pill" id="poi-scan-go">Chercher les coordonnées</button>
+          <p class="small" id="poi-scan-etat" role="status"></p>
+          <ul class="poi-scan-res" id="poi-scan-res"></ul>
+          <div class="ann-dialog-btns"><button type="button" id="poi-scan-close">Fermer</button></div>
+        </dialog>
         <dialog id="poi-nav" class="ann-dialog" aria-labelledby="poi-nav-title">
           <h2 id="poi-nav-title">Itinéraire</h2>
           <p class="muted small" id="poi-nav-lead">Ouvrir avec :</p>
@@ -897,7 +913,8 @@
 <script src="fmpa-list.js"></script>
 <script src="intervention-list.js"></script>
 <script src="annuaire.js"></script>
-<script src="poi.js"></script>
+<script src="coord-scan.js"></script>
+  <script src="poi.js"></script>
 <script src="fmpa-valid.js"></script>
 <script src="livret-remplir.js"></script>
 <script src="livret-themes.js"></script>

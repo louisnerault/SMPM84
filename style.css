@@ -1645,3 +1645,13 @@ body.poi-plein { overflow: hidden; }
 .carte-fond { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; font-weight: 600; }
 .carte-fond input { width: 20px; height: 20px; margin: 0; }
 .carte-fond-etat { flex-basis: 100%; margin-left: 26px; font-weight: 400; }
+
+/* Scanner des coordonnées (points d'intérêt) */
+.poi-scan textarea { display: block; width: 100%; box-sizing: border-box; margin: 6px 0 8px; padding: 10px; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; resize: vertical; }
+.poi-scan .gps-actions { margin: 8px 0; }
+.poi-scan-res { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.poi-scan-res > li { padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
+.poi-scan-res .poi-pop { max-width: none; }
+.poi-scan-acts { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.poi-scan-acts .link { padding: 4px 0; font-weight: 600; }
+.poi-scan-pin span { display: grid; place-items: center; width: 30px; height: 30px; box-sizing: border-box; border-radius: 50%; border: 3px solid #fff; background: #d0021b; color: #fff; font: 700 13px/1 system-ui, sans-serif; box-shadow: 0 0 0 2px #d0021b, 0 2px 6px rgba(0,0,0,.4); }

@@ -6,12 +6,13 @@
 // - Carte hors ligne : cache dédié (smpm84-carte) rempli par carte-hors-ligne.js à la demande ; jamais rempli ici.
 // - Photos des points d'intérêt : cache dédié (smpm84-poi) rempli par poi.js ; jamais rempli ici.
 // Les données personnelles ne passent jamais par ce cache (elles sont dans localStorage).
-const CACHE = 'smpm84-shell-v130';
+const CACHE = 'smpm84-shell-v131';
 const FICHES_CACHE = 'smpm84-fiches';
 const CARTE_CACHE = 'smpm84-carte';
 const POI_CACHE = 'smpm84-poi';         // photos des points d'intérêt consultées (poi.js)
+const OCR_CACHE = 'smpm84-ocr-tesseract-6.0.1';   // lecture de coordonnées (vendor/tesseract, ~7 Mo) : gardé au premier usage, hors ligne ensuite
 const SHELL = [
-  './', 'index.html', 'style.css', 'app.js', 'fiches.js', 'fmpa.js', 'fmpa-list.js', 'intervention-list.js', 'annuaire.js', 'poi.js', 'fmpa-valid.js', 'livret-remplir.js', 'livret-themes.js', 'carte-hors-ligne.js', 'push.js', 'notifs.js', 'bugs.js', 'csh.js', 'personnel.js', 'config.js', 'manifest.webmanifest',
+  './', 'index.html', 'style.css', 'app.js', 'fiches.js', 'fmpa.js', 'fmpa-list.js', 'intervention-list.js', 'annuaire.js', 'poi.js', 'fmpa-valid.js', 'livret-remplir.js', 'livret-themes.js', 'carte-hors-ligne.js', 'push.js', 'notifs.js', 'bugs.js', 'csh.js', 'personnel.js', 'coord-scan.js', 'config.js', 'manifest.webmanifest',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'vendor/leaflet/images/layers.png', 'vendor/leaflet/images/layers-2x.png',
   'vendor/leaflet/images/marker-icon.png', 'vendor/leaflet/images/marker-icon-2x.png', 'vendor/leaflet/images/marker-shadow.png',
   'assets/ecusson-132.png', 'assets/sdis84-210.png', 'assets/icon-192.png',
@@ -83,7 +84,7 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k.startsWith('smpm84-') && k !== CACHE && k !== FICHES_CACHE && k !== CARTE_CACHE && k !== POI_CACHE).map(k => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(k => k.startsWith('smpm84-') && k !== CACHE && k !== FICHES_CACHE && k !== CARTE_CACHE && k !== POI_CACHE && k !== OCR_CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -100,6 +101,15 @@ self.addEventListener('fetch', e => {
   if (url.origin !== location.origin) return;     // l'API Apps Script n'est jamais mise en cache
   // Test du réseau (app.js, hasNetwork) : toujours le réseau, jamais le cache
   if (url.pathname.endsWith('/ping.txt')) { e.respondWith(fetch(req, { cache: 'no-store' })); return; }
+
+  // Module de lecture (OCR) : cache d'abord, rempli au premier usage, conservé entre les versions
+  if (url.pathname.includes('/vendor/tesseract/')) {
+    e.respondWith(caches.open(OCR_CACHE).then(c => c.match(req).then(r => r || fetch(req).then(res => {
+      if (res && res.ok) c.put(req, res.clone());
+      return res;
+    }))));
+    return;
+  }
 
   if (url.pathname.includes('/fiches/')) {
     // Synchronisation explicite (no-store) : toujours le réseau
