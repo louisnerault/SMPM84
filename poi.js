@@ -735,7 +735,7 @@
     note.textContent = [M.secNote, M.tracesNote].filter(Boolean).join(' ');
   }
   // Points secondaires : leurs types sont tous « secondaires » (écran de gestion) ; ils n'apparaissent sur la carte
-  // qu'à partir du zoom réglé, sauf quand une recherche ou un filtre est en cours (le point cherché s'affiche toujours).
+  // qu'à partir de l'échelle réglée, même pendant une recherche ou un filtre (ils restent dans la liste).
   const listesSec = () => (S.data && S.data.listes && S.data.listes.secondaires) || {};
   // Échelle d'un type secondaire en mètres : valeur de la barre d'échelle (≈ 100 px à l'écran) à partir de
   // laquelle il apparaît. Un point apparaît dès qu'un de ses types est visible (le moins restrictif l'emporte).
@@ -748,7 +748,6 @@
     return 156543.03 * Math.cos(c.lat * Math.PI / 180) / Math.pow(2, z) * 100;
   };
   const fmtM = m => m >= 1000 ? `${(m / 1000).toLocaleString('fr-FR')} km` : `${m} m`;
-  const rechercheActive = () => !!(S.f.q.trim() || S.f.caracs.length || S.f.secteurs.length);
   function majSecondaires() {
     if (!M.map || !M.group) return;
     const ech = metresParBarre();
@@ -837,7 +836,7 @@
       const m = L.marker([p.lat, p.lng], { title: p.nom, icon, draggable: droits().modifier && plein() }).bindPopup(pop);
       m.on('dragend', () => deplacer(p, m));
       m.poiId = p.id;
-      m.poiSec = estSecondaire(p) && !rechercheActive();
+      m.poiSec = estSecondaire(p);   // l’échelle prime, quels que soient la recherche et les filtres
       m.poiEch = echPoint(p);
       m.addTo(M.group);
     });
@@ -847,7 +846,11 @@
       M.map.invalidateSize();
       const focus = M.focus && list.find(p => p.id === M.focus);
       if (focus) {
-        M.map.setView([focus.lat, focus.lng], 15);
+        // point secondaire : zoom suffisant pour qu'il soit visible à son échelle
+        let z = 15;
+        const e = echPoint(focus);
+        if (e) { const k = 156543.03 * Math.cos(focus.lat * Math.PI / 180) * 100; while (z < 19 && k / Math.pow(2, z) > e) z++; }
+        M.map.setView([focus.lat, focus.lng], z);
         M.group.eachLayer(l => { if (l.poiId === focus.id) l.openPopup(); });
         M.focus = null;
       } else if (list.length) {
