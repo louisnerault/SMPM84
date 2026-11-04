@@ -660,7 +660,80 @@
     return map;
   }
 
-  const M = { map: null, group: null, me: null, focus: null };
+  const M = { map: null, group: null, me: null, focus: null, traces: null, liste: [] };
+
+  // ---------- traces GPX (fichiers .gpx joints aux points) ----------
+  // Dessinées sur la carte quand la barre d'échelle indique l'échelle réglée (écran de gestion) ou moins ;
+  // fichiers téléchargés à la demande pour les points à l'écran, puis gardés sur l'appareil (hors ligne).
+  const estGpx = f => /\.gpx$/i.test(f.n || '') || /gpx/i.test(f.m || '');
+  const gpxEch = () => { const v = S.data && S.data.listes && S.data.listes.gpxEchelle; return v === undefined || v === null ? 2000 : Number(v); };
+  const TRACES = new Map();                      // clé id/n/version → [[lat, lng], …][] (segments)
+  function lireGpx(txt) {
+    const doc = new DOMParser().parseFromString(txt, 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length) throw new Error('Fichier GPX illisible');
+    const segs = [];
+    const prendre = (parents, tag) => Array.from(doc.getElementsByTagName(parents)).forEach(seg => {
+      const pts = Array.from(seg.getElementsByTagName(tag)).map(p => [Number(p.getAttribute('lat')), Number(p.getAttribute('lon'))]).filter(ll => isFinite(ll[0]) && isFinite(ll[1]));
+      if (pts.length > 1) segs.push(pts);
+    });
+    prendre('trkseg', 'trkpt');
+    prendre('rte', 'rtept');
+    const nomEl = doc.querySelector('trk > name, rte > name, metadata > name');
+    const wpt = doc.getElementsByTagName('wpt')[0];
+    return { segs, nom: nomEl ? nomEl.textContent.trim() : '', wpt: wpt ? [Number(wpt.getAttribute('lat')), Number(wpt.getAttribute('lon'))] : null };
+  }
+  async function traceDe(p, i) {
+    const k = `${p.id}/${i}/${p.modifie_le || p.cree_le || ''}`;
+    if (TRACES.has(k)) return TRACES.get(k);
+    const blob = await fichierBlob(p, i);
+    const segs = lireGpx(await blob.text()).segs;
+    TRACES.set(k, segs);
+    return segs;
+  }
+  let tracesGen = 0;
+  async function majTraces() {
+    if (!M.map || !M.traces) return;
+    const g = ++tracesGen;
+    const ech = gpxEch();
+    const avec = M.liste.filter(p => fichiersDe(p).some(estGpx));
+    if (!avec.length) { M.traces.clearLayers(); return; }
+    if (ech > 0 && metresParBarre() > ech) { M.traces.clearLayers(); M.tracesNote = `Traces GPX masquées à cette échelle : zoomez (≤ ${fmtM(ech)}) pour les voir.`; noteCarte(); return; }
+    M.tracesNote = '';
+    const vue = M.map.getBounds().pad(0.5);
+    const dessin = [];
+    let manquantes = 0;
+    for (const p of avec) {
+      const proche = vue.contains([p.lat, p.lng]);
+      for (const [i, f] of fichiersDe(p).entries()) {
+        if (!estGpx(f)) continue;
+        const k = `${p.id}/${i}/${p.modifie_le || p.cree_le || ''}`;
+        if (!proche && !TRACES.has(k)) continue;
+        try {
+          const segs = await traceDe(p, i);
+          if (g !== tracesGen) return;
+          if (segs.length) dessin.push({ p, segs });
+        } catch (e) { manquantes++; }
+      }
+    }
+    if (g !== tracesGen) return;
+    const L = window.L;
+    M.traces.clearLayers();
+    dessin.forEach(({ p, segs }) => {
+      const coul = secteurCouleur(secteursOrdonnes(p.secteurs)[0]);
+      L.polyline(segs, { color: '#fff', weight: 7, opacity: 0.8, interactive: false }).addTo(M.traces);
+      L.polyline(segs, { color: coul, weight: 4, opacity: 0.95 })
+        .bindPopup(el('div', { class: 'poi-pop' }, el('strong', { text: p.nom }), el('div', { class: 'small', text: 'Trace GPX' }),
+          el('div', { class: 'small' }, el('button', { type: 'button', class: 'link', text: 'Fiche', onclick: () => showInList(p) }))))
+        .addTo(M.traces);
+    });
+    if (manquantes) M.tracesNote = `${manquantes} trace${manquantes > 1 ? 's' : ''} GPX non disponible${manquantes > 1 ? 's' : ''} (${navigator.onLine ? 'erreur de chargement' : 'jamais ouverte sur cet appareil'}).`;
+    noteCarte();
+  }
+  function noteCarte() {
+    const note = $('#poi-map-note');
+    if (!note || note.dataset.fixe) return;
+    note.textContent = [M.secNote, M.tracesNote].filter(Boolean).join(' ');
+  }
   // Points secondaires : leurs types sont tous « secondaires » (écran de gestion) ; ils n'apparaissent sur la carte
   // qu'à partir du zoom réglé, sauf quand une recherche ou un filtre est en cours (le point cherché s'affiche toujours).
   const listesSec = () => (S.data && S.data.listes && S.data.listes.secondaires) || {};
@@ -687,8 +760,8 @@
       if (el2) el2.style.display = voir ? '' : 'none';
       if (!voir) caches++;
     });
-    const note = $('#poi-map-note');
-    if (note && !note.dataset.fixe) note.textContent = caches ? `${caches} point${caches > 1 ? 's' : ''} secondaire${caches > 1 ? 's' : ''} masqué${caches > 1 ? 's' : ''} à cette échelle : zoomez pour ${caches > 1 ? 'les' : 'le'} voir.` : '';
+    M.secNote = caches ? `${caches} point${caches > 1 ? 's' : ''} secondaire${caches > 1 ? 's' : ''} masqué${caches > 1 ? 's' : ''} à cette échelle : zoomez pour ${caches > 1 ? 'les' : 'le'} voir.` : '';
+    noteCarte();
   }
   async function renderMap(list) {
     const note = $('#poi-map-note');
@@ -700,8 +773,10 @@
     const L = window.L;
     if (!M.map) {
       M.map = makeMap(L, $('#poi-map'), VAUCLUSE, 9);
+      M.traces = L.featureGroup().addTo(M.map);
       M.group = L.featureGroup().addTo(M.map);
-      M.map.on('zoomend moveend', majSecondaires);
+      let tt;
+      M.map.on('zoomend moveend', () => { majSecondaires(); clearTimeout(tt); tt = setTimeout(majTraces, 250); });
       // Plein écran : clic droit (ou appui long) sur la carte = nouveau point à cet endroit
       M.map.on('contextmenu', e => {
         if (!plein() || !droits().creer) return;
@@ -750,6 +825,7 @@
       M.map.addControl(new Me());
     }
     M.group.clearLayers();
+    M.liste = list;
     list.forEach(p => {
       const pop = el('div', { class: 'poi-pop' },
         el('strong', { text: p.nom }),
@@ -766,6 +842,7 @@
       m.addTo(M.group);
     });
     majSecondaires();
+    majTraces();
     setTimeout(() => {
       M.map.invalidateSize();
       const focus = M.focus && list.find(p => p.id === M.focus);
@@ -1004,6 +1081,19 @@
     ul.replaceChildren(...items);
     ul.hidden = !items.length;
   }
+  // Trace GPX ajoutée : vérifiée, et sert à remplir le nom et les coordonnées (départ) s'ils sont vides
+  function gpxDansFormulaire(txt) {
+    const g = lireGpx(txt);
+    const f = $('#poi-form');
+    const dep = (g.segs[0] && g.segs[0][0]) || g.wpt;
+    if (!g.segs.length && !g.wpt) throw new Error('aucune trace');
+    if (!f.elements.nom.value.trim() && g.nom) f.elements.nom.value = g.nom.slice(0, 80);
+    if (!parseLatLng($('#poi-f-gps').value) && dep) {
+      $('#poi-f-gps').value = fmtLL(dep[0], dep[1]);
+      $('#poi-f-gps').dispatchEvent(new Event('input'));
+      $('#poi-f-gps-note').textContent = 'Coordonnées remplies avec le départ de la trace GPX : ajustez-les si besoin.';
+    }
+  }
   const nbFichiers = () => (S.edit ? fichiersDe(S.edit).length - S.suppr.length : 0) + S.ajouts.length;
   const lireDataUrl = file => new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -1093,6 +1183,11 @@
     const usage = code => ((S.data && S.data.points) || []).filter(p => p.secteurs.includes(code)).length;
     A.types = L.caracs.map(c => ({ libelle: c, ancien: c, icone: caracIcone(c), secondaire: echType(c) }));
     A.secteurs = L.secteurs.map(s => ({ code: s.code, libelle: s.libelle, reserve: s.reserve || '', couleur: s.couleur || '#5d6b7a', existant: true, usage: usage(s.code) }));
+    A.gpx = L.gpxEchelle === undefined || L.gpxEchelle === null ? 2000 : Number(L.gpxEchelle);
+    const sg = $('#poi-adm-gpx');
+    sg.replaceChildren(el('option', { value: '0', text: 'Toujours affichées' }),
+      ...ECHELLES.concat(ECHELLES.includes(A.gpx) || !A.gpx ? [] : [A.gpx]).sort((a, b) => a - b).map(m => el('option', { value: String(m), text: `Barre d’échelle ≤ ${fmtM(m)}` })));
+    sg.value = String(A.gpx);
     $('#poi-adm-error').textContent = '';
     $('#poi-main').hidden = true;
     $('#poi-form').hidden = true;
@@ -1189,14 +1284,15 @@
     btn.disabled = true;
     btn.textContent = 'Enregistrement…';
     try {
-      const res = await app().api('poi_listes_save', { token: app().token(), listes: { caracs: types, secteurs } });
+      const res = await app().api('poi_listes_save', { token: app().token(), listes: { caracs: types, secteurs, gpxEchelle: Number($('#poi-adm-gpx').value) || 0 } });
       S.data = { points: res.points || [], listes: res.listes, droits: res.droits || null, maj: res.maj || new Date().toISOString() };
       S.loadedAt = Date.now();
       save();
       closeAdmin();
       buildFilters();
       render();
-      setState('Types et secteurs enregistrés' + (res.modifies ? ` (${res.modifies} point${res.modifies > 1 ? 's' : ''} mis à jour).` : '.'));
+      TRACES.clear();
+      setState('Réglages enregistrés' + (res.modifies ? ` (${res.modifies} point${res.modifies > 1 ? 's' : ''} mis à jour).` : '.'));
     } catch (e) {
       if (app().AUTH_ERRORS.includes(e.message)) return app().logout();
       err.textContent = e instanceof app().NetworkError ? app().netLabel() + ' : enregistrement impossible pour l’instant.'
@@ -1394,7 +1490,7 @@
     setGps(ll, 'input');
     $('#poi-f-gps-note').textContent = e.target.value.trim() && !ll ? 'Format attendu : latitude, longitude en degrés décimaux (ex. 44.174130, 5.278690).' : '';
   });
-  $('#poi-f-photo').addEventListener('change', async e => {
+  const ajouterFichiers = async e => {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
     if (!files.length) return;
@@ -1410,14 +1506,17 @@
           S.ajouts.push({ nom, mime: 'image/jpeg', data, taille: Math.round(data.length * 0.75) });
         } else {
           if (file.size > DOC_MAX) { refus.push(`${file.name} (5 Mo au plus)`); continue; }
+          if (/\.gpx$/i.test(file.name || '')) gpxDansFormulaire(await file.text());
           const data = await lireDataUrl(file);
-          S.ajouts.push({ nom: file.name || 'fichier', mime: file.type || 'application/octet-stream', data, taille: file.size });
+          S.ajouts.push({ nom: file.name || 'fichier', mime: file.type || 'application/gpx+xml', data, taille: file.size });
         }
       } catch (err) { refus.push(`${file.name} (illisible)`); }
       renderFichiers();
     }
     note.textContent = refus.length ? `Non ajouté : ${refus.join(', ')}.` : '';
-  });
+  };
+  $('#poi-f-photo').addEventListener('change', ajouterFichiers);
+  $('#poi-f-gpx').addEventListener('change', ajouterFichiers);
 
   window.addEventListener('online', () => { renderPending(); flush(); });
   // Le retour du réseau n'est pas toujours signalé par le téléphone, et une application remise au premier plan

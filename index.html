@@ -375,6 +375,11 @@
         <p class="muted small">Couleur de l'épingle, libellé et accès. Un secteur « réservé » n'est visible que des personnels qualifiés (ex. ISS pour #SPELEO). L'ordre de la liste est celui des bandes de couleur d'une épingle à plusieurs secteurs. Un secteur utilisé par des points ne peut pas être supprimé.</p>
         <ul id="poi-adm-secteurs" class="poi-adm-list"></ul>
         <button type="button" class="pill" id="poi-adm-sect-add">＋ Ajouter un secteur</button>
+        <h2 class="section-title">Traces GPX</h2>
+        <p class="muted small">Les traces GPX jointes aux points sont dessinées sur la carte, de la couleur du secteur du point, à partir de l'échelle choisie (barre d'échelle en bas à gauche de la carte).</p>
+        <label>Afficher les traces
+          <select id="poi-adm-gpx"></select>
+        </label>
         <h2 class="section-title">Aperçu des épingles</h2>
         <div id="poi-adm-apercu" class="poi-adm-apercu"></div>
         <p class="error" id="poi-adm-error" role="alert"></p>
@@ -416,6 +421,7 @@
           <ul class="poi-files" id="poi-f-files" hidden></ul>
           <div class="gps-actions">
             <label class="pill poi-file">Ajouter des photos ou fichiers<input type="file" id="poi-f-photo" multiple accept="image/*,.pdf,.gpx,.kml,.kmz,.txt,.doc,.docx,.odt,.xls,.xlsx,.ods"></label>
+            <label class="pill poi-file">Importer une trace GPX<input type="file" id="poi-f-gpx" multiple accept=".gpx,application/gpx+xml"></label>
           </div>
           <p class="muted small">10 au plus par point : photos (réduites automatiquement), PDF, GPX, KML, documents (5 Mo au plus chacun).</p>
           <p class="muted small" id="poi-f-photo-note"></p>
