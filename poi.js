@@ -70,6 +70,44 @@
     return 2 * R * Math.asin(Math.sqrt(h));
   }
   const nf1 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 });
+
+  // ---------- noms similaires (avertissement à la création) ----------
+  const MOTS_VIDES = new Set(['le', 'la', 'les', 'l', 'd', 'de', 'du', 'des', 'un', 'une', 'au', 'aux', 'a', 'et', 'en', 'sur', 'sous', 'par', 'pour', 'st', 'saint', 'sainte', 'ste']);
+  const motsNom = n => fold(n).replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(w => w && !MOTS_VIDES.has(w));
+  function leven(a, b) {
+    if (Math.abs(a.length - b.length) > 2) return 9;
+    let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [i];
+      for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+    return prev[b.length];
+  }
+  // mots identiques, ou à une faute de frappe près (2 pour les mots longs)
+  const motProche = (a, b) => a === b || (a.length >= 4 && b.length >= 4 && leven(a, b) <= (Math.min(a.length, b.length) >= 8 ? 2 : 1));
+  function similarite(n1, n2) {
+    const a = motsNom(n1), b = motsNom(n2);
+    if (!a.length || !b.length) return 0;
+    const ja = a.join(' '), jb = b.join(' ');
+    if (ja === jb) return 1;
+    // un nom contenu dans l'autre (au moins deux mots, pour ne pas signaler tous les « Parking » pendant la frappe)
+    if (Math.min(a.length, b.length) >= 2 && (ja.includes(jb) || jb.includes(ja))) return 0.9;
+    const communs = a.filter(w => b.some(v => motProche(w, v))).length;
+    const score = communs / (a.length + b.length - communs);
+    return communs >= 1 && score >= 0.6 ? score : 0;
+  }
+  // points existants (et en attente d'envoi) dont le nom ressemble à « nom », du plus ressemblant au plus éloigné
+  function nomsSimilaires(nom, sauf) {
+    if (motsNom(nom).join('').length < 3) return [];
+    const tous = ((S.data && S.data.points) || []).concat(outbox().map(e => Object.assign({ attente: true }, e.poi)));
+    return tous.filter(p => p.id !== sauf || !sauf)
+      .map(p => ({ p, s: similarite(nom, p.nom) }))
+      .filter(x => x.s >= 0.6)
+      .sort((x, y) => y.s - x.s)
+      .slice(0, 3)
+      .map(x => x.p);
+  }
   const fmtKm = km => km < 1 ? `${Math.round(km * 1000)} m` : `${nf1.format(km)} km`;
   const fmtDate = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('fr-FR'); };
 
@@ -1061,6 +1099,8 @@
     if (!S.data || !S.data.listes) { setState('Liste des secteurs indisponible : ouvrez la rubrique avec du réseau.', true); return; }
     S.edit = p || null;
     S.ajouts = []; S.suppr = [];
+    S.similaires = []; S.avertiPour = null;
+    $('#poi-f-nom-avert').hidden = true;
     const f = $('#poi-form');
     f.reset();
     $('#poi-form-title').textContent = p ? 'Modifier le point' : 'Nouveau point d’intérêt';
@@ -1178,7 +1218,7 @@
     const f = $('#poi-form');
     const dep = (g.segs[0] && g.segs[0][0]) || g.wpt;
     if (!g.segs.length && !g.wpt) throw new Error('aucune trace');
-    if (!f.elements.nom.value.trim() && g.nom) f.elements.nom.value = g.nom.slice(0, 80);
+    if (!f.elements.nom.value.trim() && g.nom) { f.elements.nom.value = g.nom.slice(0, 80); majAvertNom(); }
     if (!parseLatLng($('#poi-f-gps').value) && dep) {
       $('#poi-f-gps').value = fmtLL(dep[0], dep[1]);
       $('#poi-f-gps').dispatchEvent(new Event('input'));
@@ -1213,6 +1253,28 @@
     });
   }
 
+  let avertT = null;
+  function majAvertNom() {
+    const box = $('#poi-f-nom-avert');
+    const f = $('#poi-form');
+    const nom = f.elements.nom.value.trim();
+    const ancien = S.edit ? S.edit.nom : '';
+    const sim = nom && nom !== ancien ? nomsSimilaires(nom, S.edit && S.edit.id) : [];
+    S.similaires = sim;
+    if (!sim.length) { box.hidden = true; box.replaceChildren(); return; }
+    const ll = parseLatLng($('#poi-f-gps').value);
+    box.replaceChildren(
+      el('strong', { text: sim.length > 1 ? 'Des points au nom proche existent déjà :' : 'Un point au nom proche existe déjà :' }),
+      el('ul', {}, ...sim.map(p => el('li', {},
+        `« ${p.nom} »`,
+        el('span', { class: 'muted', text: [
+          (p.secteurs || []).join(' '),
+          ll && isFinite(p.lat) ? `à ${fmtKm(distanceKm(ll, [p.lat, p.lng]))}` : '',
+          p.attente ? 'en attente d’envoi' : ''].filter(Boolean).map(x => ' · ' + x).join('') })))),
+      el('span', { class: 'small', text: 'Vérifiez qu’il ne s’agit pas du même endroit avant d’enregistrer.' }));
+    box.hidden = false;
+  }
+
   async function submit(e) {
     e.preventDefault();
     const f = $('#poi-form');
@@ -1225,6 +1287,12 @@
     if (nom.length < 2) { err.textContent = 'Donnez un nom au point.'; f.elements.nom.focus(); return; }
     if (!ll) { err.textContent = 'Coordonnées GPS obligatoires : « Ma position », « Pointer sur la carte » ou saisie (ex. 44.174130, 5.278690).'; $('#poi-f-gps').focus(); return; }
     if (!secteurs.length) { err.textContent = 'Choisissez au moins un secteur.'; return; }
+    majAvertNom();
+    if (S.similaires && S.similaires.length && S.avertiPour !== nom) {
+      const ok = window.confirm(`Un point au nom proche existe déjà :\n${S.similaires.map(p => '« ' + p.nom + ' »').join('\n')}\n\nEnregistrer quand même « ${nom} » ?`);
+      if (!ok) { f.elements.nom.focus(); return; }
+      S.avertiPour = nom;
+    }
 
     const poi = { nom, lat: ll[0], lng: ll[1], secteurs, caracs, commentaire: f.elements.commentaire.value.trim() };
     if (S.edit) poi.id = S.edit.id;
@@ -1570,6 +1638,8 @@
   $('#poi-add').addEventListener('click', () => openForm(null));
 
   $('#poi-form').addEventListener('submit', submit);
+  $('#poi-form').elements.nom.addEventListener('input', () => { clearTimeout(avertT); avertT = setTimeout(majAvertNom, 250); });
+  $('#poi-f-gps').addEventListener('change', () => { if (!$('#poi-f-nom-avert').hidden) majAvertNom(); });
   $('#poi-f-cancel').addEventListener('click', closeForm);
   $('#poi-f-delete').addEventListener('click', remove);
   $('#poi-f-pick').addEventListener('click', () => ($('#poi-f-map').hidden ? openPick() : closePick()));

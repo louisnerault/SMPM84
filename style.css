@@ -1655,3 +1655,7 @@ body.poi-plein { overflow: hidden; }
 .poi-scan-acts { display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .poi-scan-acts .link { padding: 4px 0; font-weight: 600; }
 .poi-scan-pin span { display: grid; place-items: center; width: 30px; height: 30px; box-sizing: border-box; border-radius: 50%; border: 3px solid #fff; background: #d0021b; color: #fff; font: 700 13px/1 system-ui, sans-serif; box-shadow: 0 0 0 2px #d0021b, 0 2px 6px rgba(0,0,0,.4); }
+
+/* Avertissement : nom proche d'un point existant */
+.poi-avert { margin: -4px 0 12px; padding: 8px 10px; border-left: 4px solid #e67e22; border-radius: 6px; background: rgba(230,126,34,.12); font-size: .9rem; }
+.poi-avert ul { margin: 4px 0; padding-left: 18px; }
