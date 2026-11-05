@@ -1101,6 +1101,24 @@
       });
     }
 
+    // Filtres de la grille de présence : secteurs SMPM, puis spécialités (qualifications)
+    const GRID_FILTERS = [['CENTRE', 'Centre', 's'], ['NORD', 'Nord', 's'], ['SUD', 'Sud', 's'], ['NEIGE', 'Neige', 'q'], ['ISS', 'ISS', 'q']];
+    // Qualifications NEIGE / ISS d'une personne : liste du personnel servie avec le formulaire
+    // (champs neige / iss), à défaut l'annuaire gardé sur l'appareil.
+    let annQualifs = null;
+    function qualifsOf(label, p) {
+      if (p && (typeof p.neige === 'boolean' || typeof p.iss === 'boolean')) return { NEIGE: !!p.neige, ISS: !!p.iss };
+      if (!annQualifs) {
+        annQualifs = {};
+        const ann = store.getJSON('smpm_annuaire');
+        ((ann && ann.personnes) || []).forEach(x => {
+          const qs = (x.qualifs || []).map(q => norm(q).replace(/\s/g, ''));
+          annQualifs[norm(x.nom)] = { NEIGE: qs.includes('NEIGE'), ISS: qs.includes('ISS') };
+        });
+      }
+      return annQualifs[norm(label)] || { NEIGE: false, ISS: false };
+    }
+
     function gridValue(it) {
       const v = S.answers[it.id];
       return it.rows.map((_, i) => (Array.isArray(v) ? v[i] : (v && v[i])) || null);
@@ -1114,15 +1132,18 @@
 
       const rows = it.rows.map((label, i) => {
         const p = personOf(label);
-        return { i, label: label.trim(), p, actif: !p || p.actif !== false, secteur: p ? p.secteur : '' };
+        return { i, label: label.trim(), p, actif: !p || p.actif !== false, secteur: p ? p.secteur : '', q: qualifsOf(label, p) };
       });
-      const secteurs = Array.from(new Set(rows.filter(r => r.actif && r.secteur).map(r => r.secteur))).sort();
 
       // barre d'outils : recherche + filtres
       const state = { q: '', f: S.mode === 'view' ? 'coches' : 'tous' };
       const search = el('input', { type: 'search', placeholder: 'Rechercher un nom', 'aria-label': 'Rechercher un nom', class: 'grid-search' });
       const chips = el('div', { class: 'grid-filters', role: 'group', 'aria-label': 'Filtrer la liste' });
-      const filters = [['tous', 'Tous'], ...secteurs.map(s => [s, s.charAt(0) + s.slice(1).toLowerCase()]), ['coches', 'Cochés']];
+      // Filtres : Tous, Cochés, puis secteurs (Centre, Nord, Sud) et spécialités (Neige, ISS) présents dans la liste
+      const actifs = rows.filter(r => r.actif);
+      const filters = [['tous', 'Tous'], ['coches', 'Cochés'],
+        ...GRID_FILTERS.filter(([k, , type]) => actifs.some(r => (type === 'q' ? r.q[k] : r.secteur === k)))
+          .map(([k, t]) => [k, t])];
       filters.forEach(([k, t]) => chips.append(el('button', {
         type: 'button', class: 'pill', 'data-f': k, 'aria-pressed': String(k === state.f), text: t,
         onclick: () => { state.f = k; chips.querySelectorAll('.pill').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === k))); applyFilter(); },
@@ -1176,7 +1197,10 @@
         wrap.querySelectorAll('.grid-row').forEach(li => {
           const r = rows[Number(li.dataset.row)];
           const okQ = !state.q || norm(r.label).includes(state.q) || norm(r.p && r.p.prenom).includes(state.q);
-          const okF = state.f === 'tous' || (state.f === 'coches' ? !!val[r.i] && [].concat(val[r.i]).length > 0 : r.secteur === state.f);
+          const f = GRID_FILTERS.find(x => x[0] === state.f);
+          const okF = state.f === 'tous'
+            || (state.f === 'coches' ? !!val[r.i] && [].concat(val[r.i]).length > 0
+              : f && f[2] === 'q' ? !!r.q[state.f] : r.secteur === state.f);
           li.hidden = !(okQ && okF);
           if (!li.hidden) shown++;
         });

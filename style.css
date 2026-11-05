@@ -823,7 +823,7 @@ body:not(.mode-intervention) .only-intervention { display: none; }
   position: sticky; top: 76px; z-index: 4; padding: 8px 0; background: var(--card);
 }
 .grid-search { margin-top: 0; padding: 10px 12px; }
-.grid-filters { display: flex; gap: 6px; margin-top: 8px; overflow-x: auto; scrollbar-width: none; }
+.grid-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .grid-filters .pill { flex: none; }
 .grid-list { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
 .grid-row {
