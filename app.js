@@ -756,6 +756,8 @@
     // demandes de validation des thèmes en attente : compteur du menu
     // (compteur affiché tout de suite depuis l'appareil, puis rafraîchi : menu, bouton ☰ et icône de l'application)
     if (canDeclare(data.session) && window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.refresh();
+    // nouveautés depuis la dernière version vue (selon le rôle) : une fois par ouverture
+    if (window.SMPM_NOUVEAUTES) window.SMPM_NOUVEAUTES.verifier(data.session, (data.me && data.me.email) || data.session.email || '');
   }
 
   // ---------- livret individuel : compteurs d'heures et formations ----------
