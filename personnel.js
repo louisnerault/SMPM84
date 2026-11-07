@@ -4,6 +4,7 @@
 //     NEIGE, ISS, SSSM : qualification correspondante) — grade, centre, e-mail, téléphone, qualifications ;
 //   - conseiller technique et administrateurs : tout le personnel, actif ou non, plus le secteur et la case actif,
 //     et la création d'un spécialiste (action personnel_create : fiche, dossier et livret individuel).
+// Chaque fiche affiche la dernière connexion à l'application (champ derniere_connexion, enregistré par l'action me).
 // Les données ne sont gardées qu'en mémoire (pas sur l'appareil) : la rubrique demande le réseau.
 (() => {
   'use strict';
@@ -36,6 +37,15 @@
     if (d.length === 11 && d.startsWith('33')) d = '0' + d.slice(2);
     if (d.length === 10 && d.startsWith('0')) return d.replace(/(\d{2})(?=\d)/g, '$1 ');
     return String(tel || '');
+  }
+  // Dernière connexion (champ derniere_connexion, horodatage ISO renvoyé par personnel_list)
+  function vu(iso) {
+    if (!iso) return 'Jamais connecté à l’application';
+    const d = new Date(iso);
+    if (isNaN(d)) return 'Dernière connexion : inconnue';
+    const j = Math.floor((Date.now() - d.getTime()) / 86400000);
+    const quand = j <= 0 ? 'aujourd’hui' : j === 1 ? 'hier' : `il y a ${j} jours`;
+    return `Dernière connexion : ${quand} (${d.toLocaleDateString('fr-FR')} ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })})`;
   }
   function setState(t, err) { const p = $('#pers-state'); p.textContent = t || ''; p.classList.toggle('error', !!err); }
   const tout = () => !!(S.data && S.data.droits && S.data.droits.tout);
@@ -106,6 +116,7 @@
       el('p', { class: 'ann-meta', text: [SECTEURS[p.secteur] || p.secteur, p.affectation].filter(Boolean).join(' · ') }),
       qualifs.length ? el('ul', { class: 'chips ann-chips' }, qualifs) : el('p', { class: 'ann-meta', text: 'Aucune qualification' }),
       el('p', { class: 'ann-meta', text: [p.telephone ? pretty(p.telephone) : 'Pas de téléphone', p.email || 'Pas d’e-mail'].join(' · ') }),
+      el('p', { class: 'ann-meta pers-vu', text: vu(p.derniere_connexion) }),
       el('div', { class: 'pers-actions' },
         el('button', { type: 'button', class: 'link', text: 'Modifier', onclick: () => edit(p) })));
   }

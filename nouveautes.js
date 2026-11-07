@@ -19,6 +19,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 141, titre: 'Dernière connexion du personnel', texte: 'Dans « Mes spécialistes », chaque fiche indique la date de la dernière connexion à l’application (ou « Jamais connecté »), pour repérer qui n’utilise pas encore l’outil.', pour: ['chef_section', 'ctd'] },
     { v: 140, titre: 'Inventaire : choix de l’occasion', texte: 'En début d’inventaire, aucune occasion n’est plus cochée d’office : choisissez-la (simple, FMPA, intervention…) pour faire apparaître la liste du matériel.', pour: ['tous'] },
     { v: 139, titre: 'Inventaire du matériel', texte: 'Nouvelle rubrique pour suivre le contenu des contenants des véhicules et l’état des cordes : inventaire pré-rempli avec le contenu théorique, remarques, alertes et cordes numérotées. Les écarts sont signalés à l’encadrement et au contrôleur EPI du secteur.', pour: ['tous'] },
     { v: 136, titre: 'Bandeau simplifié', texte: 'Hors ligne, une antenne barrée s\u2019affiche dans le bandeau. La synchronisation se réduit à son pictogramme : touchez-le (ou survolez-le) pour voir la date de la dernière synchronisation.', pour: ['tous'] },
