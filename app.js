@@ -614,23 +614,31 @@
 
   const state = { data: null, options: null, pendingEmail: '', mode: 'activate', livret: null, year: null };
 
+  // Fenêtre « Nouveautés » : le démarrage reste en pause tant qu'elle est ouverte (nouveautes.js)
+  function nouveautes(data) {
+    if (!window.SMPM_NOUVEAUTES || !data || !data.session) return Promise.resolve();
+    return window.SMPM_NOUVEAUTES.verifier(data.session, (data.me && data.me.email) || data.session.email || '');
+  }
+
   async function init() {
     const token = store.get(KEY_TOKEN);
     if (!token) { prefillEmail(); return show('login'); }
 
     const cached = store.getJSON(KEY_CACHE);
     if (!navigator.onLine) {
-      if (cached) return enterApp(cached.data, cached.options, true);
+      if (cached) { await nouveautes(cached.data); return enterApp(cached.data, cached.options, true); }
       return show('login');
     }
     // Démarrage immédiat sur les données de l'appareil : le profil est rafraîchi en arrière-plan
     if (cached && cached.data) {
+      await nouveautes(cached.data);
       enterApp(cached.data, cached.options, false);
       return refreshProfile(token, cached);
     }
     try {
       const [data, options] = await fetchProfile(token, null);
       store.set(KEY_CACHE, JSON.stringify({ data, options }));
+      await nouveautes(data);
       enterApp(data, options, false);
     } catch (e) {
       if (e instanceof NetworkError) { prefillEmail(); return show('login'); }
@@ -757,8 +765,6 @@
     // demandes de validation des thèmes en attente : compteur du menu
     // (compteur affiché tout de suite depuis l'appareil, puis rafraîchi : menu, bouton ☰ et icône de l'application)
     if (canDeclare(data.session) && window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.refresh();
-    // nouveautés depuis la dernière version vue (selon le rôle) : une fois par ouverture
-    if (window.SMPM_NOUVEAUTES) window.SMPM_NOUVEAUTES.verifier(data.session, (data.me && data.me.email) || data.session.email || '');
   }
 
   // ---------- livret individuel : compteurs d'heures et formations ----------
@@ -1457,6 +1463,7 @@
       const a = document.activeElement;
       if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'search') return true;
       const poiForm = document.getElementById('poi-form');
+      if (window.SMPM_NOUVEAUTES && window.SMPM_NOUVEAUTES.ouverte()) return true;
       return (poiForm && !poiForm.hidden) || state.page === 'bug' || state.page === 'infos';
     };
     const reloadNow = () => {

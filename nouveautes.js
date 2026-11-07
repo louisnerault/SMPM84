@@ -40,6 +40,15 @@
     });
   }
 
+  async function majEnAttente() {
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) return false;
+      if (!reg.installing && !reg.waiting) { await Promise.race([reg.update(), new Promise(r => setTimeout(r, 2000))]); }
+      return !!(reg.installing || reg.waiting);
+    } catch (e) { return false; }
+  }
+
   function concerne(n, session) {
     const pour = n.pour || ['tous'];
     if (pour.includes('tous')) return true;
@@ -76,15 +85,20 @@
     ok.addEventListener('click', () => dlg.close());
     btns.append(ok);
     dlg.append(h, ul, btns);
+    dlg.addEventListener('cancel', e => e.preventDefault());
     dlg.addEventListener('close', () => { onClose(); dlg.remove(); });
     document.body.append(dlg);
     if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
   }
 
-  let dejaVerifie = false;
-  async function verifier(session, user) {
-    if (dejaVerifie) return;
-    dejaVerifie = true;
+  // Renvoie une promesse résolue quand il n'y a rien à montrer, ou quand l'utilisateur a fermé la fenêtre :
+  // le démarrage de l'application attend cette promesse (tout est en pause pendant l'affichage).
+  let enCours = null;
+  function verifier(session, user) {
+    if (!enCours) enCours = verifierUneFois(session, user).catch(() => {});
+    return enCours;
+  }
+  async function verifierUneFois(session, user) {
     const courante = await versionCourante();
     if (!courante) return;
     const key = keyOf(user);
@@ -96,8 +110,13 @@
       .sort((a, b) => b.v - a.v);
     // rien à montrer : la version vue n'avance pas, une nouveauté ajoutée après coup s'affichera encore
     if (!liste.length) return;
-    afficher(liste, () => set(key, String(courante)));
+    // nouvelle version en cours d'installation : la page va se recharger, la fenêtre s'affichera après
+    if (await majEnAttente()) return;
+    await new Promise(resolve => afficher(liste, () => { set(key, String(courante)); resolve(); }));
   }
 
-  window.SMPM_NOUVEAUTES = { verifier };
+  // Fenêtre ouverte : l'application ne doit pas se recharger (nouvelle version) pendant la lecture
+  const ouverte = () => !!document.querySelector('.nouv-dialog[open]');
+
+  window.SMPM_NOUVEAUTES = { verifier, ouverte };
 })();
