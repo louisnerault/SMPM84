@@ -339,6 +339,7 @@
     $('#tab-profil').hidden = name !== 'infos';
     $('#tab-fiches').hidden = name !== 'fiches';
     $('#tab-notices').hidden = name !== 'notices';
+    $('#tab-gto').hidden = name !== 'gto';
     CS_PAGES.forEach(p => { $('#tab-' + p).hidden = name !== p; });
     if (name === 'cs-heures-toutes') $('#tab-cs-heures').hidden = false;
     $('#tab-bug').hidden = name !== 'bug';
@@ -355,10 +356,10 @@
     if (name.startsWith('fmpa')) setFmpaGroup(true);
     if (name.startsWith('interv-')) setIntervGroup(true);
     if (name.startsWith('livret')) setLivretGroup(true);
-    if (name === 'fiches' || name === 'notices') setDocGroup(true);
+    if (name === 'fiches' || name === 'notices' || name === 'gto') setDocGroup(true);
     window.scrollTo(0, 0);
     if (name === 'bug' && window.SMPM_BUGS) window.SMPM_BUGS.open(state.prevPage);
-    if ((name === 'fiches' || name === 'notices') && window.SMPM_FICHES) window.SMPM_FICHES.open();
+    if ((name === 'fiches' || name === 'notices' || name === 'gto') && window.SMPM_FICHES) window.SMPM_FICHES.open();
     if (name === 'annuaire' && window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.open();
     if (name === 'poi' && window.SMPM_POI) window.SMPM_POI.open();
     if (name === 'livret' && window.SMPM_CSH) window.SMPM_CSH.home(state.year);
@@ -400,7 +401,7 @@
     $('#nav-csh-sub').hidden = !open;
   }
 
-  // Sous-menu Documentation (repliable) : FTE et Notices
+  // Sous-menu Documentation (repliable) : FTE, Notices et GTO/GDO/GNR
   function setDocGroup(open) {
     $('#nav-doc .nav-group-btn').setAttribute('aria-expanded', String(open));
     $('#nav-doc-sub').hidden = !open;

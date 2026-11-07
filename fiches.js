@@ -125,18 +125,23 @@
     if (label) label.textContent = online ? 'En ligne' : 'Hors ligne';
   }
 
-  // Deux rubriques alimentées par le même dossier Drive : « Notices » (dossier NOTICES)
-  // et « FTE » (tout le reste, dont le dossier FTE SMPM).
+  // Trois rubriques alimentées par le même dossier Drive : « Notices » (dossier NOTICES),
+  // « GTO/GDO/GNR » (dossier du même nom) et « FTE » (tout le reste, dont le dossier FTE SMPM).
+  // Le nom du dossier GTO/GDO/GNR est écrit « GTO GDO GNR » dans le manifest (le « / » est interdit dans un chemin).
   const NOTICES_ROOT = 'Notices';
-  const isNotice = i => (i.path || '').split('/')[0] === NOTICES_ROOT;
+  const GTO_ROOT = 'GTO GDO GNR';
+  const rootOf = i => (i.path || '').split('/')[0];
+  const isNotice = i => rootOf(i) === NOTICES_ROOT;
+  const isGto = i => rootOf(i) === GTO_ROOT;
 
   function render() {
     $$('[data-sync-label]').forEach(writeSyncParts);
     const m = state.manifest || readLocal();
     const items = (m && m.items) || [];
     const favs = readFavs();
-    renderSection($('#fiches-groups'), $('#fiches-empty'), items.filter(i => !isNotice(i)), favs);
+    renderSection($('#fiches-groups'), $('#fiches-empty'), items.filter(i => !isNotice(i) && !isGto(i)), favs);
     renderSection($('#notices-groups'), $('#notices-empty'), items.filter(isNotice), favs);
+    renderSection($('#gto-groups'), $('#gto-empty'), items.filter(isGto), favs);
   }
 
   // Titre de groupe sans le dossier racine (« Notices › Équipement individuel » → « Équipement individuel »)
@@ -202,7 +207,7 @@
     render();
   }
 
-  // Appelé à l'ouverture des pages FTE et Notices
+  // Appelé à l'ouverture des pages FTE, Notices et GTO/GDO/GNR
   function open() {
     render();
     if (!state.syncing) refresh();
