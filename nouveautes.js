@@ -19,6 +19,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 136, titre: 'Bandeau simplifié', texte: 'Hors ligne, une antenne barrée s\u2019affiche dans le bandeau. La synchronisation se réduit à son pictogramme : touchez-le (ou survolez-le) pour voir la date de la dernière synchronisation.', pour: ['tous'] },
     { v: 135, titre: 'GTO / GDO / GNR', texte: 'Nouvelle rubrique dans Documentation › GTO/GDO/GNR : les documents de référence GTO, GDO et GNR, avec favoris, consultables hors ligne sur smartphone.', pour: ['tous'] },
     { v: 134, titre: 'Fenêtre des nouveautés', texte: 'À chaque mise à jour, les nouveautés qui vous concernent s’affichent ici à l’ouverture de l’application.', pour: ['tous'] },
   ];
@@ -93,7 +94,8 @@
     const liste = NOUVEAUTES
       .filter(n => n.v > vue && n.v <= courante && concerne(n, session))
       .sort((a, b) => b.v - a.v);
-    if (!liste.length) { set(key, String(courante)); return; }
+    // rien à montrer : la version vue n'avance pas, une nouveauté ajoutée après coup s'affichera encore
+    if (!liste.length) return;
     afficher(liste, () => set(key, String(courante)));
   }
 
