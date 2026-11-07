@@ -253,12 +253,13 @@ footer img { height: 54px; width: auto; max-width: 70%; object-fit: contain; bor
 
 /* ---------- état réseau et synchronisation (bandeau) ---------- */
 .status {
-  flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
+  flex: none; display: flex; align-items: center; gap: 8px;
   max-width: 150px; padding: 5px 9px; border-radius: 10px;
   background: rgba(6, 20, 40, .6); color: #fff; font-size: .7rem; line-height: 1.2;
 }
 .status-net, .status-sync { display: flex; align-items: center; gap: 5px; max-width: 100%; white-space: nowrap; }
 .status-sync span { overflow: hidden; text-overflow: ellipsis; }
+.status-sync span:empty { display: none; }
 #btn-sync { background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; }
 #btn-sync:disabled { opacity: .5; cursor: default; }
 #btn-sync[hidden] { display: none; }
@@ -269,7 +270,7 @@ body.is-offline .ico-offline { display: inline; }
 body.is-offline .status-net { color: #ffd66b; }
 @media (max-width: 420px) {
   .status-net .txt, .status-sync .txt { display: none; }
-  .status { max-width: 128px; }
+  .status { max-width: 128px; padding: 5px 7px; }
   .logo { width: 40px; height: 40px; }
 }
 

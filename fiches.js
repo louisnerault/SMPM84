@@ -105,11 +105,14 @@
     if (state.syncing) return { word: 'Synchro en cours…', when: '' };
     const at = readSyncedAt() || ((state.manifest || readLocal()) || {}).generated_at;
     if (!at) return { word: 'Jamais synchro', when: '' };
-    return { word: state.failed ? 'Échec' : 'Synchro', when: formatWhen(at) };
+    // synchro terminée : pictogramme seul (date et heure dans l'infobulle) pour laisser la place au nom
+    return { word: state.failed ? 'Échec' : '', when: '', title: 'Dernière synchro : ' + formatWhen(at) };
   }
 
   function writeSyncParts(el) {
-    const { word, when } = syncParts();
+    const { word, when, title } = syncParts();
+    const btn = el.closest('button');
+    if (btn) btn.title = (title ? title + ' — ' : '') + 'Synchroniser maintenant';
     const a = document.createElement('span');
     a.className = 'txt';
     a.textContent = word;
