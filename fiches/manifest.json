@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-21T16:03:29+00:00",
+  "generated_at": "2026-11-07T10:30:20+00:00",
   "root": "10VQKz_cOCOKfU7K6FIZyTtUlDiIdeyxJ",
   "items": [
     {
@@ -171,6 +171,36 @@
       "version": "c44962eb96c340f3c805b445d68f7b4e",
       "size": 2064810,
       "modifiedTime": "2025-06-08T12:53:47.809Z"
+    },
+    {
+      "id": "1VvxLwZFuaqnhVaLBu8ZEIbscqtauqwiV",
+      "title": "GDO SMPM",
+      "category": "GTO GDO GNR",
+      "path": "GTO GDO GNR/GDO SMPM.pdf",
+      "url": "fiches/files/GTO%20GDO%20GNR/GDO%20SMPM.pdf",
+      "version": "51c99126ac35a33fb93bb4f25be5790f",
+      "size": 10582208,
+      "modifiedTime": "2026-11-07T03:17:33.620Z"
+    },
+    {
+      "id": "1UCXEh66woH2xeDUAp6LJHZl_EfagAS8D",
+      "title": "GNR SMPM",
+      "category": "GTO GDO GNR",
+      "path": "GTO GDO GNR/GNR SMPM.pdf",
+      "url": "fiches/files/GTO%20GDO%20GNR/GNR%20SMPM.pdf",
+      "version": "074d6b2e9429d5395b68f5858f2e34f5",
+      "size": 1014295,
+      "modifiedTime": "2026-11-07T03:18:35.829Z"
+    },
+    {
+      "id": "12YLLO8fGAY3LPaFQeD1l7Dwd3rOXIfnw",
+      "title": "GTO SMPM",
+      "category": "GTO GDO GNR",
+      "path": "GTO GDO GNR/GTO SMPM.pdf",
+      "url": "fiches/files/GTO%20GDO%20GNR/GTO%20SMPM.pdf",
+      "version": "a97fea46a6486ba3dfeba36770b4e4e8",
+      "size": 14284737,
+      "modifiedTime": "2026-11-07T03:15:39.665Z"
     },
     {
       "id": "1Qa_kcK3kzrNHXqlWtS74S1mHDy6XwYB0",
