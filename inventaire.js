@@ -640,7 +640,7 @@
     c.articles.forEach(a => { lignes[a.id] = { r: a.t, u: '', rq: '', note: false }; });
     const moi = (S.data && S.data.moi) || '';
     const cu = ((S.data && S.data.cus) || []).some(p => p.cle === moi) ? moi : '';
-    go('saisie', { saisie: { cid: c.id, lignes, remarque: '', sid: sid(), err: '', ctx: 'simple', cu } });
+    go('saisie', { saisie: { cid: c.id, lignes, remarque: '', sid: sid(), err: '', ctx: '', cu } });
   }
 
   function vSaisie() {
@@ -685,14 +685,16 @@
         el('h3', { class: 'inv-sub', text: 'Occasion' }),
         el('div', { class: 'inv-chips', role: 'group', 'aria-label': 'Occasion de l’inventaire' },
           Object.keys(CONTEXTES).map(k => pill(CONTEXTES[k], s.ctx === k, () => { s.ctx = k; s.err = ''; render(); }))),
-        s.ctx !== 'simple' ? el('label', null, s.ctx === 'intervention' ? 'Chef d’unité de l’intervention' : 'Chef d’unité responsable de la FMPA',
+        !s.ctx ? el('p', { class: 'muted small', text: 'Choisissez l’occasion pour afficher l’inventaire.' }) : null,
+        s.ctx && s.ctx !== 'simple' ? el('label', null, s.ctx === 'intervention' ? 'Chef d’unité de l’intervention' : 'Chef d’unité responsable de la FMPA',
           el('select', { onchange: e => { s.cu = e.target.value; } },
             el('option', { value: '' }, '— choisir —'),
             ((S.data && S.data.cus) || []).map(p => el('option', { value: p.cle, selected: p.cle === s.cu }, p.aff)))) : null,
-        el('p', { class: 'muted small', text: QUI[s.ctx] }),
-        s.ctx === 'fmpa_fin' || s.ctx === 'intervention'
+        s.ctx ? el('p', { class: 'muted small', text: QUI[s.ctx] }) : null,
+        !s.ctx ? null : s.ctx === 'fmpa_fin' || s.ctx === 'intervention'
           ? notifies(s.cu ? [{ nom: nomDe(s.cu), r: 'Chef d’unité' }] : [], 'Notifié en cas de manque')
           : notifies(encadrementDe((vehicules().find(v => v.code === c.vehicule) || {}).secteur), 'Notifiés en cas d’écart ou de remarque')),
+      ...(!s.ctx ? [] : [
       el('ul', { class: 'inv-rows' }, rows),
       el('label', null, 'Remarque générale (facultatif)',
         el('textarea', { rows: '2', maxlength: '1000', placeholder: 'Ex. : sac déchiré, marque d’usure…', oninput: e => { s.remarque = e.target.value; } }, s.remarque)),
@@ -700,12 +702,14 @@
       el('p', { class: 'error', role: 'alert', text: s.err }),
       el('button', { type: 'button', icon: 'save', class: 'primary inv-submit', id: 'inv-valider', disabled: S.busy,
         text: ecarts ? `Valider l’inventaire (${ecarts} écart${ecarts > 1 ? 's' : ''})` : 'Valider : tout est conforme', onclick: submitSaisie }),
+      ]),
     ];
   }
 
   async function submitSaisie() {
     const s = S.saisie, c = contenant(s.cid);
     if (!c || S.busy) return;
+    if (!s.ctx) { s.err = 'Choisissez l’occasion de l’inventaire.'; return render(); }
     if (c.articles.some(a => s.lignes[a.id].r === '')) { s.err = 'Indiquez une quantité pour chaque article (0 si absent).'; return render(); }
     if (s.ctx !== 'simple' && !s.cu) { s.err = 'Choisissez le chef d’unité.'; return render(); }
     const inventaire = {
