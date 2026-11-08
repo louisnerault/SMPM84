@@ -626,6 +626,8 @@
       const photo = file ? await compresser(file) : '';
       const res = await app().api('inv_article_photo', { token: app().token(), article: a.id, photo });
       a.ph = res.ph || '';
+      // gardée pour être reportée dans les contenants cochés à l'enregistrement
+      (e.photos = e.photos || {})[cleNom(a.nom)] = photo;
       contenants().forEach(c => c.articles.forEach(x => { if (x.id === a.id) x.ph = a.ph; }));
       save();
     } catch (err) {
@@ -847,7 +849,7 @@
     const autres = contenants().filter(c => c.id !== e.id && !e.prop.some(p => p.id === c.id));
     return el('div', { class: 'inv-prop' },
       el('h3', { class: 'inv-sub', icon: 'copy' }, 'Reporter aussi les changements dans'),
-      el('p', { class: 'muted small', text: 'Ajouts, retraits, changements de nom, de quantité ou de suivi : appliqués aux contenants cochés, en retrouvant les articles par leur nom. Le détail / n° de série reste propre à chaque contenant.' }),
+      el('p', { class: 'muted small', text: 'Ajouts, retraits, changements de nom, de quantité, de suivi ou de photo : appliqués aux contenants cochés, en retrouvant les articles par leur nom. Le détail / n° de série reste propre à chaque contenant.' }),
       e.prop.length ? el('div', { class: 'inv-prop-list' }, e.prop.map(p => {
         const c = contenant(p.id);
         return c ? el('label', { class: 'ann-check' }, el('input', { type: 'checkbox', checked: p.on, onchange: ev => { p.on = ev.target.checked; } }), `${c.nom} · ${vehLib(c.vehicule)}`) : null;
@@ -869,6 +871,7 @@
         propager: supprimer ? [] : (e.prop || []).filter(p => p.on).map(p => p.id),
       } });
       setData(res);
+      const nbPh = supprimer ? 0 : await reporterPhotos(e);
       if (supprimer) go('liste', { edit: null, msg: 'Contenant supprimé.' });
       else {
         const c = contenants().find(x => x.vehicule === e.vehicule && x.nom.toUpperCase() === e.nom.trim().toUpperCase());
@@ -878,12 +881,29 @@
         go(c ? 'contenant' : 'liste', { cid: c ? c.id : null, edit: null,
           msg: 'Contenu enregistré.' + (dep.length ? ` Déplacé${dep.length > 1 ? 's' : ''} : ${dep.join(', ')}.` : '')
             + (pro.length ? ` Reporté dans ${pro.map(p => `${p.nom} (${vehLib(p.vehicule)})`).join(', ')}.` : '')
+            + (nbPh ? ` Photo${nbPh > 1 ? 's' : ''} reportée${nbPh > 1 ? 's' : ''} : ${nbPh}.` : '')
             + (abs.length ? ` Introuvable${abs.length > 1 ? 's' : ''}, à vérifier : ${abs.join(' ; ')}.` : '') });
       }
     } catch (err) {
       if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
       e.err = err instanceof app().NetworkError ? app().netLabel() + ' : modification impossible hors ligne.' : err.message;
     } finally { S.busy = false; render(); }
+  }
+
+  // Photos ajoutées, changées ou retirées pendant l'édition : envoyées aux articles du même nom des contenants cochés
+  async function reporterPhotos(e) {
+    const ph = e.photos || {}, cibles = (e.prop || []).filter(p => p.on).map(p => contenant(p.id)).filter(Boolean);
+    let n = 0;
+    for (const c of cibles) for (const a of c.articles) {
+      const k = cleNom(a.nom);
+      if (!(k in ph)) continue;
+      try {
+        const res = await app().api('inv_article_photo', { token: app().token(), article: a.id, photo: ph[k] });
+        a.ph = res.ph || ''; n++;
+      } catch (err) { if (app().AUTH_ERRORS.includes(err.message)) throw err; }
+    }
+    if (n) save();
+    return n;
   }
 
   // ===== Cordes =====
