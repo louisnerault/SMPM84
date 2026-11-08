@@ -626,8 +626,6 @@
       const photo = file ? await compresser(file) : '';
       const res = await app().api('inv_article_photo', { token: app().token(), article: a.id, photo });
       a.ph = res.ph || '';
-      // gardée pour être reportée dans les contenants cochés à l'enregistrement
-      (e.photos = e.photos || {})[cleNom(a.nom)] = photo;
       contenants().forEach(c => c.articles.forEach(x => { if (x.id === a.id) x.ph = a.ph; }));
       save();
     } catch (err) {
@@ -846,17 +844,60 @@
       const k = cleNom(e.nom);
       e.prop = contenants().filter(c => c.id !== e.id && cleNom(c.nom) === k).map(c => ({ id: c.id, on: false }));
     }
+    const noms = new Set(e.articles.filter(a => a.nom.trim()).map(a => cleNom(a.nom)));
     const autres = contenants().filter(c => c.id !== e.id && !e.prop.some(p => p.id === c.id));
     return el('div', { class: 'inv-prop' },
-      el('h3', { class: 'inv-sub', icon: 'copy' }, 'Reporter aussi les changements dans'),
-      el('p', { class: 'muted small', text: 'Ajouts, retraits, changements de nom, de quantité, de suivi ou de photo : appliqués aux contenants cochés, en retrouvant les articles par leur nom. Le détail / n° de série reste propre à chaque contenant.' }),
+      el('h3', { class: 'inv-sub', icon: 'copy' }, 'Recopier ce contenu dans'),
+      el('p', { class: 'muted small', text: 'Le contenu des contenants cochés est entièrement remplacé par celui-ci : articles, quantités, suivi et photos. Le détail / n° de série reste propre à chaque contenant (articles retrouvés par leur nom).' }),
       e.prop.length ? el('div', { class: 'inv-prop-list' }, e.prop.map(p => {
         const c = contenant(p.id);
-        return c ? el('label', { class: 'ann-check' }, el('input', { type: 'checkbox', checked: p.on, onchange: ev => { p.on = ev.target.checked; } }), `${c.nom} · ${vehLib(c.vehicule)}`) : null;
+        if (!c) return null;
+        p.garder = p.garder || {};
+        const horsListe = p.on ? c.articles.filter(a => !noms.has(cleNom(a.nom))) : [];
+        return el('div', {},
+          el('label', { class: 'ann-check' }, el('input', { type: 'checkbox', checked: p.on, onchange: ev => { p.on = ev.target.checked; render(); } }), `${c.nom} · ${vehLib(c.vehicule)}`),
+          horsListe.length ? el('div', { class: 'inv-prop-warn' },
+            el('p', { class: 'small', text: `⚠ ${horsListe.length > 1 ? 'Ces articles n’existent' : 'Cet article n’existe'} pas ici et ${horsListe.length > 1 ? 'seront supprimés' : 'sera supprimé'} de ce contenant, sauf si vous ${horsListe.length > 1 ? 'les' : 'le'} conservez :` }),
+            horsListe.map(a => el('label', { class: 'ann-check small' },
+              el('input', { type: 'checkbox', checked: !!p.garder[a.id], onchange: ev => { p.garder[a.id] = ev.target.checked; } }),
+              `Conserver « ${a.nom}${a.detail ? ' · ' + a.detail : ''} » (${a.t})`))) : null);
       })) : el('p', { class: 'muted small', text: 'Aucun contenant du même nom dans les autres véhicules.' }),
       autres.length ? el('select', { class: 'inv-prop-add', 'aria-label': 'Ajouter un autre contenant', onchange: ev => { if (ev.target.value) { e.prop.push({ id: ev.target.value, on: true }); render(); } } },
         el('option', { value: '' }, '＋ Autre contenant…'),
         vehicules().map(v => el('optgroup', { label: v.libelle }, autres.filter(c => c.vehicule === v.code).map(c => el('option', { value: c.id }, c.nom))))) : null);
+  }
+
+  // Remplace le contenu d'un contenant coché par celui du contenant source (articles + photos)
+  async function photoData(a) {
+    const blob = await (await fetch(await photoUrl(a))).blob();
+    return new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = ko; r.readAsDataURL(blob); });
+  }
+  async function recopier(src, p) {
+    const cible = contenant(p.id);
+    if (!cible) return null;
+    const parNom = {};
+    cible.articles.forEach(a => { parNom[cleNom(a.nom)] = a; });
+    const noms = new Set(src.articles.map(a => cleNom(a.nom)));
+    const articles = src.articles.map(a => {
+      const x = parNom[cleNom(a.nom)];
+      return { id: x ? x.id : '', nom: a.nom, detail: x ? (x.detail || '') : '', t: a.t, u: !!a.u, dest: '' };
+    }).concat(cible.articles.filter(a => !noms.has(cleNom(a.nom)) && (p.garder || {})[a.id])
+      .map(a => ({ id: a.id, nom: a.nom, detail: a.detail || '', t: a.t, u: !!a.u, dest: '' })));
+    setData(await app().api('inv_contenant_save', { token: app().token(), contenant: {
+      id: cible.id, vehicule: cible.vehicule, nom: cible.nom, supprimer: false, articles, propager: [] } }));
+    // photos : identiques à la source, article par article
+    const apres = contenant(p.id);
+    let photosKo = 0;
+    for (const a of src.articles) {
+      const x = apres && apres.articles.find(y => cleNom(y.nom) === cleNom(a.nom));
+      if (!x || (x.ph || '') === (a.ph || '')) continue;
+      try {
+        const res = await app().api('inv_article_photo', { token: app().token(), article: x.id, photo: a.ph ? await photoData(a) : '' });
+        x.ph = res.ph || '';
+      } catch (err) { if (app().AUTH_ERRORS.includes(err.message)) throw err; photosKo++; }
+    }
+    save();
+    return { nom: cible.nom, vehicule: cible.vehicule, photosKo };
   }
 
   async function saveEdit(supprimer) {
@@ -868,42 +909,29 @@
       const res = await app().api('inv_contenant_save', { token: app().token(), contenant: {
         id: e.id, vehicule: e.vehicule, nom: e.nom.trim(), supprimer: !!supprimer,
         articles: e.articles.filter(a => a.nom.trim()).map(a => ({ id: a.id, nom: a.nom.trim(), detail: (a.detail || '').trim(), t: a.t, u: !!a.u, dest: a.dest || '' })),
-        propager: supprimer ? [] : (e.prop || []).filter(p => p.on).map(p => p.id),
+        propager: [],
       } });
       setData(res);
-      const nbPh = supprimer ? 0 : await reporterPhotos(e);
+      const pro = [];
+      if (!supprimer) {
+        const src = contenants().find(x => x.vehicule === e.vehicule && x.nom.toUpperCase() === e.nom.trim().toUpperCase());
+        if (src) for (const p of (e.prop || []).filter(q => q.on)) { const r = await recopier(src, p); if (r) pro.push(r); }
+      }
       if (supprimer) go('liste', { edit: null, msg: 'Contenant supprimé.' });
       else {
         const c = contenants().find(x => x.vehicule === e.vehicule && x.nom.toUpperCase() === e.nom.trim().toUpperCase());
         S.p.veh = e.vehicule; savePrefs();
-        const dep = res.deplaces || [], pro = res.propages || [];
-        const abs = pro.filter(p => p.absents.length).map(p => `${p.nom} (${vehLib(p.vehicule)}) : ${p.absents.join(', ')}`);
+        const dep = res.deplaces || [];
+        const ko = pro.filter(p => p.photosKo);
         go(c ? 'contenant' : 'liste', { cid: c ? c.id : null, edit: null,
           msg: 'Contenu enregistré.' + (dep.length ? ` Déplacé${dep.length > 1 ? 's' : ''} : ${dep.join(', ')}.` : '')
-            + (pro.length ? ` Reporté dans ${pro.map(p => `${p.nom} (${vehLib(p.vehicule)})`).join(', ')}.` : '')
-            + (nbPh ? ` Photo${nbPh > 1 ? 's' : ''} reportée${nbPh > 1 ? 's' : ''} : ${nbPh}.` : '')
-            + (abs.length ? ` Introuvable${abs.length > 1 ? 's' : ''}, à vérifier : ${abs.join(' ; ')}.` : '') });
+            + (pro.length ? ` Recopié dans ${pro.map(p => `${p.nom} (${vehLib(p.vehicule)})`).join(', ')}.` : '')
+            + (ko.length ? ` Photos non copiées (hors ligne ?) dans : ${ko.map(p => p.nom + ' (' + vehLib(p.vehicule) + ')').join(', ')}.` : '') });
       }
     } catch (err) {
       if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
       e.err = err instanceof app().NetworkError ? app().netLabel() + ' : modification impossible hors ligne.' : err.message;
     } finally { S.busy = false; render(); }
-  }
-
-  // Photos ajoutées, changées ou retirées pendant l'édition : envoyées aux articles du même nom des contenants cochés
-  async function reporterPhotos(e) {
-    const ph = e.photos || {}, cibles = (e.prop || []).filter(p => p.on).map(p => contenant(p.id)).filter(Boolean);
-    let n = 0;
-    for (const c of cibles) for (const a of c.articles) {
-      const k = cleNom(a.nom);
-      if (!(k in ph)) continue;
-      try {
-        const res = await app().api('inv_article_photo', { token: app().token(), article: a.id, photo: ph[k] });
-        a.ph = res.ph || ''; n++;
-      } catch (err) { if (app().AUTH_ERRORS.includes(err.message)) throw err; }
-    }
-    if (n) save();
-    return n;
   }
 
   // ===== Cordes =====

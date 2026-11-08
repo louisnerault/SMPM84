@@ -1914,3 +1914,5 @@ button.inv-card:hover { background: color-mix(in srgb, var(--st) 18%, var(--card
 .inv-notif-list li span { font-size: .72rem; color: var(--muted); }
 .inv-notif-list li.is-copie { border-style: dashed; opacity: .8; }
 .inv-notif-vide { margin: 6px 0; }
+.inv-prop-warn { margin: 4px 0 6px 26px; padding: 6px 10px; border-left: 3px solid var(--warn, #e0a100); background: rgba(224,161,0,.08); border-radius: 6px; display: flex; flex-direction: column; gap: 4px; }
+.inv-prop-warn p { margin: 0; }
