@@ -380,6 +380,7 @@
     map: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>',
     copy: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>',
     photo: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+    trace: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M8.2 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.8"/></svg>',
   };
 
   // ---------- itinéraire : choix de l'application de navigation ----------
@@ -502,6 +503,16 @@
     if (sel.length === 1) return launchNav(sel[0], p);
     chooseNav(p, sel);
   }
+  // Itinéraire calculé et dessiné dans l'application (itineraire.js) : tracé, étapes, profil altimétrique, suivi GPS
+  function tracerVers(p) {
+    const I = window.SMPM_ITIN;
+    if (!I) return openRoute(p);
+    fermerScan();
+    if (M.map) M.map.closePopup();
+    if (S.f.vue !== 'carte') setView('carte');
+    I.vers({ nom: p.nom, lat: p.lat, lng: p.lng });
+    $('#poi-map').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
   // Choix de l'application parmi celles retenues par l'utilisateur
   function chooseNav(p, sel) {
     $('#poi-nav-title').textContent = `Itinéraire vers « ${p.nom} »`;
@@ -577,7 +588,8 @@
       el('p', { class: 'ann-num poi-gps', text: gps }),
       photoBox,
       el('div', { class: 'ann-actions' },
-        el('button', { type: 'button', class: 'ann-btn', title: 'Itinéraire', 'aria-label': `Itinéraire vers ${p.nom}`, html: ICONS.route, onclick: () => openRoute(p) }),
+        el('button', { type: 'button', class: 'ann-btn', title: 'Itinéraire (application GPS)', 'aria-label': `Itinéraire vers ${p.nom} dans une application GPS`, html: ICONS.route, onclick: () => openRoute(p) }),
+        el('button', { type: 'button', class: 'ann-btn', title: 'Itinéraire sur la carte (tracé et profil)', 'aria-label': `Tracer l’itinéraire vers ${p.nom} sur la carte, avec le profil altimétrique`, html: ICONS.trace, onclick: () => tracerVers(p) }),
         el('button', { type: 'button', class: 'ann-btn', title: 'Voir sur la carte', 'aria-label': `Voir ${p.nom} sur la carte`, html: ICONS.map, onclick: () => showOnMap(p) }),
         el('button', { type: 'button', class: 'ann-btn', title: 'Copier les coordonnées', 'aria-label': `Copier les coordonnées de ${p.nom}`, html: ICONS.copy, onclick: e => copyGps(gps, e.currentTarget) }),
         btnPhoto),
@@ -723,7 +735,8 @@
       el('div', { class: 'small muted', text: `Lu : « ${r.texte} » (${r.format})` }),
       el('div', { class: 'small poi-scan-acts' },
         carte ? null : el('button', { type: 'button', class: 'link', text: 'Voir sur la carte', onclick: () => voirScan(i) }),
-        el('button', { type: 'button', class: 'link', text: 'Itinéraire', onclick: () => openRoute(p) }),
+        el('button', { type: 'button', class: 'link', text: 'Itinéraire sur la carte', onclick: () => tracerVers(p) }),
+        el('button', { type: 'button', class: 'link', text: 'Appli GPS', onclick: () => openRoute(p) }),
         el('button', { type: 'button', class: 'link', text: 'Copier', onclick: e => copyGps(gps, e.currentTarget) }),
         droits().creer ? el('button', { type: 'button', class: 'link', text: 'Nouveau point ici', onclick: () => {
           fermerScan(); if (M.map) M.map.closePopup(); if (plein()) pleinEcran(false);
@@ -895,19 +908,25 @@
       M.group = L.featureGroup().addTo(M.map);
       let tt;
       M.map.on('zoomend moveend', () => { majSecondaires(); clearTimeout(tt); tt = setTimeout(majTraces, 250); });
-      // Plein écran : clic droit (ou appui long) sur la carte = nouveau point à cet endroit
+      // Clic droit (ou appui long) sur la carte : itinéraire jusqu'à cet endroit ou depuis cet endroit (itineraire.js) ;
+      // en plein écran, également nouveau point à cet endroit (selon les droits)
       M.map.on('contextmenu', e => {
-        if (!plein() || !droits().creer) return;
+        const I = window.SMPM_ITIN;
+        const creer = plein() && droits().creer;
+        if (!I && !creer) return;
         const ll = [e.latlng.lat, e.latlng.lng];
+        const ici = { nom: fmtLL(ll[0], ll[1]), lat: ll[0], lng: ll[1] };
         L.popup({ closeButton: true }).setLatLng(e.latlng).setContent(el('div', { class: 'poi-pop' },
           el('div', { class: 'small', text: fmtLL(ll[0], ll[1]) }),
-          el('button', { type: 'button', class: 'pill poi-add', text: '＋ Nouveau point ici', onclick: () => {
+          I ? el('button', { type: 'button', class: 'pill', text: 'Itinéraire jusqu’ici', onclick: () => I.vers(ici) }) : null,
+          I ? el('button', { type: 'button', class: 'pill', text: 'Partir d’ici', onclick: () => I.partirDe(ici) }) : null,
+          creer ? el('button', { type: 'button', class: 'pill poi-add', text: '＋ Nouveau point ici', onclick: () => {
             M.map.closePopup();
             pleinEcran(false);
             openForm(null);
             $('#poi-f-gps').value = fmtLL(ll[0], ll[1]);
             $('#poi-f-gps').dispatchEvent(new Event('input'));
-          } }))).openOn(M.map);
+          } }) : null)).openOn(M.map);
       });
       M.group.on('layeradd', majSecondaires);
       // Plein écran (ordinateur surtout) : la carte occupe toute la fenêtre, Échap pour sortir
@@ -926,7 +945,7 @@
         onAdd: () => {
           const d = el('div', { id: 'poi-fs-aide', class: 'poi-fs-aide', hidden: true });
           const dr = droits();
-          d.textContent = [dr.creer ? 'Clic droit (ou appui long) : nouveau point' : '', dr.modifier ? 'Faire glisser une épingle : la déplacer' : ''].filter(Boolean).join(' · ');
+          d.textContent = [`Clic droit (ou appui long) : itinéraire${dr.creer ? ', nouveau point' : ''}`, dr.modifier ? 'Faire glisser une épingle : la déplacer' : ''].filter(Boolean).join(' · ');
           return d;
         },
       });
@@ -941,6 +960,8 @@
         },
       });
       M.map.addControl(new Me());
+      // Itinéraire sur la carte (itineraire.js) : bouton, panneau, tracé
+      if (window.SMPM_ITIN) window.SMPM_ITIN.attacher(L, M.map, { locate, plein: pleinEcran, estPlein: plein, points: () => (S.data && S.data.points) || [] });
     }
     M.group.clearLayers();
     M.liste = list;
@@ -949,7 +970,8 @@
         el('strong', { text: p.nom }),
         el('div', { class: 'small', text: p.secteurs.map(c => '#' + c).join(' ') + (p.caracs.length ? ' · ' + p.caracs.join(', ') : '') }),
         p.commentaire ? el('div', { class: 'small poi-comment', text: p.commentaire }) : null,
-        el('div', { class: 'small' }, el('button', { type: 'button', class: 'link', text: 'Itinéraire', onclick: () => openRoute(p) }), ' · ',
+        el('div', { class: 'small' }, el('button', { type: 'button', class: 'link', text: 'Itinéraire sur la carte', onclick: () => tracerVers(p) }), ' · ',
+          el('button', { type: 'button', class: 'link', text: 'Appli GPS', onclick: () => openRoute(p) }), ' · ',
           el('button', { type: 'button', class: 'link', text: 'Fiche', onclick: () => showInList(p) })));
       const icon = L.divIcon({ className: 'poi-pin', html: pinPoint(p), iconSize: [25, 34], iconAnchor: [12.5, 34], popupAnchor: [0, -30] });
       const m = L.marker([p.lat, p.lng], { title: p.nom, icon, draggable: droits().modifier && plein() }).bindPopup(pop);
@@ -979,8 +1001,8 @@
         M.map.setView([focus.lat, focus.lng], z);
         M.group.eachLayer(l => { if (l.poiId === focus.id) l.openPopup(); });
         M.focus = null;
-      } else if (list.length) {
-        M.map.fitBounds(M.group.getBounds(), { padding: [30, 30], maxZoom: 14 });
+      } else if (list.length && !(window.SMPM_ITIN && window.SMPM_ITIN.actif())) {
+        M.map.fitBounds(M.group.getBounds(), { padding: [30, 30], maxZoom: 14 });   // un itinéraire affiché garde son cadrage
       }
     }, 50);
     if (!list.length) note.textContent = 'Aucun point à afficher.';
@@ -996,7 +1018,7 @@
     box.replaceChildren(
       ...sect.map(c => el('span', { class: 'poi-leg', html: `<i class="poi-dot" style="background:${secteurCouleur(c)}"></i>#${c}` })),
       ...types.map(t => el('span', { class: 'poi-leg', html: icoSvg(caracIcone(t), 14) }, t)),
-      list.some(p => p.secteurs.length > 1) ? el('span', { class: 'poi-leg muted', text: 'Épingle à plusieurs bandes = plusieurs secteurs' }) : null);
+      ...(list.some(p => p.secteurs.length > 1) ? [el('span', { class: 'poi-leg muted', text: 'Épingle à plusieurs bandes = plusieurs secteurs' })] : []));
     box.hidden = !list.length;
   }
 
@@ -1046,7 +1068,7 @@
     setTimeout(() => M.map && M.map.invalidateSize(), 120);
     majDrag();
     const n = $('#poi-fs-aide');
-    if (n) n.hidden = !on || !(droits().creer || droits().modifier);
+    if (n) n.hidden = !on;
   }
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('poi-plein')) pleinEcran(false); });
   document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && document.body.classList.contains('poi-plein')) pleinEcran(false); });

@@ -1916,3 +1916,77 @@ button.inv-card:hover { background: color-mix(in srgb, var(--st) 18%, var(--card
 .inv-notif-vide { margin: 6px 0; }
 .inv-prop-warn { margin: 4px 0 6px 26px; padding: 6px 10px; border-left: 3px solid var(--warn, #e0a100); background: rgba(224,161,0,.08); border-radius: 6px; display: flex; flex-direction: column; gap: 4px; }
 .inv-prop-warn p { margin: 0; }
+
+/* Itinéraire sur la carte des points d'intérêt (itineraire.js) : panneau posé en bas de la carte */
+.itin {
+  position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 1001; max-width: 440px; max-height: min(58%, 470px);
+  display: flex; flex-direction: column; background: var(--card); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 14px; box-shadow: 0 4px 18px rgba(0,0,0,.3); font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; cursor: default;
+}
+.itin[hidden], .itin [hidden], .itin-graphe svg [hidden] { display: none; }
+.itin button { font: inherit; color: inherit; }
+.itin-tete { display: flex; align-items: center; gap: 4px; padding: 6px 6px 6px 4px; }
+.itin-titres { flex: 1; min-width: 0; display: grid; }
+.itin-titre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.itin-sous { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.itin.is-nav .itin-tete { background: var(--primary); color: #fff; border-radius: 13px 13px 0 0; }
+.itin.is-nav.is-replie .itin-tete { border-radius: 13px; }
+.itin.is-nav .itin-titre { white-space: normal; font-size: 1.05rem; line-height: 1.25; }
+.itin.is-nav .itin-sous { color: rgba(255,255,255,.9); }
+.itin-plier, .itin-fermer { flex: none; width: 40px; height: 40px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 10px; background: none; }
+.itin.is-replie .itin-plier svg { transform: rotate(180deg); }
+.itin.is-replie .itin-corps { display: none; }
+.itin-corps { overflow-y: auto; overscroll-behavior: contain; padding: 0 10px 10px; display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 8px; }
+.itin-corps p { margin: 0; }
+.itin-q { width: 100%; margin: 0; }
+.itin-res, .itin-etapes { list-style: none; margin: 0; padding: 0; }
+.itin-res:empty { display: none; }
+.itin-resultat { display: flex; align-items: baseline; gap: 8px; width: 100%; padding: 9px 4px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; }
+.itin-tag { flex: none; min-width: 52px; padding: 1px 6px; border-radius: 6px; background: var(--primary-soft); color: var(--primary-dark); font-size: .72rem; font-weight: 700; text-align: center; }
+.itin-aide { color: var(--muted); }
+.itin-etat.error { margin: 0; min-height: 0; }
+.itin-modes, .itin-acts, .itin-onglets { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.itin-dep { margin-left: auto; color: var(--muted); }
+.itin-dep .link { padding: 0 0 0 6px; }
+.itin-seg, .itin-btn { min-height: 38px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); font-weight: 600; }
+.itin-seg[aria-pressed="true"], .itin-seg[aria-selected="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+.itin-onglets .itin-seg { flex: 1; }
+.itin-acts { flex-wrap: nowrap; }
+.itin-btn.itin-go { background: #1a7f37; border-color: #1a7f37; color: #fff; flex: 1; }
+.itin-btn.itin-stop { background: #c0182f; border-color: #c0182f; color: #fff; flex: 1; }
+.itin-reprise { border-radius: 10px; text-align: left; display: grid; }
+.itin-reprise .small { color: var(--muted); font-weight: 400; }
+.itin-etapes li { border-bottom: 1px solid var(--line); }
+.itin-etapes li:last-child { border-bottom: 0; }
+.itin-etapes li.is-cur { background: var(--primary-soft); border-radius: 8px; }
+.itin-etape { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 4px; border: 0; background: none; text-align: left; }
+.itin-sym { flex: none; display: grid; place-items: center; color: var(--primary); }
+.itin-txt { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.itin-voie { font-style: normal; font-weight: 600; font-size: .85em; }
+.itin-lg { flex: none; color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.itin-stats { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .88rem; color: var(--muted); }
+.itin-stats b { color: var(--ink); }
+.itin-graphe svg { display: block; width: 100%; height: auto; touch-action: pan-y; cursor: crosshair; }
+.itin-graphe text { font-size: 10.5px; fill: var(--muted); }
+.itin-graphe .itin-l { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; }
+.itin-graphe .itin-g { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 4; }
+.itin-graphe .itin-cur { stroke: var(--ink); stroke-width: 1.5; }
+.itin-graphe .itin-pos { stroke: #1d72d8; stroke-width: 3; }
+.itin-legende { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--muted); }
+.itin-leg { display: inline-flex; align-items: center; gap: 5px; }
+.itin-leg i, .itin-barre i { display: block; height: 10px; }
+.itin-leg i { width: 10px; border-radius: 3px; }
+.itin-barre { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin-bottom: 4px; }
+.itin-voies { display: grid; }
+.itin-recentrer { position: absolute; right: 0; top: -46px; min-height: 38px; padding: 6px 14px; border: 0; border-radius: 999px; background: var(--primary); color: #fff !important; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+.itin-ctrl { display: grid; place-items: center; }
+/* échelle et mentions de la carte remontées au-dessus du panneau */
+.poi-map.itin-on .leaflet-bottom { bottom: var(--itin-h, 0px); }
+/* écran large : le panneau occupe le côté droit de la carte, les mentions se rangent à sa gauche */
+@media (min-width: 760px) {
+  .itin { left: auto; width: 440px; max-height: calc(100% - 76px); }
+  .itin-recentrer { top: auto; bottom: 0; right: 100%; margin-right: 8px; white-space: nowrap; }
+  .poi-map.itin-on .leaflet-bottom { bottom: 0; }
+  .poi-map.itin-on .leaflet-bottom.leaflet-right { right: 456px; }
+}
+.itin .link { color: var(--primary); }

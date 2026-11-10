@@ -19,6 +19,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 144, titre: 'Itinéraire sur la carte', texte: 'Sur la carte des points d’intérêt, tracez l’itinéraire vers un point, une adresse ou un endroit pointé (appui long) : étapes, profil altimétrique avec dénivelé et pentes, en véhicule ou à pied. « Démarrer » suit votre position, même sans réseau une fois l’itinéraire calculé.', pour: ['tous'] },
     { v: 143, titre: 'Inventaire : recopie complète', texte: 'Dans « Modifier le contenu », les contenants cochés sous « Recopier ce contenu dans » reçoivent désormais tout le contenu, photos comprises. Les articles qui n’y existent pas sont signalés : cochez « Conserver » pour les garder.', pour: ['chef_section', 'ctd'] },
     { v: 142, titre: 'Inventaire : photos reportées', texte: 'Dans « Modifier le contenu », une photo d’article ajoutée, changée ou retirée est désormais aussi reportée dans les contenants cochés sous « Reporter aussi les changements dans », sur l’article du même nom.', pour: ['chef_section', 'ctd'] },
     { v: 141, titre: 'Dernière connexion du personnel', texte: 'Dans « Mes spécialistes », chaque fiche indique la date de la dernière connexion à l’application (ou « Jamais connecté »), pour repérer qui n’utilise pas encore l’outil.', pour: ['chef_section', 'ctd'] },
