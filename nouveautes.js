@@ -19,6 +19,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 150, titre: 'Tout cocher dans les notifications', texte: 'Dans la clochette, le bouton « Tout cocher » sélectionne d’un coup toutes vos notifications, pour les supprimer ensemble. « Tout décocher » annule la sélection.', pour: ['tous'] },
     { v: 148, titre: 'Tableaux de bord', texte: 'Nouvelle rubrique « Tableau de bord » (Chefs de section) : vision d’ensemble de l’unité par thème — Interventions, FMPA, Livrets, Neige, Spéléo, Inventaires — filtrable par année, par période et par secteur, avec comparaison à l’année précédente. Conçue pour l’ordinateur ; sur téléphone, passez en mode paysage.', pour: ['chef_section', 'ctd'] },
     { v: 147, titre: 'Bouton Retour sur les documents (Android aussi)', texte: 'Sur tous les téléphones, les fiches techniques, notices et GTO/GDO/GNR s’ouvrent maintenant dans l’application, avec un bouton « ← Retour » et des boutons − / + pour zoomer.', pour: ['tous'] },
     { v: 146, titre: 'Bouton Retour sur les documents (iPhone)', texte: 'Sur iPhone, les fiches techniques, notices et GTO/GDO/GNR s’ouvrent maintenant avec un bouton « ← Retour » : plus besoin de fermer et rouvrir l’application. La carte hors ligne ne signale plus à tort des images manquantes (cliquez une fois sur « Mettre à jour la sélection »).', pour: ['tous'] },

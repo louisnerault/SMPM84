@@ -5,6 +5,7 @@
 // - Chaque notification non lue peut être « marquée comme lue » ; « Tout marquer comme lu » pour toutes.
 // - « Supprimer les lues » retire de la clochette, pour cette personne seulement, les notifications déjà lues.
 // - Chaque notification peut être cochée pour être supprimée avec « Supprimer la sélection ».
+//   « Tout cocher » / « Tout décocher » sélectionne ou désélectionne toute la liste.
 //   Toucher une notification ouvre la page concernée (si elle en a une) et la marque comme lue.
 // - Rafraîchie à l'ouverture de l'application, au retour sur l'application, à la réception
 //   d'une notification push (message du service worker) et toutes les 10 minutes.
@@ -49,6 +50,9 @@
     $('#notif-all').hidden = !nonLues();
     $('#notif-supp').hidden = !S.items.some(x => x.lu);
     const nSel = S.sel.size;
+    const toutCoche = !!S.items.length && S.items.every(x => S.sel.has(x.id));
+    $('#notif-sel-all').hidden = S.items.length < 2;
+    $('#notif-sel-all').textContent = toutCoche ? 'Tout décocher' : 'Tout cocher';
     $('#notif-del-sel').hidden = !nSel;
     $('#notif-del-sel').textContent = `Supprimer la sélection (${nSel})`;
     status.textContent = S.error || (S.loading && !S.items.length ? 'Chargement…' : (!S.items.length ? 'Aucune notification.' : ''));
@@ -197,6 +201,11 @@
     $('#notif-scrim').addEventListener('click', fermer);
     $('#notif-all').addEventListener('click', () => marquer('tout'));
     $('#notif-supp').addEventListener('click', () => supprimer('lues'));
+    $('#notif-sel-all').addEventListener('click', () => {
+      const toutCoche = S.items.every(x => S.sel.has(x.id));
+      S.sel = toutCoche ? new Set() : new Set(S.items.map(x => x.id));
+      render();
+    });
     $('#notif-del-sel').addEventListener('click', () => supprimer([...S.sel]));
     document.addEventListener('keydown', e => { if (e.key === 'Escape') fermer(); });
     document.addEventListener('visibilitychange', () => {
