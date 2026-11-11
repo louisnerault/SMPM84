@@ -189,6 +189,11 @@
     a.target = '_blank';
     a.rel = 'noopener';
     a.textContent = i.title;
+    a.addEventListener('click', e => {
+      if (!iosApp()) return;                           // ailleurs : ouverture habituelle (visionneuse du navigateur)
+      e.preventDefault();
+      ouvrirDoc(i);
+    });
     const star = document.createElement('button');
     star.type = 'button';
     star.className = 'fav' + (isFav ? ' on' : '');
@@ -198,6 +203,41 @@
     star.addEventListener('click', () => toggleFav(i.id));
     li.append(a, star);
     return li;
+  }
+
+  // iPhone/iPad avec l'app installée sur l'écran d'accueil : le PDF s'ouvre dans l'app sans bouton
+  // de retour (il fallait fermer et rouvrir l'app). On l'affiche donc dans une visionneuse avec « Retour ».
+  function iosApp() {
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const app = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+    return ios && app;
+  }
+
+  let viewer = null;
+  function fermerDoc() {
+    if (!viewer || viewer.hidden) return;
+    viewer.hidden = true;
+    viewer.querySelector('iframe').src = 'about:blank';
+    document.body.classList.remove('doc-ouvert');
+  }
+  function ouvrirDoc(i) {
+    if (!viewer) {
+      viewer = document.createElement('div');
+      viewer.className = 'doc-viewer';
+      viewer.hidden = true;
+      viewer.innerHTML = '<div class="doc-viewer-bar"><button type="button" class="doc-viewer-back">← Retour</button>' +
+        '<span class="doc-viewer-titre"></span></div><div class="doc-viewer-zone"><iframe title="Document"></iframe></div>';
+      viewer.querySelector('.doc-viewer-back').addEventListener('click', () => {
+        if (history.state && history.state.smpmDoc) history.back(); else fermerDoc();
+      });
+      window.addEventListener('popstate', fermerDoc);
+      document.body.append(viewer);
+    }
+    viewer.querySelector('.doc-viewer-titre').textContent = i.title;
+    viewer.querySelector('iframe').src = i.url;
+    viewer.hidden = false;
+    document.body.classList.add('doc-ouvert');
+    history.pushState({ smpmDoc: true }, '');
   }
 
   function readFavs() {

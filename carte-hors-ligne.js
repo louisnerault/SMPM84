@@ -229,13 +229,14 @@
     const cache = await caches.open(CACHE);
     let done = 0;
     let missing = 0;
+    let absentes = 0;                                       // tuiles inexistantes chez l'IGN (404) : pas des manques
     const failed = [];
     try {
       for (let i = 0; i < urls.length && !stopRequested; i += PARALLEL) {
         await Promise.all(urls.slice(i, i + PARALLEL).map(async u => {
           if (await cache.match(u)) return;                 // déjà présente : on ne la retélécharge pas
           const why = await fetchTile(cache, u);
-          if (why === 'absente') return;                     // hors couverture IGN : rien à télécharger
+          if (why === 'absente') { absentes++; return; }      // hors couverture IGN : rien à télécharger
           if (why) {
             missing++;
             if (failed.length < 10) {
@@ -253,12 +254,12 @@
 
     const { n: count } = await cacheStats(urls);
     if (stopRequested) {
-      if (count) writeMeta({ at: new Date().toISOString(), count, missing: urls.length - count, failed }, f);
+      if (count) writeMeta({ at: new Date().toISOString(), count, missing: Math.max(0, urls.length - count - absentes), failed }, f);
       render();
       showStatus(`Téléchargement arrêté (${f.libelle} : ${done} / ${urls.length} images). Relancez pour terminer.`);
       return false;
     }
-    writeMeta({ at: new Date().toISOString(), count, missing: urls.length - count, failed }, f);
+    writeMeta({ at: new Date().toISOString(), count, missing: Math.max(0, urls.length - count - absentes), failed }, f);
     // clé SCAN 25 refusée : toutes les images manquent avec une erreur HTTP 401/403
     if (!count && failed.some(x => /HTTP 40[13]/.test(x.why))) {
       writeMeta(null, f);
