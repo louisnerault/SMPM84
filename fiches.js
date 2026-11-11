@@ -190,7 +190,7 @@
     a.rel = 'noopener';
     a.textContent = i.title;
     a.addEventListener('click', e => {
-      if (!iosApp()) return;                           // ailleurs : ouverture habituelle (visionneuse du navigateur)
+      if (!iosApp() || !/\.pdf($|\?)/i.test(i.url)) return;   // ordinateur, ou fichier non PDF : ouverture habituelle
       e.preventDefault();
       ouvrirDoc(i);
     });
@@ -205,39 +205,106 @@
     return li;
   }
 
-  // iPhone/iPad avec l'app installée sur l'écran d'accueil : le PDF s'ouvre dans l'app sans bouton
-  // de retour (il fallait fermer et rouvrir l'app). On l'affiche donc dans une visionneuse avec « Retour ».
-  function iosApp() {
-    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const app = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
-    return ios && app;
+  // Téléphone / tablette : le PDF s'affichait sans bouton de retour (iPhone : fermer et rouvrir l'app ;
+  // Android : visionneuse de Chrome). On l'affiche donc dans l'application avec pdf.js et un bouton « ← Retour ».
+  function iosApp() {   // nom historique : vrai pour tout écran tactile (téléphone, tablette)
+    return !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
   }
 
   let viewer = null;
+  let pdfjs = null;
+  let docEnCours = null;   // { pdf, zoom, jeton }
   function fermerDoc() {
     if (!viewer || viewer.hidden) return;
     viewer.hidden = true;
-    viewer.querySelector('iframe').src = 'about:blank';
+    if (docEnCours) { try { docEnCours.pdf.destroy(); } catch (e) {} }
+    docEnCours = null;
+    viewer.querySelector('.doc-viewer-pages').replaceChildren();
     document.body.classList.remove('doc-ouvert');
   }
-  function ouvrirDoc(i) {
-    if (!viewer) {
-      viewer = document.createElement('div');
-      viewer.className = 'doc-viewer';
-      viewer.hidden = true;
-      viewer.innerHTML = '<div class="doc-viewer-bar"><button type="button" class="doc-viewer-back">← Retour</button>' +
-        '<span class="doc-viewer-titre"></span></div><div class="doc-viewer-zone"><iframe title="Document"></iframe></div>';
-      viewer.querySelector('.doc-viewer-back').addEventListener('click', () => {
-        if (history.state && history.state.smpmDoc) history.back(); else fermerDoc();
-      });
-      window.addEventListener('popstate', fermerDoc);
-      document.body.append(viewer);
-    }
+  function construireViewer() {
+    viewer = document.createElement('div');
+    viewer.className = 'doc-viewer';
+    viewer.hidden = true;
+    viewer.innerHTML = '<div class="doc-viewer-bar"><button type="button" class="doc-viewer-back">← Retour</button>' +
+      '<span class="doc-viewer-titre"></span>' +
+      '<button type="button" class="doc-viewer-zoom" data-z="-1" aria-label="Réduire">−</button>' +
+      '<button type="button" class="doc-viewer-zoom" data-z="1" aria-label="Agrandir">+</button></div>' +
+      '<div class="doc-viewer-zone"><p class="doc-viewer-msg"></p><div class="doc-viewer-pages"></div></div>';
+    viewer.querySelector('.doc-viewer-back').addEventListener('click', () => {
+      if (history.state && history.state.smpmDoc) history.back(); else fermerDoc();
+    });
+    viewer.querySelectorAll('.doc-viewer-zoom').forEach(b => b.addEventListener('click', () => {
+      if (!docEnCours) return;
+      const z = Math.min(3, Math.max(1, docEnCours.zoom + Number(b.dataset.z) * 0.5));
+      if (z !== docEnCours.zoom) { docEnCours.zoom = z; afficherPages(); }
+    }));
+    window.addEventListener('popstate', fermerDoc);
+    document.body.append(viewer);
+  }
+  async function ouvrirDoc(i) {
+    if (!viewer) construireViewer();
     viewer.querySelector('.doc-viewer-titre').textContent = i.title;
-    viewer.querySelector('iframe').src = i.url;
+    viewer.querySelector('.doc-viewer-pages').replaceChildren();
+    const msg = viewer.querySelector('.doc-viewer-msg');
+    msg.textContent = 'Ouverture du document…';
     viewer.hidden = false;
     document.body.classList.add('doc-ouvert');
     history.pushState({ smpmDoc: true }, '');
+    const jeton = {};
+    docEnCours = { jeton, zoom: 1, pdf: null };
+    try {
+      if (!pdfjs) {
+        pdfjs = await import('./vendor/pdfjs/pdf.min.mjs');
+        pdfjs.GlobalWorkerOptions.workerSrc = new URL('vendor/pdfjs/pdf.worker.min.mjs', location.href).href;
+      }
+      const res = await fetch(i.url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = new Uint8Array(await res.arrayBuffer());
+      const pdf = await pdfjs.getDocument({ data, isEvalSupported: false }).promise;
+      if (!docEnCours || docEnCours.jeton !== jeton) { pdf.destroy(); return; }
+      docEnCours.pdf = pdf;
+      msg.textContent = '';
+      afficherPages();
+    } catch (e) {
+      if (!docEnCours || docEnCours.jeton !== jeton) return;
+      msg.textContent = navigator.onLine ? 'Impossible d’afficher ce document.' : 'Document pas encore disponible hors ligne : ouvrez-le une fois avec du réseau.';
+    }
+  }
+  // Une toile par page, dessinée quand elle approche de l'écran
+  async function afficherPages() {
+    const d = docEnCours;
+    const box = viewer.querySelector('.doc-viewer-pages');
+    box.replaceChildren();
+    const largeur = viewer.querySelector('.doc-viewer-zone').clientWidth * d.zoom;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const obs = new IntersectionObserver(entries => entries.forEach(en => {
+      if (!en.isIntersecting) return;
+      obs.unobserve(en.target);
+      dessiner(en.target);
+    }), { root: viewer.querySelector('.doc-viewer-zone'), rootMargin: '800px 0px' });
+    const first = await d.pdf.getPage(1);
+    const v1 = first.getViewport({ scale: 1 });
+    for (let n = 1; n <= d.pdf.numPages; n++) {
+      const c = document.createElement('canvas');
+      c.className = 'doc-viewer-page';
+      c.dataset.n = n;
+      c.style.width = largeur + 'px';
+      c.style.height = (largeur * v1.height / v1.width) + 'px';   // provisoire, corrigé au dessin
+      box.append(c);
+      obs.observe(c);
+    }
+    async function dessiner(c) {
+      if (docEnCours !== d) return;
+      const page = await d.pdf.getPage(Number(c.dataset.n));
+      const v = page.getViewport({ scale: 1 });
+      const scale = largeur / v.width;
+      const vp = page.getViewport({ scale: scale * dpr });
+      c.width = Math.floor(vp.width);
+      c.height = Math.floor(vp.height);
+      c.style.height = (v.height * scale) + 'px';
+      await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+    }
   }
 
   function readFavs() {

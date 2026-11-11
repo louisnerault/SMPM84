@@ -19,6 +19,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 147, titre: 'Bouton Retour sur les documents (Android aussi)', texte: 'Sur tous les téléphones, les fiches techniques, notices et GTO/GDO/GNR s’ouvrent maintenant dans l’application, avec un bouton « ← Retour » et des boutons − / + pour zoomer.', pour: ['tous'] },
     { v: 146, titre: 'Bouton Retour sur les documents (iPhone)', texte: 'Sur iPhone, les fiches techniques, notices et GTO/GDO/GNR s’ouvrent maintenant avec un bouton « ← Retour » : plus besoin de fermer et rouvrir l’application. La carte hors ligne ne signale plus à tort des images manquantes (cliquez une fois sur « Mettre à jour la sélection »).', pour: ['tous'] },
     { v: 145, titre: 'Suivi de vos signalements', texte: 'Après un signalement (bug, suggestion…), vous recevez une notification quand il est pris en charge, puis quand il est corrigé ou rejeté, avec la réponse de l’administrateur. Chaque notification rappelle le numéro et votre demande.', pour: ['tous'] },
     { v: 144, titre: 'Itinéraire sur la carte', texte: 'Sur la carte des points d’intérêt, tracez l’itinéraire vers un point, une adresse ou un endroit pointé (appui long) : étapes, profil altimétrique avec dénivelé et pentes, en véhicule ou à pied. « Démarrer » suit votre position, même sans réseau une fois l’itinéraire calculé.', pour: ['tous'] },
