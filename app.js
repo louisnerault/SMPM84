@@ -127,7 +127,7 @@
   // 40 s : le serveur Apps Script met souvent 20 s à répondre lorsque plusieurs requêtes arrivent ensemble
   const API_TIMEOUT = 40000;
   const API_TIMEOUT_LONG = 60000;
-  const LONG_ACTIONS = /(_submit|_update|_create|_decide|^itv_list$|^itv_get$|^itv_form$|^update_me$|^login$|^verify_code$|^request_code$|^livret_pdf$|^bug_report$)/;
+  const LONG_ACTIONS = /(_submit|_update|_create|_decide|^itv_list$|^itv_get$|^itv_form$|^update_me$|^login$|^verify_code$|^request_code$|^livret_pdf$|^bug_report$|^dash_data$)/;
 
   // ---------- barre de progression des requêtes ----------
   // Apps Script ne renvoie pas d'avancement : la barre progresse vite puis ralentit
@@ -381,6 +381,8 @@
     if (name.startsWith('cs-heures')) setCshGroup(true);
     if (name.startsWith('cs-heures') && window.SMPM_CSH) window.SMPM_CSH.open(name);
     if (name === 'cs-specialistes' && window.SMPM_PERSONNEL) window.SMPM_PERSONNEL.open();
+    document.body.classList.toggle('page-dash', name === 'cs-tableau');
+    if (window.SMPM_DASH) { if (name === 'cs-tableau') window.SMPM_DASH.open(); else window.SMPM_DASH.close(); }
     if (name === 'livret-remplir' && window.SMPM_THEMES) window.SMPM_THEMES.open();
     if (name === 'livret-themes' && window.SMPM_THEMES_VUS) window.SMPM_THEMES_VUS.open();
     if (name === 'fmpa' && window.SMPM_FMPA) window.SMPM_FMPA.open();
@@ -617,6 +619,7 @@
     if (window.SMPM_ITV_LIST) window.SMPM_ITV_LIST.reset();
     if (window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.reset();
     if (window.SMPM_PERSONNEL) window.SMPM_PERSONNEL.reset();
+    if (window.SMPM_DASH) window.SMPM_DASH.reset();
     if (window.SMPM_POI) window.SMPM_POI.reset(explicit === true);
     if (window.SMPM_INV) window.SMPM_INV.reset(explicit === true);
     if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.reset();
