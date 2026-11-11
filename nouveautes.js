@@ -16,9 +16,10 @@
 (function () {
   'use strict';
 
-  const BRANCHE = 'main';
+  const BRANCHE = 'organisation-fmpa';
 
   const NOUVEAUTES = [
+    { v: 149, titre: 'Planning des FMPA', texte: 'Nouvelle rubrique « Planning des FMPA » : le conseiller technique propose les dates, les chefs d’unité se positionnent pour encadrer, puis chacun s’inscrit (6 places par chef d’unité, liste d’attente au-delà). Vous êtes prévenu à chaque étape, et des informations de rendez-vous publiées par le chef d’unité.', pour: ['tous'] },
     { v: 148, titre: 'Tableaux de bord', texte: 'Nouvelle rubrique « Tableau de bord » (Chefs de section) : vision d’ensemble de l’unité par thème — Interventions, FMPA, Livrets, Neige, Spéléo, Inventaires — filtrable par année, par période et par secteur, avec comparaison à l’année précédente. Conçue pour l’ordinateur ; sur téléphone, passez en mode paysage.', pour: ['chef_section', 'ctd'] },
     { v: 147, titre: 'Bouton Retour sur les documents (Android aussi)', texte: 'Sur tous les téléphones, les fiches techniques, notices et GTO/GDO/GNR s’ouvrent maintenant dans l’application, avec un bouton « ← Retour » et des boutons − / + pour zoomer.', pour: ['tous'] },
     { v: 146, titre: 'Bouton Retour sur les documents (iPhone)', texte: 'Sur iPhone, les fiches techniques, notices et GTO/GDO/GNR s’ouvrent maintenant avec un bouton « ← Retour » : plus besoin de fermer et rouvrir l’application. La carte hors ligne ne signale plus à tort des images manquantes (cliquez une fois sur « Mettre à jour la sélection »).', pour: ['tous'] },

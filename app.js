@@ -337,6 +337,9 @@
   function gotoPage(name) {
     // notification d'alerte d'inventaire : rubrique Inventaire ouverte sur l'onglet Alertes
     if (name === 'inventaire-alertes') { if (window.SMPM_INV) window.SMPM_INV.ongletAlertes(); name = 'inventaire'; }
+    // notification du planning des FMPA : « fmpa-orga:<id> » ouvre la fiche de la FMPA
+    let orgaId = null;
+    if (name.startsWith('fmpa-orga:')) { orgaId = name.slice(10); name = 'fmpa-orga'; }
     if (!allowedPage(name, state.data && state.data.session)) name = 'livret';
     showFlash(pendingFlash);
     pendingFlash = null;
@@ -360,6 +363,7 @@
     $('#tab-annuaire').hidden = name !== 'annuaire';
     $('#tab-poi').hidden = name !== 'poi';
     $('#tab-inventaire').hidden = name !== 'inventaire';
+    $('#tab-fmpa-orga').hidden = name !== 'fmpa-orga';
     $('#tab-fmpa').hidden = !(name === 'fmpa' || name === 'fmpa-fiche');
     $('#tab-fmpa-list').hidden = !FMPA_LISTS.includes(name);
     $('#tab-fmpa-valid').hidden = name !== 'fmpa-valid';
@@ -367,7 +371,7 @@
     $('#tab-interv-mes').hidden = !(name === 'interv-mes' || name === 'interv-toutes');
     updateHomeBtn();
     if (window.SMPM_NOTIFS) window.SMPM_NOTIFS.close();
-    if (name.startsWith('fmpa')) setFmpaGroup(true);
+    if (name.startsWith('fmpa') && name !== 'fmpa-orga') setFmpaGroup(true);
     if (name.startsWith('interv-')) setIntervGroup(true);
     if (name.startsWith('livret')) setLivretGroup(true);
     if (name === 'fiches' || name === 'notices' || name === 'gto') setDocGroup(true);
@@ -377,6 +381,7 @@
     if (name === 'annuaire' && window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.open();
     if (name === 'poi' && window.SMPM_POI) window.SMPM_POI.open();
     if (name === 'inventaire' && window.SMPM_INV) window.SMPM_INV.open();
+    if (name === 'fmpa-orga' && window.SMPM_ORGA) window.SMPM_ORGA.open(orgaId);
     if (name === 'livret' && window.SMPM_CSH) window.SMPM_CSH.home(state.year);
     if (name.startsWith('cs-heures')) setCshGroup(true);
     if (name.startsWith('cs-heures') && window.SMPM_CSH) window.SMPM_CSH.open(name);
@@ -624,6 +629,7 @@
     if (window.SMPM_INV) window.SMPM_INV.reset(explicit === true);
     if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.reset();
     if (window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.reset();
+    if (window.SMPM_ORGA) window.SMPM_ORGA.reset();
     if (window.SMPM_THEMES) window.SMPM_THEMES.reset(explicit === true);
     applyMode(false);
     state.data = null;
@@ -788,6 +794,8 @@
     // demandes de validation des thèmes en attente : compteur du menu
     // (compteur affiché tout de suite depuis l'appareil, puis rafraîchi : menu, bouton ☰ et icône de l'application)
     if (canDeclare(data.session) && window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.refresh();
+    // planning des FMPA : compteur du menu (candidatures à examiner, informations à compléter) pour l'encadrement
+    if (!offline && canDeclare(data.session) && window.SMPM_ORGA) window.SMPM_ORGA.refresh();
   }
 
   // ---------- livret individuel : compteurs d'heures et formations ----------
