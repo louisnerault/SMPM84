@@ -293,7 +293,7 @@
       try {
         const r = await envoyer(item);
         reset();
-        msg('', `Merci ! Signalement n°${r.numero} transmis à l'administrateur.`);
+        msg('', `Merci ! Signalement n°${r.numero} transmis à l'administrateur. Vous serez notifié de son suivi (en cours, corrigé ou rejeté).`);
       } catch (e) {
         if (e instanceof app().NetworkError) {
           try {
