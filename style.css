@@ -2173,7 +2173,10 @@ body.doc-ouvert { overflow: hidden; }
 .orga-actions .primary { width: auto; flex: 1 1 200px; margin: 0; }
 .orga-actions .primary.orga-secondaire { background: var(--card); color: var(--primary); border: 1px solid var(--primary); }
 .orga-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; margin: 14px 0 8px; border-radius: 99px; background: var(--primary-soft); }
-.orga-tabs button { border: 0; border-radius: 99px; min-height: 40px; padding: 0 6px; background: none; color: var(--muted); font-weight: 700; font-size: .9rem; white-space: nowrap; }
+.orga-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; border: 0; border-radius: 99px; min-height: 42px; padding: 2px 8px; background: none; color: var(--muted); font-weight: 700; font-size: .85rem; line-height: 1.15; }
+.orga-tab-n { min-width: 18px; padding: 0 5px; border-radius: 99px; background: var(--danger); color: #fff; font-size: .7rem; line-height: 1.5; }
+.orga-espace { margin: 0 0 2px; font-size: .75rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--primary); }
+.orga-espace + h1 { margin-top: 0; }
 .orga-tabs button[aria-selected="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
 #orga-list { margin-top: 10px; }
 .orga-annulee { opacity: .6; }

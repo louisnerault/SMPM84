@@ -3,6 +3,8 @@
 //   les chefs d'unité (IMP 3) se positionnent pour encadrer, le CT valide le ou les chefs d'unité,
 //   puis les inscriptions s'ouvrent à tous (6 participants par chef d'unité validé, au-delà liste d'attente).
 //   Les chefs d'unité validés complètent le rendez-vous et le programme, transmis aux inscrits.
+// Trois espaces dans le menu, un par rôle (app.js : ORGA_PAGES) :
+//   « CT · Organiser » (orga-ct), « CU · Encadrer » (orga-cu), « IMP 2 / IMP 1 · S'inscrire » (orga-insc).
 // Les boutons affichés sont ceux que le serveur autorise (f.actions) : c'est lui qui contrôle les droits.
 // Dernière liste gardée sur l'appareil pour une consultation hors ligne ; les actions demandent le réseau.
 (() => {
@@ -22,7 +24,53 @@
     getJSON(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
   };
 
-  const S = { data: null, fresh: false, vue: 'avenir', secteur: '', id: null, busy: false, edit: null, focus: null };
+  const S = { data: null, fresh: false, espace: 'insc', vue: null, secteur: '', id: null, busy: false, edit: null };
+
+  const actif = f => f.phase !== 'annulee' && f.phase !== 'passee';
+  const aExaminer = f => actif(f) && f.actions.decider && f.candidats.length > 0;
+  const aCompleter = f => actif(f) && f.moi.encadrant === 'VALIDE' && !(f.infos.lieu && f.infos.heure);
+  const jEncadre = f => f.moi.encadrant === 'VALIDE' || f.moi.encadrant === 'CANDIDAT';
+
+  // Espaces : titre, présentation, onglets (filtre de la liste, message si vide)
+  const ESPACES = {
+    ct: {
+      nom: 'CT · Organiser',
+      titre: 'Organiser les FMPA',
+      intro: 'Créez les dates, validez les chefs d’unité qui se positionnent : les inscriptions s’ouvrent dès le premier validé.',
+      vues: [
+        { code: 'traiter', nom: 'À traiter', compte: aExaminer,
+          filtre: f => actif(f) && (f.candidats.length > 0 || f.phase === 'encadrant'),
+          vide: 'Aucune candidature à examiner ni FMPA sans encadrant.' },
+        { code: 'toutes', nom: 'À venir', filtre: f => !f.passee, vide: 'Aucune FMPA programmée.' },
+        { code: 'passees', nom: 'Passées', filtre: f => f.passee, inverse: true, vide: 'Aucune FMPA passée récente.' },
+      ],
+    },
+    cu: {
+      nom: 'CU · Encadrer',
+      titre: 'Encadrer une FMPA',
+      intro: 'Positionnez-vous sur les dates proposées par le CT. Une fois validé, complétez le rendez-vous et le programme pour les inscrits.',
+      vues: [
+        { code: 'proposees', nom: 'Proposées', filtre: f => actif(f) && (f.actions.candidater || f.moi.encadrant === 'CANDIDAT'),
+          vide: 'Aucune FMPA à encadrer pour le moment. Vous serez prévenu des nouvelles dates.' },
+        { code: 'miennes', nom: 'Mes encadrements', compte: aCompleter, filtre: f => !f.passee && jEncadre(f),
+          vide: 'Vous n’êtes positionné sur aucune FMPA à venir.' },
+        { code: 'passees', nom: 'Passées', filtre: f => f.passee && f.moi.encadrant === 'VALIDE', inverse: true,
+          vide: 'Aucune FMPA encadrée récemment.' },
+      ],
+    },
+    insc: {
+      nom: 'IMP 2 / IMP 1 · S’inscrire',
+      titre: 'S’inscrire à une FMPA',
+      intro: 'Inscrivez-vous aux FMPA ouvertes (6 places par chef d’unité). Vous êtes prévenu de leur ouverture et des informations du chef d’unité.',
+      vues: [
+        { code: 'ouvertes', nom: 'Ouvertes', filtre: f => (f.phase === 'inscriptions' || f.phase === 'complet') && !jEncadre(f),
+          vide: 'Aucune FMPA ouverte aux inscriptions pour le moment. Vous serez prévenu de l’ouverture.' },
+        { code: 'miennes', nom: 'Mes inscriptions', filtre: f => !f.passee && !!f.moi.inscrit,
+          vide: 'Vous n’êtes inscrit à aucune FMPA à venir.' },
+        { code: 'toutes', nom: 'Calendrier', filtre: f => !f.passee, vide: 'Aucune FMPA programmée.' },
+      ],
+    },
+  };
 
   function el(tag, attrs, ...children) {
     const n = document.createElement(tag);
@@ -65,8 +113,11 @@
   const heureTxt = h => (h ? h.replace(':', 'h') : '');
 
   // ---------- chargement ----------
-  // id : fiche à ouvrir (notification « fmpa-orga:<id> ») ; sans id : liste. Rechargé à chaque ouverture.
-  function open(id) {
+  // espace : 'ct', 'cu' ou 'insc' ; id : fiche à ouvrir (notification « fmpa-orga:<id> »).
+  // Rechargé à chaque ouverture.
+  function open(espace, id) {
+    if (ESPACES[espace] && espace !== S.espace) { S.espace = espace; S.vue = null; }
+    S.ouvrirDepuisNotif = !!id;
     S.id = id || null;
     S.edit = null;
     S.fresh = false;
@@ -98,14 +149,26 @@
     S.data = { fmpa: res.fmpa || [], moi: res.moi || {}, secteurs: res.secteurs || SECTEURS_DEF, ratio: res.ratio || 6, aFaire: res.aFaire || 0, maj: res.maj };
     S.fresh = true;
     store.set(KEY, JSON.stringify(S.data));
+    // fiche ouverte depuis une notification : espace selon le rôle de chacun sur cette FMPA
+    if (S.ouvrirDepuisNotif && S.id) {
+      const f = S.data.fmpa.find(x => x.id === S.id);
+      if (f) S.espace = f.actions.decider && (f.candidats.length || f.phase === 'encadrant') ? 'ct' : jEncadre(f) ? 'cu' : 'insc';
+      S.vue = null;
+      S.ouvrirDepuisNotif = false;
+    }
     badge();
     render();
   }
 
-  // Compteur du menu : candidatures à examiner (CT), informations à compléter (chef d'unité validé)
+  // Compteurs du menu : candidatures à examiner (CT), informations à compléter (chef d'unité validé), total sur le groupe
   function badge() {
-    const n = (S.data && S.data.aFaire) || 0;
-    document.querySelectorAll('[data-orga-count]').forEach(b => { b.textContent = n ? String(n) : ''; b.hidden = !n; });
+    const l = (S.data && S.data.fmpa) || [];
+    const ct = l.filter(aExaminer).length;
+    const cu = l.filter(aCompleter).length;
+    const set = (sel, n) => document.querySelectorAll(sel).forEach(b => { b.textContent = n ? String(n) : ''; b.hidden = !n; });
+    set('[data-orga-count-ct]', ct);
+    set('[data-orga-count-cu]', cu);
+    set('[data-orga-count]', ct + cu);
   }
 
   async function action(op, payload, okMsg) {
@@ -149,31 +212,35 @@
 
   function renderListe() {
     const moi = (S.data && S.data.moi) || {};
-    $('#orga-intro').textContent = moi.gerer
-      ? 'Créez les dates de FMPA, validez les chefs d’unité qui se positionnent : les inscriptions s’ouvrent dès le premier validé.'
-      : moi.imp3
-        ? 'Positionnez-vous pour encadrer les FMPA proposées, et inscrivez-vous à celles qui sont ouvertes.'
-        : 'Inscrivez-vous aux FMPA ouvertes. Vous êtes prévenu de leur ouverture et des informations publiées par le chef d’unité.';
-    $('#orga-new-btn').hidden = !moi.gerer || !$('#orga-new').hidden;
+    const E = ESPACES[S.espace];
+    if (!E.vues.some(v => v.code === S.vue)) S.vue = E.vues[0].code;
+    $('#orga-espace').textContent = 'Planning des FMPA · ' + E.nom;
+    $('#orga-titre').textContent = E.titre;
+    $('#orga-intro').textContent = E.intro;
+    const creer = S.espace === 'ct' && moi.gerer;
+    if (!creer && !$('#orga-new').hidden) fermerCreation(true);
+    $('#orga-new-btn').hidden = !creer || !$('#orga-new').hidden;
 
     const ssel = $('#orga-secteur');
     ssel.replaceChildren(new Option('Tous secteurs', ''), ...secteurs().map(s => new Option(s.nom, s.code)));
     ssel.value = S.secteur;
-    document.querySelectorAll('#orga-tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.vue === S.vue)));
 
     const auj = today();
-    const all = (S.data && S.data.fmpa) || [];
-    const miennes = f => !!(f.moi.encadrant && f.moi.encadrant !== 'REFUSE' && f.moi.encadrant !== 'RETIRE') || !!f.moi.inscrit;
-    let list = all.filter(f => (!S.secteur || f.secteur === S.secteur));
-    if (S.vue === 'avenir') list = list.filter(f => f.date >= auj);
-    else if (S.vue === 'miennes') list = list.filter(f => f.date >= auj && miennes(f));
-    else list = list.filter(f => f.date < auj).reverse();
+    const all = ((S.data && S.data.fmpa) || []).map(f => Object.assign(f, { passee: f.date < auj }));
+    const parSecteur = all.filter(f => !S.secteur || f.secteur === S.secteur);
+    $('#orga-tabs').replaceChildren(...E.vues.map(v => {
+      const n = v.compte ? parSecteur.filter(v.compte).length : 0;
+      return el('button', { type: 'button', role: 'tab', 'aria-selected': String(v.code === S.vue),
+        onclick: () => { S.vue = v.code; renderListe(); } }, v.nom, n ? el('span', { class: 'orga-tab-n', text: String(n) }) : null);
+    }));
+
+    const V = E.vues.find(v => v.code === S.vue);
+    let list = parSecteur.filter(V.filtre);
+    if (V.inverse) list = list.reverse();
 
     const empty = $('#orga-empty');
     empty.hidden = !S.data || list.length > 0;
-    empty.textContent = S.vue === 'miennes' ? 'Vous n’êtes inscrit ou positionné sur aucune FMPA à venir.'
-      : S.vue === 'passees' ? 'Aucune FMPA passée récente.'
-        : 'Aucune FMPA programmée' + (S.secteur ? ' dans ce secteur' : '') + '.';
+    empty.textContent = V.vide;
     $('#orga-list').replaceChildren(...list.map(carte));
   }
 
@@ -247,7 +314,7 @@
     const box = $('#orga-fiche');
     const A = f.actions;
     const out = [];
-    out.push(el('div', { class: 'sub-head' }, el('button', { type: 'button', class: 'link', text: '← Planning des FMPA', onclick: retourListe })));
+    out.push(el('div', { class: 'sub-head' }, el('button', { type: 'button', class: 'link', text: '← ' + ESPACES[S.espace].titre, onclick: retourListe })));
     out.push(el('h1', { class: 'orga-titre', text: dateLongue(f.date) }));
     out.push(el('p', { class: 'fmpa-meta' }, tagSecteur(f.secteur), f.restreint ? ' Réservée aux qualifiés ' + secNom(f.secteur) : ''));
     out.push(phaseChip(f));
@@ -447,15 +514,15 @@
     li.querySelector('[name="date"]').focus();
   }
 
-  function fermerCreation() {
+  function fermerCreation(sansRendu) {
     $('#orga-new').hidden = true;
     $('#orga-new-rows').replaceChildren();
-    renderListe();
+    if (sansRendu !== true) renderListe();
   }
 
   $('#orga-new-btn').addEventListener('click', ouvrirCreation);
   $('#orga-new-add').addEventListener('click', ajouterLigne);
-  $('#orga-new-cancel').addEventListener('click', fermerCreation);
+  $('#orga-new-cancel').addEventListener('click', () => fermerCreation());
   $('#orga-new').addEventListener('submit', async e => {
     e.preventDefault();
     const dates = Array.from($('#orga-new-rows').children).map(li => ({
@@ -465,10 +532,9 @@
     }));
     if (!dates.length) return;
     const ok = await action('creer', { dates }, dates.length > 1 ? dates.length + ' dates créées : les chefs d’unité sont prévenus.' : 'Date créée : les chefs d’unité sont prévenus.');
-    if (ok) fermerCreation();
+    if (ok) { fermerCreation(); S.vue = 'traiter'; renderListe(); }
   });
   $('#orga-secteur').addEventListener('change', e => { S.secteur = e.target.value; renderListe(); });
-  document.querySelectorAll('#orga-tabs button').forEach(b => b.addEventListener('click', () => { S.vue = b.dataset.vue; renderListe(); }));
 
   // Rafraîchit le compteur du menu sans ouvrir la rubrique (encadrement : candidatures, informations à compléter)
   async function refresh() {
@@ -482,7 +548,7 @@
 
   function reset() {
     store.del(KEY);
-    Object.assign(S, { data: null, fresh: false, vue: 'avenir', secteur: '', id: null, busy: false, edit: null });
+    Object.assign(S, { data: null, fresh: false, espace: 'insc', vue: null, secteur: '', id: null, busy: false, edit: null });
     badge();
   }
 

@@ -74,6 +74,8 @@
     return (data.qualifications || []).some(q => String(q.code).replace(/\s/g, '') === 'IMP3' && q.acquis);
   };
   const FMPA_LISTS = ['fmpa-mes', 'fmpa-toutes'];
+  // Planning des FMPA (fmpa-orga.js, Orga.gs) : un espace par rôle — à garder cohérent avec ORGA.GERER
+  const ORGA_PAGES = ['orga-ct', 'orga-cu', 'orga-insc'];
   // Rubriques réservées aux chefs de section (et CTD, administrateurs) — à garder cohérent avec backend/Heures.gs
   const CS_PAGES = ['cs-heures', 'cs-tableau', 'cs-specialistes'];
   // Heures chefs de section : « Mes heures » (chefs de section, CTD, admin), « Toutes les heures » (CTD, admin)
@@ -82,6 +84,8 @@
     if (name === 'fmpa') return canDeclare(session) && canEncadrer(state.data);
     if (name === 'fmpa-fiche' || name === 'fmpa-mes' || name === 'fmpa-valid') return canDeclare(session);
     if (name === 'fmpa-toutes') return canAllFmpa(session);
+    if (name === 'orga-ct') return canEditAllFmpa(session);
+    if (name === 'orga-cu') return canEncadrer(state.data);
     if (name === 'interv-toutes') return canAllInterv(session);
     if (name.startsWith('interv-')) return canIntervene(session);
     if (name === 'cs-heures-toutes') return canAllCsHeures(session);
@@ -337,9 +341,10 @@
   function gotoPage(name) {
     // notification d'alerte d'inventaire : rubrique Inventaire ouverte sur l'onglet Alertes
     if (name === 'inventaire-alertes') { if (window.SMPM_INV) window.SMPM_INV.ongletAlertes(); name = 'inventaire'; }
-    // notification du planning des FMPA : « fmpa-orga:<id> » ouvre la fiche de la FMPA
+    // notification du planning des FMPA : « fmpa-orga:<id> » ouvre la fiche de la FMPA (espace choisi par fmpa-orga.js)
     let orgaId = null;
-    if (name.startsWith('fmpa-orga:')) { orgaId = name.slice(10); name = 'fmpa-orga'; }
+    if (name.startsWith('fmpa-orga:')) { orgaId = name.slice(10); name = 'orga-insc'; }
+    if (name === 'fmpa-orga') name = 'orga-insc';
     if (!allowedPage(name, state.data && state.data.session)) name = 'livret';
     showFlash(pendingFlash);
     pendingFlash = null;
@@ -363,7 +368,7 @@
     $('#tab-annuaire').hidden = name !== 'annuaire';
     $('#tab-poi').hidden = name !== 'poi';
     $('#tab-inventaire').hidden = name !== 'inventaire';
-    $('#tab-fmpa-orga').hidden = name !== 'fmpa-orga';
+    $('#tab-fmpa-orga').hidden = !ORGA_PAGES.includes(name);
     $('#tab-fmpa').hidden = !(name === 'fmpa' || name === 'fmpa-fiche');
     $('#tab-fmpa-list').hidden = !FMPA_LISTS.includes(name);
     $('#tab-fmpa-valid').hidden = name !== 'fmpa-valid';
@@ -371,7 +376,8 @@
     $('#tab-interv-mes').hidden = !(name === 'interv-mes' || name === 'interv-toutes');
     updateHomeBtn();
     if (window.SMPM_NOTIFS) window.SMPM_NOTIFS.close();
-    if (name.startsWith('fmpa') && name !== 'fmpa-orga') setFmpaGroup(true);
+    if (name.startsWith('fmpa')) setFmpaGroup(true);
+    if (ORGA_PAGES.includes(name)) setOrgaGroup(true);
     if (name.startsWith('interv-')) setIntervGroup(true);
     if (name.startsWith('livret')) setLivretGroup(true);
     if (name === 'fiches' || name === 'notices' || name === 'gto') setDocGroup(true);
@@ -381,7 +387,7 @@
     if (name === 'annuaire' && window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.open();
     if (name === 'poi' && window.SMPM_POI) window.SMPM_POI.open();
     if (name === 'inventaire' && window.SMPM_INV) window.SMPM_INV.open();
-    if (name === 'fmpa-orga' && window.SMPM_ORGA) window.SMPM_ORGA.open(orgaId);
+    if (ORGA_PAGES.includes(name) && window.SMPM_ORGA) window.SMPM_ORGA.open(name.slice(5), orgaId);
     if (name === 'livret' && window.SMPM_CSH) window.SMPM_CSH.home(state.year);
     if (name.startsWith('cs-heures')) setCshGroup(true);
     if (name.startsWith('cs-heures') && window.SMPM_CSH) window.SMPM_CSH.open(name);
@@ -403,6 +409,12 @@
   function setFmpaGroup(open) {
     $('#nav-fmpa .nav-group-btn').setAttribute('aria-expanded', String(open));
     $('#nav-fmpa-sub').hidden = !open;
+  }
+
+  // Sous-menu Planning des FMPA (repliable) : CT · Organiser, CU · Encadrer, IMP 2 / IMP 1 · S'inscrire
+  function setOrgaGroup(open) {
+    $('#nav-orga .nav-group-btn').setAttribute('aria-expanded', String(open));
+    $('#nav-orga-sub').hidden = !open;
   }
 
   // Sous-menu Intervention (repliable)
@@ -795,7 +807,7 @@
     // (compteur affiché tout de suite depuis l'appareil, puis rafraîchi : menu, bouton ☰ et icône de l'application)
     if (canDeclare(data.session) && window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.refresh();
     // planning des FMPA : compteur du menu (candidatures à examiner, informations à compléter) pour l'encadrement
-    if (!offline && canDeclare(data.session) && window.SMPM_ORGA) window.SMPM_ORGA.refresh();
+    if (!offline && (canEditAllFmpa(data.session) || canEncadrer(data)) && window.SMPM_ORGA) window.SMPM_ORGA.refresh();
   }
 
   // ---------- livret individuel : compteurs d'heures et formations ----------
@@ -1203,6 +1215,8 @@
     $('#nav-fmpa').hidden = !canDeclare(session);
     $$('[data-page="fmpa"]').forEach(b => { b.hidden = !canEncadrer(state.data); });
     $('#nav-fmpa-all').hidden = !canAllFmpa(session);
+    $('#nav-orga-ct').hidden = !canEditAllFmpa(session);
+    $('#nav-orga-cu').hidden = !canEncadrer(state.data);
     $('#nav-interv').hidden = !canIntervene(session);
     $('#nav-interv-all').hidden = !canAllInterv(session);
     $('#nav-csh-all').hidden = !canAllCsHeures(session);
@@ -1303,6 +1317,9 @@
   $$('.drawer-nav button[data-page]').forEach(btn => btn.addEventListener('click', () => gotoPage(btn.dataset.page)));
   $('#nav-fmpa .nav-group-btn').addEventListener('click', e => {
     setFmpaGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
+  });
+  $('#nav-orga .nav-group-btn').addEventListener('click', e => {
+    setOrgaGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
   });
   $('#nav-interv .nav-group-btn').addEventListener('click', e => {
     setIntervGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
