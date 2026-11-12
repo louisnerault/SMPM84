@@ -1349,6 +1349,14 @@ button.ann-btn { width: 100%; padding: 0; cursor: pointer; font: inherit; }
 .poi-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .poi-head h1 { margin-bottom: 0; }
 .poi-add { background: var(--primary); border-color: var(--primary); color: #fff; min-height: 40px; }
+.poi-eph-btn { background: #d62828; border-color: #d62828; color: #fff; min-height: 40px; }
+.poi-eph-badge { margin: .2rem 0; font-size: .85rem; font-weight: 600; color: #d62828; }
+.poi-liens { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; margin: .3rem 0; }
+.poi-lien { display: inline-flex; align-items: center; gap: .25rem; padding: .15rem .5rem; border: 1px solid var(--border, #ccd3da); border-radius: 999px; background: transparent; font: inherit; font-size: .85rem; color: inherit; cursor: pointer; }
+.poi-lien .poi-pin-mini svg { width: 12px; height: 16px; }
+.poi-liens-f { list-style: none; padding: 0; margin: 0 0 .4rem; display: flex; flex-wrap: wrap; gap: .3rem; }
+.poi-lien-row { display: flex; gap: .4rem; }
+.poi-lien-row input { flex: 1; min-width: 0; }
 #poi-state:empty, #poi-map-note:empty { display: none; }
 #poi-state.error { color: var(--danger); }
 #poi-count { margin-left: auto; font-weight: 600; }

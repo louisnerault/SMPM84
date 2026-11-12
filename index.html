@@ -334,6 +334,7 @@
           <div class="poi-head-btns">
             <button type="button" class="pill" id="poi-scan-btn" title="Lire des coordonnées sur une photo ou un texte">Scanner des coordonnées</button>
             <button type="button" class="pill" id="poi-gerer" hidden>Gérer les types et secteurs</button>
+            <button type="button" class="pill poi-eph-btn" id="poi-add-eph" hidden title="PRM, victime, PMA… visible de tous, effacé au bout de 24 h">＋ Point éphémère</button>
             <button type="button" class="pill poi-add" id="poi-add" hidden>＋ Nouveau point</button>
           </div>
         </div>
@@ -437,14 +438,29 @@
           <p id="poi-f-gps-note" class="muted small gps-note" role="status"></p>
           <div id="poi-f-map" class="gps-map" hidden></div>
         </div>
-        <fieldset class="poi-fs">
+        <fieldset class="poi-fs" id="poi-fs-eph" hidden>
+          <legend>Type de point <span class="req">*</span></legend>
+          <div class="ann-qualifs" id="poi-f-eph"></div>
+          <p class="muted small" id="poi-f-eph-note"></p>
+        </fieldset>
+        <fieldset class="poi-fs" id="poi-fs-secteurs">
           <legend>Secteurs <span class="req">*</span> <span class="muted small">(au moins un)</span></legend>
           <div class="ann-qualifs" id="poi-f-secteurs"></div>
           <p class="muted small" id="poi-f-secteurs-note"></p>
         </fieldset>
-        <fieldset class="poi-fs">
+        <fieldset class="poi-fs" id="poi-fs-caracs">
           <legend>Caractéristiques</legend>
           <div class="ann-qualifs" id="poi-f-caracs"></div>
+        </fieldset>
+        <fieldset class="poi-fs" id="poi-fs-liens">
+          <legend>Points liés</legend>
+          <ul class="poi-liens-f" id="poi-f-liens" hidden></ul>
+          <div class="gps-row poi-lien-row">
+            <input type="search" id="poi-f-lien" list="poi-f-lien-list" placeholder="Nom d'un point (ex. parking, accès nord…)" autocomplete="off" aria-label="Lier un point">
+            <button type="button" class="pill" id="poi-f-lien-add">Lier</button>
+          </div>
+          <datalist id="poi-f-lien-list"></datalist>
+          <p class="muted small" id="poi-f-lien-note">Ex. : le sommet lié à ses parkings et à ses accès. Le lien est réciproque.</p>
         </fieldset>
         <label>Commentaire
           <textarea name="commentaire" rows="3" maxlength="1000" placeholder="Ex. : code cadenas 1234, clé triangle, barrière fermée l'hiver…"></textarea>

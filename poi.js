@@ -3,6 +3,8 @@
 //   (ex. #SPELEO seul : personnels ISS ; #SPELEO + #NORD : tout le monde).
 // - Création : chef d'unité et au-delà ; modification et suppression : chef de section, CTD, administrateur.
 //   (droits renvoyés par le serveur, à défaut ceux d'app.js : canPoiCreate / canPoiEdit)
+// - Points liés (liens libres et réciproques, ex. sommet ↔ parking ↔ accès) : réglés par ceux qui créent/modifient.
+// - Points éphémères (PRM, victime…) : créés par tous, visibles de tous, effacés au bout de 24 h (réglage serveur).
 // - Liste et carte gardées sur l'appareil (hors ligne) ; photos mises en cache une fois consultées.
 (() => {
   'use strict';
@@ -129,6 +131,18 @@
     const local = app().poiDroits ? app().poiDroits() : { creer: false, modifier: false, gerer: false };
     return d ? { creer: !!d.creer && local.creer, modifier: !!d.modifier && local.modifier, gerer: !!d.gerer && !!local.gerer } : local;
   }
+  // Point éphémère : son auteur peut le modifier ou le supprimer
+  const peutModifier = p => droits().modifier || (!!p.ephemere && !!S.data && !!S.data.moi && p.cree_par === S.data.moi);
+  // ---------- points éphémères (mode intervention) ----------
+  const EPH_COUL = '#d62828';
+  const EPH_ICO = { 'PRM': 'piste4x4', 'Victime': 'regroupement', 'PMA': 'pma', 'DZ / hélisurface': 'dz', 'Point de regroupement': 'rdv',
+    'Danger': 'danger', 'Engin / véhicule': 'caserne', 'Autre': 'drapeau' };
+  const ephTypes = () => (S.data && S.data.ephemere && S.data.ephemere.types) || Object.keys(EPH_ICO);
+  const ephHeures = () => (S.data && S.data.ephemere && S.data.ephemere.heures) || 24;
+  const expire = p => !!p.ephemere && !!p.expire_le && new Date(p.expire_le) <= new Date();
+  const fmtHeure = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('fr-FR', { weekday: 'short', hour: '2-digit', minute: '2-digit' }); };
+  const pointDe = id => ((S.data && S.data.points) || []).find(x => x.id === id && !expire(x));
+  const liensDe = p => (p.liens || []).map(pointDe).filter(Boolean);
   // ---------- icônes des types, couleurs des secteurs, épingles ----------
   // Icônes (traits 24×24) proposées pour les types de points ; la clé est enregistrée dans le classeur.
   const POI_ICONES = {
@@ -183,7 +197,7 @@
     camera: ['Point de vue', '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'],
   };
   const icoSvg = (key, size = 18) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${(POI_ICONES[key] || POI_ICONES.etoile)[1]}</svg>`;
-  const caracIcone = c => ((S.data && S.data.listes && S.data.listes.icones) || {})[c] || 'etoile';
+  const caracIcone = c => ((S.data && S.data.listes && S.data.listes.icones) || {})[c] || EPH_ICO[c] || 'etoile';
   const secteurCouleur = code => { const d = secteurDef(code); return (d && d.couleur) || '#5d6b7a'; };
   // Secteurs d'un point dans l'ordre de la liste (géographiques d'abord, tels que rangés par l'administrateur)
   function secteursOrdonnes(codes) {
@@ -209,6 +223,7 @@
     </svg>`;
   }
   function pinPoint(p) {
+    if (p.ephemere) return pinSvg([EPH_COUL], EPH_ICO[p.caracs[0]] || 'drapeau');
     return pinSvg(secteursOrdonnes(p.secteurs).map(secteurCouleur), p.caracs.length ? caracIcone(p.caracs[0]) : 'drapeau');
   }
 
@@ -259,7 +274,8 @@
     if (!quiet) setState(S.data ? 'Mise à jour…' : 'Chargement des points d’intérêt…');
     try {
       const res = await app().api('poi_list', { token: app().token() });
-      S.data = { points: res.points || [], listes: res.listes || { caracs: [], secteurs: [] }, droits: res.droits || null, maj: res.maj || new Date().toISOString() };
+      S.data = { points: res.points || [], listes: res.listes || { caracs: [], secteurs: [] }, droits: res.droits || null,
+        moi: res.moi || '', ephemere: res.ephemere || null, maj: res.maj || new Date().toISOString() };
       S.loadedAt = Date.now();
       save();
       if (!quiet || !$('#tab-poi').hidden) setState('');
@@ -322,6 +338,7 @@
     $('#poi-search').value = S.f.q;
     document.querySelectorAll('.poi-view [data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === S.f.vue)));
     $('#poi-add').hidden = !droits().creer;
+    $('#poi-add-eph').hidden = !app().token || !app().token();
     $('#poi-gerer').hidden = !droits().gerer;
   }
 
@@ -337,8 +354,10 @@
 
   function match(p) {
     const f = S.f;
-    if (f.secteurs.length && !f.secteurs.some(c => p.secteurs.includes(c))) return false;
-    if (f.caracs.length && !f.caracs.some(c => p.caracs.includes(c))) return false;
+    if (expire(p)) return false;
+    // points éphémères : toujours affichés quels que soient les filtres de secteurs et de types (seule la recherche s'applique)
+    if (!p.ephemere && f.secteurs.length && !f.secteurs.some(c => p.secteurs.includes(c))) return false;
+    if (!p.ephemere && f.caracs.length && !f.caracs.some(c => p.caracs.includes(c))) return false;
     const words = fold(f.q).split(/\s+/).filter(Boolean);
     if (!words.length) return true;
     const hay = fold([p.nom, p.commentaire, p.caracs.join(' '), p.secteurs.join(' '), p.secteurs.map(secteurLib).join(' '), p.cree_par].join(' '));
@@ -346,7 +365,7 @@
   }
 
   function filtered() {
-    const all = (S.data && S.data.points) || [];
+    const all = ((S.data && S.data.points) || []).filter(p => !expire(p));
     const byNom = (a, b) => a.nom.localeCompare(b.nom, 'fr');
     const tri = {
       nom: byNom,
@@ -358,7 +377,7 @@
 
   // ---------- liste ----------
   function render() {
-    const all = (S.data && S.data.points) || [];
+    const all = ((S.data && S.data.points) || []).filter(p => !expire(p));
     const list = filtered();
     const f = S.f;
     $('#poi-reset').hidden = !(f.q || f.secteurs.length || f.caracs.length);
@@ -583,7 +602,10 @@
         el('p', { class: 'ann-name poi-name' }, el('span', { class: 'poi-pin-mini', html: pinPoint(p) }), el('strong', { text: p.nom })),
         dist !== null ? el('span', { class: 'ann-fct', text: fmtKm(dist) }) : null),
       el('ul', { class: 'chips poi-tags' }, ...secteursOrdonnes(p.secteurs).map(c => el('li', { class: 'poi-tag', style: `background:${secteurCouleur(c)}`, text: '#' + c, title: secteurLib(c) + (secteurDef(c) && secteurDef(c).reserve ? ` (réservé ${secteurDef(c).reserve})` : '') }))),
+      p.ephemere ? el('p', { class: 'poi-eph-badge', text: `Point éphémère · disparaît ${fmtHeure(p.expire_le)}` }) : null,
       p.caracs.length ? el('ul', { class: 'chips ann-chips poi-types' }, ...p.caracs.map(c => el('li', { html: icoSvg(caracIcone(c), 14) }, c))) : null,
+      liensDe(p).length ? el('div', { class: 'poi-liens' }, el('span', { class: 'muted small', text: 'Points liés : ' }),
+        ...liensDe(p).map(q => el('button', { type: 'button', class: 'poi-lien', html: `<span class="poi-pin-mini">${pinPoint(q)}</span>`, title: 'Voir la fiche', onclick: () => voirLie(q) }, q.nom))) : null,
       p.commentaire ? el('p', { class: 'poi-comment', text: p.commentaire }) : null,
       el('p', { class: 'ann-num poi-gps', text: gps }),
       photoBox,
@@ -595,7 +617,16 @@
         btnPhoto),
       el('p', { class: 'poi-foot' },
         el('span', { class: 'muted small', text: auteur + modif }),
-        droits().modifier ? el('button', { type: 'button', class: 'link', text: 'Modifier', onclick: () => openForm(p) }) : null));
+        peutModifier(p) ? el('button', { type: 'button', class: 'link', text: 'Modifier', onclick: () => openForm(p) }) : null));
+  }
+  // Point lié : fiche affichée même si les filtres la masquaient
+  function voirLie(q) {
+    if (!filtered().some(x => x.id === q.id)) {
+      S.f = Object.assign(F0(), { tri: S.f.tri, vue: S.f.vue });
+      $('#poi-search').value = '';
+      buildFilters(); changed();
+    }
+    if (S.f.vue === 'carte') showOnMap(q); else showInList(q);
   }
 
   async function copyGps(txt, btn) {
@@ -905,6 +936,7 @@
     if (!M.map) {
       M.map = makeMap(L, $('#poi-map'), VAUCLUSE, 9);
       M.traces = L.featureGroup().addTo(M.map);
+      M.liens = L.featureGroup().addTo(M.map);
       M.group = L.featureGroup().addTo(M.map);
       let tt;
       M.map.on('zoomend moveend', () => { majSecondaires(); clearTimeout(tt); tt = setTimeout(majTraces, 250); });
@@ -913,13 +945,20 @@
       M.map.on('contextmenu', e => {
         const I = window.SMPM_ITIN;
         const creer = plein() && droits().creer;
-        if (!I && !creer) return;
+        const eph = !!app().token();
         const ll = [e.latlng.lat, e.latlng.lng];
         const ici = { nom: fmtLL(ll[0], ll[1]), lat: ll[0], lng: ll[1] };
         L.popup({ closeButton: true }).setLatLng(e.latlng).setContent(el('div', { class: 'poi-pop' },
           el('div', { class: 'small', text: fmtLL(ll[0], ll[1]) }),
           I ? el('button', { type: 'button', class: 'pill', text: 'Itinéraire jusqu’ici', onclick: () => I.vers(ici) }) : null,
           I ? el('button', { type: 'button', class: 'pill', text: 'Partir d’ici', onclick: () => I.partirDe(ici) }) : null,
+          eph ? el('button', { type: 'button', class: 'pill poi-eph-btn', text: '＋ Point éphémère ici', onclick: () => {
+            M.map.closePopup();
+            pleinEcran(false);
+            openForm(null, true);
+            $('#poi-f-gps').value = fmtLL(ll[0], ll[1]);
+            $('#poi-f-gps').dispatchEvent(new Event('input'));
+          } }) : null,
           creer ? el('button', { type: 'button', class: 'pill poi-add', text: '＋ Nouveau point ici', onclick: () => {
             M.map.closePopup();
             pleinEcran(false);
@@ -964,17 +1003,26 @@
       if (window.SMPM_ITIN) window.SMPM_ITIN.attacher(L, M.map, { locate, plein: pleinEcran, estPlein: plein, points: () => (S.data && S.data.points) || [] });
     }
     M.group.clearLayers();
+    M.liens.clearLayers();
     M.liste = list;
+    // liens entre points affichés : trait pointillé (une fois par paire)
+    const vus = new Set(list.map(p => p.id));
+    list.forEach(p => (p.liens || []).forEach(id => {
+      if (!vus.has(id) || id < p.id) return;
+      const q = list.find(x => x.id === id);
+      L.polyline([[p.lat, p.lng], [q.lat, q.lng]], { color: '#1d2733', weight: 2, opacity: .55, dashArray: '6 6', interactive: false }).addTo(M.liens);
+    }));
     list.forEach(p => {
       const pop = el('div', { class: 'poi-pop' },
         el('strong', { text: p.nom }),
-        el('div', { class: 'small', text: p.secteurs.map(c => '#' + c).join(' ') + (p.caracs.length ? ' · ' + p.caracs.join(', ') : '') }),
+        el('div', { class: 'small', text: (p.ephemere ? 'Éphémère' : p.secteurs.map(c => '#' + c).join(' ')) + (p.caracs.length ? ' · ' + p.caracs.join(', ') : '') }),
+        liensDe(p).length ? el('div', { class: 'small' }, 'Liés : ', ...liensDe(p).flatMap((q, i) => [i ? ', ' : '', el('button', { type: 'button', class: 'link', text: q.nom, onclick: () => showOnMap(q) })])) : null,
         p.commentaire ? el('div', { class: 'small poi-comment', text: p.commentaire }) : null,
         el('div', { class: 'small' }, el('button', { type: 'button', class: 'link', text: 'Itinéraire sur la carte', onclick: () => tracerVers(p) }), ' · ',
           el('button', { type: 'button', class: 'link', text: 'Appli GPS', onclick: () => openRoute(p) }), ' · ',
           el('button', { type: 'button', class: 'link', text: 'Fiche', onclick: () => showInList(p) })));
       const icon = L.divIcon({ className: 'poi-pin', html: pinPoint(p), iconSize: [25, 34], iconAnchor: [12.5, 34], popupAnchor: [0, -30] });
-      const m = L.marker([p.lat, p.lng], { title: p.nom, icon, draggable: droits().modifier && plein() }).bindPopup(pop);
+      const m = L.marker([p.lat, p.lng], { title: p.nom, icon, draggable: peutModifier(p) && plein() }).bindPopup(pop);
       m.on('dragend', () => deplacer(p, m));
       m.poiId = p.id;
       m.poiSec = estSecondaire(p);   // l’échelle prime, quels que soient la recherche et les filtres
@@ -1115,9 +1163,11 @@
     window.scrollTo(0, 0);
   }
 
-  function openForm(p) {
+  function openForm(p, eph) {
     const d = droits();
-    if (p ? !d.modifier : !d.creer) return;
+    eph = p ? !!p.ephemere : !!eph;
+    if (p ? !peutModifier(p) : (!eph && !d.creer)) return;
+    S.eph = eph;
     if (!S.data || !S.data.listes) { setState('Liste des secteurs indisponible : ouvrez la rubrique avec du réseau.', true); return; }
     S.edit = p || null;
     S.ajouts = []; S.suppr = [];
@@ -1125,7 +1175,23 @@
     $('#poi-f-nom-avert').hidden = true;
     const f = $('#poi-form');
     f.reset();
-    $('#poi-form-title').textContent = p ? 'Modifier le point' : 'Nouveau point d’intérêt';
+    $('#poi-form-title').textContent = eph ? (p ? 'Modifier le point éphémère' : 'Nouveau point éphémère') : (p ? 'Modifier le point' : 'Nouveau point d’intérêt');
+    ['#poi-fs-secteurs', '#poi-fs-caracs', '#poi-fs-liens'].forEach(s => { $(s).hidden = eph; });
+    $('#poi-fs-eph').hidden = !eph;
+    $('#poi-f-eph-note').textContent = `Visible de tout le personnel SMPM, effacé automatiquement ${ephHeures()} h après sa création.`;
+    const curE = p ? p.caracs : [];
+    $('#poi-f-eph').replaceChildren(...ephTypes().map(c => el('button', {
+      type: 'button', class: 'ann-qf poi-qf', 'data-v': c, 'aria-pressed': String(curE.includes(c)), html: icoSvg(EPH_ICO[c] || 'drapeau', 16),
+      onclick: e => {
+        const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+        document.querySelectorAll('#poi-f-eph [aria-pressed]').forEach(b => b.setAttribute('aria-pressed', 'false'));
+        e.currentTarget.setAttribute('aria-pressed', String(on));
+        const n = f.elements.nom;
+        if (on && (!n.value.trim() || ephTypes().includes(n.value.trim()))) n.value = c;
+      },
+    }, c)));
+    S.liens = p ? liensDe(p).map(q => q.id) : [];
+    renderLiens();
     f.elements.nom.value = p ? p.nom : '';
     $('#poi-f-gps').value = p ? fmtLL(p.lat, p.lng) : '';
     f.elements.commentaire.value = p ? p.commentaire : '';
@@ -1158,6 +1224,33 @@
     closePick();
     showForm(true);
     f.elements.nom.focus();
+  }
+
+  // ---------- points liés (formulaire) ----------
+  function renderLiens() {
+    const box = $('#poi-f-liens');
+    box.replaceChildren(...S.liens.map(pointDe).filter(Boolean).map(q => el('li', { class: 'poi-lien' },
+      el('span', { class: 'poi-pin-mini', html: pinPoint(q) }), el('span', { text: q.nom }),
+      el('button', { type: 'button', class: 'link', 'aria-label': `Retirer le lien avec ${q.nom}`, text: '✕',
+        onclick: () => { S.liens = S.liens.filter(x => x !== q.id); renderLiens(); } }))));
+    box.hidden = !S.liens.length;
+    const moi = S.edit && S.edit.id;
+    const ll = parseLatLng($('#poi-f-gps').value);
+    $('#poi-f-lien-list').replaceChildren(...((S.data && S.data.points) || [])
+      .filter(q => !q.ephemere && q.id !== moi && !S.liens.includes(q.id))
+      .sort((a, b) => (ll ? distanceKm(ll, [a.lat, a.lng]) - distanceKm(ll, [b.lat, b.lng]) : a.nom.localeCompare(b.nom, 'fr')))
+      .map(q => el('option', { value: q.nom })));
+  }
+  function ajouterLien() {
+    const inp = $('#poi-f-lien');
+    const v = fold(inp.value.trim());
+    if (!v) return;
+    const q = ((S.data && S.data.points) || []).find(x => !x.ephemere && fold(x.nom) === v && !(S.edit && x.id === S.edit.id));
+    if (!q) { $('#poi-f-lien-note').textContent = 'Choisissez un point existant dans la liste.'; return; }
+    if (!S.liens.includes(q.id)) S.liens.push(q.id);
+    inp.value = '';
+    $('#poi-f-lien-note').textContent = 'Le lien est réciproque.';
+    renderLiens();
   }
 
   function closeForm() {
@@ -1308,15 +1401,19 @@
     const caracs = Array.from(document.querySelectorAll('#poi-f-caracs [aria-pressed="true"]')).map(b => b.dataset.v);
     if (nom.length < 2) { err.textContent = 'Donnez un nom au point.'; f.elements.nom.focus(); return; }
     if (!ll) { err.textContent = 'Coordonnées GPS obligatoires : « Ma position », « Pointer sur la carte » ou saisie (ex. 44.174130, 5.278690).'; $('#poi-f-gps').focus(); return; }
-    if (!secteurs.length) { err.textContent = 'Choisissez au moins un secteur.'; return; }
+    const typesEph = Array.from(document.querySelectorAll('#poi-f-eph [aria-pressed="true"]')).map(b => b.dataset.v);
+    if (S.eph && !typesEph.length) { err.textContent = 'Choisissez le type de point (PRM, victime…).'; return; }
+    if (!S.eph && !secteurs.length) { err.textContent = 'Choisissez au moins un secteur.'; return; }
     majAvertNom();
-    if (S.similaires && S.similaires.length && S.avertiPour !== nom) {
+    if (!S.eph && S.similaires && S.similaires.length && S.avertiPour !== nom) {
       const ok = window.confirm(`Un point au nom proche existe déjà :\n${S.similaires.map(p => '« ' + p.nom + ' »').join('\n')}\n\nEnregistrer quand même « ${nom} » ?`);
       if (!ok) { f.elements.nom.focus(); return; }
       S.avertiPour = nom;
     }
 
-    const poi = { nom, lat: ll[0], lng: ll[1], secteurs, caracs, commentaire: f.elements.commentaire.value.trim() };
+    const poi = S.eph
+      ? { nom, lat: ll[0], lng: ll[1], secteurs: [], caracs: typesEph, ephemere: true, commentaire: f.elements.commentaire.value.trim() }
+      : { nom, lat: ll[0], lng: ll[1], secteurs, caracs, liens: S.liens.slice(), commentaire: f.elements.commentaire.value.trim() };
     if (S.edit) poi.id = S.edit.id;
     if (S.ajouts.length) poi.ajouts = S.ajouts.map(x => ({ nom: x.nom, data: x.data }));
     if (S.edit && S.suppr.length) poi.suppr = S.suppr.slice();
@@ -1336,6 +1433,7 @@
       S.data.points = pts;
       save();
       const n = res.notifies || 0;
+      if ((poi.liens && poi.liens.length) || (S.edit && (S.edit.liens || []).length)) setTimeout(() => load(true), 300);   // liens réciproques mis à jour sur les autres points
       const msg = S.edit ? `Point « ${res.point.nom} » modifié.`
         : `Point « ${res.point.nom} » créé.` + (n ? ` Notification envoyée (${n} appareil${n > 1 ? 's' : ''}).` : '');
       closeForm();
@@ -1610,6 +1708,7 @@
   async function remove() {
     const p = S.edit;
     if (!p || !confirm(`Supprimer définitivement le point « ${p.nom} » ? Il disparaîtra pour tous les membres.`)) return;
+    if ((p.liens || []).length) setTimeout(() => load(true), 300);
     const btn = $('#poi-f-delete');
     btn.disabled = true;
     try {
@@ -1658,6 +1757,10 @@
   document.querySelectorAll('.poi-view [data-view]').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
   $('#poi-reset').addEventListener('click', () => { S.f = Object.assign(F0(), { tri: S.f.tri, vue: S.f.vue }); buildFilters(); changed(); });
   $('#poi-add').addEventListener('click', () => openForm(null));
+  $('#poi-add-eph').addEventListener('click', () => openForm(null, true));
+  $('#poi-f-lien-add').addEventListener('click', ajouterLien);
+  $('#poi-f-lien').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ajouterLien(); } });
+  $('#poi-f-lien').addEventListener('change', ajouterLien);
 
   $('#poi-form').addEventListener('submit', submit);
   $('#poi-form').elements.nom.addEventListener('input', () => { clearTimeout(avertT); avertT = setTimeout(majAvertNom, 250); });
