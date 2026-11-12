@@ -1178,6 +1178,7 @@
     $('#poi-form-title').textContent = eph ? (p ? 'Modifier le point éphémère' : 'Nouveau point éphémère') : (p ? 'Modifier le point' : 'Nouveau point d’intérêt');
     ['#poi-fs-secteurs', '#poi-fs-caracs', '#poi-fs-liens'].forEach(s => { $(s).hidden = eph; });
     $('#poi-fs-eph').hidden = !eph;
+    $('#poi-f-nom-lbl').hidden = eph;   // point éphémère : pas de nom à saisir, le type sert de nom
     $('#poi-f-eph-note').textContent = `Visible de tout le personnel SMPM, effacé automatiquement ${ephHeures()} h après sa création.`;
     const curE = p ? p.caracs : [];
     $('#poi-f-eph').replaceChildren(...ephTypes().map(c => el('button', {
@@ -1186,8 +1187,6 @@
         const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
         document.querySelectorAll('#poi-f-eph [aria-pressed]').forEach(b => b.setAttribute('aria-pressed', 'false'));
         e.currentTarget.setAttribute('aria-pressed', String(on));
-        const n = f.elements.nom;
-        if (on && (!n.value.trim() || ephTypes().includes(n.value.trim()))) n.value = c;
       },
     }, c)));
     S.liens = p ? liensDe(p).map(q => q.id) : [];
@@ -1223,7 +1222,7 @@
 
     closePick();
     showForm(true);
-    f.elements.nom.focus();
+    if (!eph) f.elements.nom.focus();
   }
 
   // ---------- points liés (formulaire) ----------
@@ -1395,6 +1394,9 @@
     const f = $('#poi-form');
     const err = $('#poi-f-error');
     err.textContent = '';
+    const typesEph0 = Array.from(document.querySelectorAll('#poi-f-eph [aria-pressed="true"]')).map(b => b.dataset.v);
+    if (S.eph && !typesEph0.length) { err.textContent = 'Choisissez le type de point (PRM, victime…).'; return; }
+    if (S.eph) f.elements.nom.value = typesEph0[0];   // point éphémère : le type sert de nom
     const nom = f.elements.nom.value.trim();
     const ll = parseLatLng($('#poi-f-gps').value);
     const secteurs = Array.from(document.querySelectorAll('#poi-f-secteurs [aria-pressed="true"]')).map(b => b.dataset.code);
