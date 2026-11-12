@@ -19,6 +19,7 @@
   const BRANCHE = 'organisation-fmpa';
 
   const NOUVEAUTES = [
+    { v: 151, titre: 'Calendrier des FMPA', texte: 'Dans « CT · Organiser », les FMPA s’affichent sur un calendrier mensuel coloré selon leur état (attente d’encadrant, candidats, inscriptions ouvertes, complet). Pour valider ou désigner un IMP 3, son nombre de FMPA encadrées dans l’année est affiché, les moins sollicités en premier.', pour: ['ctd'] },
     { v: 150, titre: 'Planning des FMPA', texte: 'Nouvelle rubrique « Planning des FMPA », avec un espace par rôle : « CT · Organiser » pour proposer les dates et valider les encadrants, « CU · Encadrer » pour se positionner et publier le rendez-vous, « IMP 2 / IMP 1 · S’inscrire » pour s’inscrire (6 places par chef d’unité, liste d’attente au-delà). Vous êtes prévenu à chaque étape.', pour: ['tous'] },
     { v: 148, titre: 'Tableaux de bord', texte: 'Nouvelle rubrique « Tableau de bord » (Chefs de section) : vision d’ensemble de l’unité par thème — Interventions, FMPA, Livrets, Neige, Spéléo, Inventaires — filtrable par année, par période et par secteur, avec comparaison à l’année précédente. Conçue pour l’ordinateur ; sur téléphone, passez en mode paysage.', pour: ['chef_section', 'ctd'] },
     { v: 147, titre: 'Bouton Retour sur les documents (Android aussi)', texte: 'Sur tous les téléphones, les fiches techniques, notices et GTO/GDO/GNR s’ouvrent maintenant dans l’application, avec un bouton « ← Retour » et des boutons − / + pour zoomer.', pour: ['tous'] },

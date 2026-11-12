@@ -24,7 +24,8 @@
     getJSON(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
   };
 
-  const S = { data: null, fresh: false, espace: 'insc', vue: null, secteur: '', id: null, busy: false, edit: null };
+  const moisCourant = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+  const S = { data: null, fresh: false, espace: 'insc', vue: null, secteur: '', id: null, busy: false, edit: null, mois: moisCourant() };
 
   const actif = f => f.phase !== 'annulee' && f.phase !== 'passee';
   const aExaminer = f => actif(f) && f.actions.decider && f.candidats.length > 0;
@@ -146,13 +147,16 @@
   }
 
   function recevoir(res) {
-    S.data = { fmpa: res.fmpa || [], moi: res.moi || {}, secteurs: res.secteurs || SECTEURS_DEF, ratio: res.ratio || 6, aFaire: res.aFaire || 0, maj: res.maj };
+    S.data = { fmpa: res.fmpa || [], moi: res.moi || {}, secteurs: res.secteurs || SECTEURS_DEF, ratio: res.ratio || 6, aFaire: res.aFaire || 0, imp3: res.imp3 || null, maj: res.maj };
     S.fresh = true;
     store.set(KEY, JSON.stringify(S.data));
     // fiche ouverte depuis une notification : espace selon le rôle de chacun sur cette FMPA
     if (S.ouvrirDepuisNotif && S.id) {
       const f = S.data.fmpa.find(x => x.id === S.id);
-      if (f) S.espace = f.actions.decider && (f.candidats.length || f.phase === 'encadrant') ? 'ct' : jEncadre(f) ? 'cu' : 'insc';
+      if (f) {
+        S.espace = f.actions.decider && (f.candidats.length || f.phase === 'encadrant') ? 'ct' : jEncadre(f) ? 'cu' : 'insc';
+        S.mois = f.date.slice(0, 7);
+      }
       S.vue = null;
       S.ouvrirDepuisNotif = false;
     }
@@ -234,6 +238,18 @@
         onclick: () => { S.vue = v.code; renderListe(); } }, v.nom, n ? el('span', { class: 'orga-tab-n', text: String(n) }) : null);
     }));
 
+    // CT : calendrier mensuel à la place des onglets et de la liste
+    const cal = S.espace === 'ct';
+    $('#orga-tabs').hidden = cal;
+    $('#orga-cal').hidden = !cal;
+    $('#orga-list').hidden = cal;
+    if (cal) {
+      $('#orga-empty').hidden = true;
+      renderCalendrier(parSecteur);
+      return;
+    }
+    $('#orga-list').hidden = false;
+
     const V = E.vues.find(v => v.code === S.vue);
     let list = parSecteur.filter(V.filtre);
     if (V.inverse) list = list.reverse();
@@ -242,6 +258,196 @@
     empty.hidden = !S.data || list.length > 0;
     empty.textContent = V.vide;
     $('#orga-list').replaceChildren(...list.map(carte));
+  }
+
+  // ---------- calendrier mensuel (CT · Organiser) ----------
+  const ICO = {
+    question: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01"/>',
+    danger: '<path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.5h.01"/>',
+    personne: '<circle cx="12" cy="7.5" r="3.6"/><path d="M4.8 20.5c.8-4.2 3.7-6.3 7.2-6.3s6.4 2.1 7.2 6.3"/>',
+    personnes: '<circle cx="9" cy="8" r="3.2"/><path d="M2.8 20c.7-3.7 3.2-5.5 6.2-5.5s5.5 1.8 6.2 5.5"/><path d="M15.5 4.9a3.2 3.2 0 0 1 0 6.2M17.3 14.8c2 .6 3.4 2.3 3.9 5.2"/>',
+    ok: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    croix: '<path d="M6 6l12 12M18 6L6 18"/>',
+  };
+  const ico = (k, cls) => {
+    const sp = el('span', { class: 'cal-ico' + (cls ? ' ' + cls : ''), 'aria-hidden': 'true' });
+    sp.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + ICO[k] + '</svg>';
+    return sp;
+  };
+  const joursAvant = j => {
+    const [y, m, d] = j.split('-').map(Number);
+    const t = new Date(); t.setHours(0, 0, 0, 0);
+    return Math.round((new Date(y, m - 1, d) - t) / 86400e3);
+  };
+
+  // État d'affichage d'une FMPA dans le calendrier
+  function etatCal(f) {
+    if (f.phase === 'annulee') return { cls: 'st-annulee', libelle: 'Annulée' };
+    const urgent = !f.encadrants.length && f.phase !== 'passee' && joursAvant(f.date) < 7;
+    if (f.encadrants.length) {
+      return f.inscrits.length >= f.capacite
+        ? { cls: 'st-complet', libelle: 'Complet' + (f.attente.length ? ' (' + f.attente.length + ' en attente)' : '') }
+        : { cls: 'st-ouvert', libelle: 'Inscriptions ouvertes' };
+    }
+    if (urgent) return { cls: 'st-urgent', libelle: f.candidats.length ? 'Moins de 7 jours : encadrant à valider' : 'Moins de 7 jours : aucun encadrant' };
+    if (f.candidats.length) return { cls: 'st-candidat', libelle: f.candidats.length > 1 ? f.candidats.length + ' candidats à départager' : '1 candidat à valider' };
+    return { cls: 'st-attente', libelle: 'En attente d’un IMP 3 encadrant' };
+  }
+
+  function tuileCal(f) {
+    const E = etatCal(f);
+    const t = el('button', { type: 'button', class: 'cal-fmpa ' + E.cls + (f.phase === 'passee' ? ' cal-passee' : ''),
+      'aria-label': dateLongue(f.date) + ', ' + secNom(f.secteur) + ' : ' + E.libelle, onclick: e => { e.stopPropagation(); cacherBulle(); ouvrir(f.id); } });
+    const haut = el('span', { class: 'cal-l1' });
+    if (E.cls === 'st-attente') haut.append(ico('question'));
+    if (E.cls === 'st-urgent') haut.append(ico('danger'));
+    if (E.cls === 'st-urgent' || E.cls === 'st-candidat') {
+      if (f.candidats.length) haut.append(ico(f.candidats.length > 1 ? 'personnes' : 'personne'));
+    }
+    if (E.cls === 'st-complet') haut.append(ico('ok'));
+    if (E.cls === 'st-annulee') haut.append(ico('croix'));
+    haut.append(el('span', { class: 'cal-sec', text: secNom(f.secteur) }));
+    t.append(haut);
+    if (f.encadrants.length) {
+      t.append(el('span', { class: 'cal-cu', text: f.encadrants[0].nom + (f.encadrants.length > 1 ? ' +' + (f.encadrants.length - 1) : '') }));
+      t.append(el('span', { class: 'cal-n', text: f.inscrits.length + '/' + f.capacite }));
+    }
+    t.addEventListener('mouseenter', () => montrerBulle(f, t));
+    t.addEventListener('mouseleave', cacherBulle);
+    t.addEventListener('focus', () => montrerBulle(f, t));
+    t.addEventListener('blur', cacherBulle);
+    return t;
+  }
+
+  function renderCalendrier(list) {
+    const box = $('#orga-cal');
+    const [y, m] = S.mois.split('-').map(Number);
+    const premier = new Date(y, m - 1, 1);
+    const decal = (premier.getDay() + 6) % 7;          // lundi en premier
+    const nb = new Date(y, m, 0).getDate();
+    const auj = today();
+    const parJour = {};
+    list.forEach(f => { (parJour[f.date] = parJour[f.date] || []).push(f); });
+    const titre = premier.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+    const tete = el('div', { class: 'cal-head' },
+      el('button', { type: 'button', class: 'cal-nav', 'aria-label': 'Mois précédent', text: '‹', onclick: () => changerMois(-1) }),
+      el('h2', { class: 'cal-titre', text: titre.charAt(0).toUpperCase() + titre.slice(1) }),
+      el('button', { type: 'button', class: 'cal-nav', 'aria-label': 'Mois suivant', text: '›', onclick: () => changerMois(1) }));
+    const outils = el('div', { class: 'cal-tools' },
+      S.mois !== moisCourant() ? el('button', { type: 'button', class: 'link', text: 'Revenir à aujourd’hui', onclick: () => { S.mois = moisCourant(); renderListe(); } }) : null);
+
+    const grille = el('div', { class: 'cal-grid', role: 'grid', 'aria-label': titre });
+    ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'].forEach(j => grille.append(el('div', { class: 'cal-wd', role: 'columnheader', text: j })));
+    for (let i = 0; i < decal; i++) grille.append(el('div', { class: 'cal-day cal-out', 'aria-hidden': 'true' }));
+    for (let d = 1; d <= nb; d++) {
+      const j = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      const fs = parJour[j] || [];
+      const passe = j < auj;
+      const cell = el('div', { class: 'cal-day' + (j === auj ? ' cal-today' : '') + (passe ? ' cal-past' : '') + (fs.length ? ' cal-has' : ''), role: 'gridcell' },
+        el('span', { class: 'cal-num', text: String(d) }), ...fs.map(tuileCal));
+      if (!passe && S.data && S.data.moi && S.data.moi.gerer) {
+        cell.classList.add('cal-libre');
+        cell.title = 'Ajouter une FMPA le ' + dateLongue(j);
+        cell.addEventListener('click', () => creerLe(j));
+      }
+      grille.append(cell);
+    }
+    const reste = (7 - ((decal + nb) % 7)) % 7;
+    for (let i = 0; i < reste; i++) grille.append(el('div', { class: 'cal-day cal-out', 'aria-hidden': 'true' }));
+
+    const leg = el('ul', { class: 'cal-legende' },
+      ...[['st-attente', 'question', 'Attente d’un IMP 3'], ['st-urgent', 'danger', 'Moins de 7 jours sans encadrant'],
+        ['st-candidat', 'personne', 'Candidat(s) à valider'], ['st-ouvert', null, 'Inscriptions ouvertes'],
+        ['st-complet', 'ok', 'Complet'], ['st-annulee', 'croix', 'Annulée']]
+        .map(([c, i, t]) => el('li', null, el('span', { class: 'cal-pastille ' + c }, i ? ico(i) : null), t)));
+
+    const nbMois = list.filter(f => f.date.slice(0, 7) === S.mois && f.phase !== 'annulee').length;
+    box.replaceChildren(tete, outils, grille,
+      el('p', { class: 'muted small cal-aide', text: (nbMois ? nbMois + ' FMPA ce mois-ci. ' : 'Aucune FMPA ce mois-ci. ') +
+        'Faites glisser pour changer de mois ; touchez un jour libre pour y créer une FMPA.' }), leg);
+  }
+
+  function changerMois(delta) {
+    const [y, m] = S.mois.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    S.mois = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    cacherBulle();
+    renderListe();
+    const g = $('#orga-cal .cal-grid');
+    if (g) { g.classList.add(delta > 0 ? 'cal-slide-g' : 'cal-slide-d'); }
+  }
+
+  // Glisser vers la gauche ou la droite : mois suivant ou précédent
+  (() => {
+    const box = $('#orga-cal');
+    let x0 = null, y0 = 0;
+    box.addEventListener('touchstart', e => { if (e.touches.length === 1) { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; } }, { passive: true });
+    box.addEventListener('touchend', e => {
+      if (x0 === null) return;
+      const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+      x0 = null;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > 1.5 * Math.abs(dy)) changerMois(dx < 0 ? 1 : -1);
+    }, { passive: true });
+  })();
+
+  // Jour libre touché : ligne ajoutée au formulaire de création, avec cette date
+  function creerLe(j) {
+    if ($('#orga-new').hidden) {
+      ouvrirCreation(j);
+    } else {
+      const li = ligneDate(j, S.secteur);
+      $('#orga-new-rows').append(li);
+      majCompteur();
+    }
+    $('#orga-new').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const rows = $('#orga-new-rows').children;
+    const sel = rows[rows.length - 1].querySelector('select');
+    if (sel && !sel.value) setTimeout(() => sel.focus(), 300);
+  }
+
+  // Bulle de détail au survol (ordinateur)
+  const survol = window.matchMedia ? window.matchMedia('(hover: hover) and (pointer: fine)') : { matches: false };
+  let bulle = null;
+  function montrerBulle(f, cible) {
+    if (!survol.matches) return;
+    cacherBulle();
+    const E = etatCal(f);
+    const an = f.date.slice(0, 4);
+    const lignes = [el('strong', { text: dateLongue(f.date) }), el('span', { class: 'cal-b-etat ' + E.cls, text: secNom(f.secteur) + ' · ' + E.libelle })];
+    if (f.note) lignes.push(el('span', { class: 'cal-b-note', text: f.note }));
+    if (f.encadrants.length) lignes.push(el('span', { text: 'Encadrement : ' + f.encadrants.map(e => e.nomComplet + (e.responsable ? ' (resp.)' : '')).join(', ') }));
+    if (f.candidats.length) lignes.push(el('span', { text: 'Candidats : ' + trierParCompteur(f.candidats, an).map(e => e.nomComplet + ' (' + compteurTxt(e.nom, an, true) + ')').join(', ') }));
+    if (f.capacite) lignes.push(el('span', { text: 'Inscrits : ' + f.inscrits.length + '/' + f.capacite + (f.attente.length ? ' · ' + f.attente.length + ' en attente' : '') }));
+    if (f.infos.lieu || f.infos.heure) lignes.push(el('span', { text: 'RDV : ' + [heureTxt(f.infos.heure), f.infos.lieu].filter(Boolean).join(' – ') }));
+    if (f.phase === 'annulee' && f.motif) lignes.push(el('span', { text: 'Motif : ' + f.motif }));
+    bulle = el('div', { class: 'cal-bulle', role: 'tooltip' }, ...lignes);
+    document.body.append(bulle);
+    const r = cible.getBoundingClientRect();
+    const b = bulle.getBoundingClientRect();
+    let left = Math.min(Math.max(8, r.left + r.width / 2 - b.width / 2), window.innerWidth - b.width - 8);
+    let top = r.bottom + 6;
+    if (top + b.height > window.innerHeight - 8) top = r.top - b.height - 6;
+    bulle.style.left = left + 'px';
+    bulle.style.top = Math.max(8, top) + 'px';
+  }
+  function cacherBulle() { if (bulle) { bulle.remove(); bulle = null; } }
+  window.addEventListener('scroll', cacherBulle, { passive: true });
+
+  // ---------- compteur de FMPA encadrées par IMP 3 (CT) ----------
+  function compteur(nom, an) {
+    const x = ((S.data && S.data.imp3) || []).find(p => p.nom === nom);
+    const a = (x && x.annees && x.annees[an]) || {};
+    return { faites: a.faites || 0, prevues: a.prevues || 0 };
+  }
+  function compteurTxt(nom, an, court) {
+    const c = compteur(nom, an);
+    if (court) return c.faites + (c.prevues ? '+' + c.prevues : '') + ' en ' + an;
+    return c.faites + ' FMPA encadrée' + (c.faites > 1 ? 's' : '') + ' en ' + an + (c.prevues ? ' · ' + c.prevues + ' prévue' + (c.prevues > 1 ? 's' : '') : '');
+  }
+  function trierParCompteur(l, an) {
+    const tot = p => { const c = compteur(p.nom, an); return c.faites + c.prevues; };
+    return l.slice().sort((a, b) => tot(a) - tot(b) || String(a.nomComplet).localeCompare(String(b.nomComplet), 'fr'));
   }
 
   function phaseChip(f) {
@@ -349,15 +555,20 @@
       el('span', { class: 'orga-name', text: e.nomComplet }),
       el('span', { class: 'tag', text: e.responsable ? 'Responsable' : 'Co-encadrant' }),
       A.decider ? bouton('Retirer', () => decider(f, e, 'retirer'), 'link danger-link') : null)));
-    f.candidats.forEach(e => enc.append(el('li', { class: 'orga-candidat' },
+    const an = f.date.slice(0, 4);
+    const voirCompteur = !!(S.data && S.data.imp3);
+    f.encadrants.forEach((e, k) => { if (voirCompteur) enc.children[k].append(el('span', { class: 'orga-cpt', text: compteurTxt(e.nom, an) })); });
+    trierParCompteur(f.candidats, an).forEach(e => enc.append(el('li', { class: 'orga-candidat' },
       el('span', { class: 'orga-name', text: e.nomComplet }),
       el('span', { class: 'chip orga-chip-cu', text: 'Candidat' }),
+      voirCompteur ? el('span', { class: 'orga-cpt', text: compteurTxt(e.nom, an) }) : null,
       A.decider ? el('span', { class: 'orga-btns' },
         bouton('Valider', () => decider(f, e, 'valider'), 'pill orga-ok'),
         bouton('Refuser', () => decider(f, e, 'refuser'), 'pill danger-pill')) : null)));
     if (!enc.childNodes.length) enc.append(el('li', { class: 'muted' }, 'Aucun chef d’unité positionné pour le moment.'));
     out.push(section('Encadrement',
       enc,
+      A.decider && voirCompteur ? designer(f, an) : null,
       el('p', { class: 'muted small', text: f.ratio + ' participants par chef d’unité validé : un deuxième encadrant porte la FMPA à ' + (2 * f.ratio) + ' places.' })));
 
     // Participants
@@ -457,9 +668,28 @@
       }, 'pill danger-pill'))];
   }
 
+  // CT : désigner directement un IMP 3 (les moins sollicités de l'année en premier)
+  function designer(f, an) {
+    const pris = new Set([].concat(f.encadrants, f.candidats, f.inscrits, f.attente).map(p => p.nom));
+    const ok = trierParCompteur((S.data.imp3 || []).filter(p => !pris.has(p.nom) && (!f.restreint || p[f.secteur])), an);
+    if (!ok.length) return null;
+    const sel = el('select', { 'aria-label': 'IMP 3 à désigner' }, new Option('— Choisir un IMP 3 —', ''),
+      ...ok.map(p => new Option(p.nomComplet + ' · ' + compteurTxt(p.nom, an, true) + (p.secteur ? ' · ' + secNom(p.secteur) : ''), p.nom)));
+    return el('div', { class: 'orga-designer' },
+      el('label', { class: 'small' }, 'Désigner un IMP 3 (les moins sollicités en ' + an + ' en premier)', sel),
+      bouton('Désigner', () => {
+        const p = ok.find(x => x.nom === sel.value);
+        if (!p) { sel.focus(); return; }
+        const q = `Désigner ${p.nomComplet} pour encadrer la FMPA du ${dateLongue(f.date)} (${compteurTxt(p.nom, an)}) ?` +
+          (f.encadrants.length ? ` La FMPA passera à ${(f.encadrants.length + 1) * f.ratio} places.` : ' Les inscriptions seront ouvertes et tous les membres prévenus.');
+        if (confirm(q)) action('decider', { id: f.id, nom: p.nom, decision: 'designer' }, p.nomComplet + ' est désigné.');
+      }, 'pill orga-ok'));
+  }
+
   function decider(f, e, decision) {
     const q = {
-      valider: `Valider ${e.nomComplet} pour encadrer la FMPA du ${dateLongue(f.date)} ?` +
+      valider: `Valider ${e.nomComplet} pour encadrer la FMPA du ${dateLongue(f.date)}` +
+        (S.data && S.data.imp3 ? ` (${compteurTxt(e.nom, f.date.slice(0, 4))})` : '') + ' ?' +
         (f.encadrants.length ? ` La FMPA passera à ${(f.encadrants.length + 1) * f.ratio} places.` : ' Les inscriptions seront ouvertes et tous les membres prévenus.'),
       refuser: `Refuser la candidature de ${e.nomComplet} ?\nMessage pour lui (facultatif) :`,
       retirer: `Retirer ${e.nomComplet} de l’encadrement ?` + (f.encadrants.length === 1 ? ' Les inscrits passeront en liste d’attente.' : ` La FMPA passera à ${(f.encadrants.length - 1) * f.ratio} places.`) + '\nMessage pour lui (facultatif) :',
@@ -496,8 +726,8 @@
     $('#orga-new-submit').disabled = !n;
   }
 
-  function ouvrirCreation() {
-    $('#orga-new-rows').replaceChildren(ligneDate('', S.secteur));
+  function ouvrirCreation(jour) {
+    $('#orga-new-rows').replaceChildren(ligneDate(typeof jour === 'string' ? jour : '', S.secteur));
     $('#orga-new').hidden = false;
     $('#orga-new-btn').hidden = true;
     majCompteur();
@@ -520,7 +750,7 @@
     if (sansRendu !== true) renderListe();
   }
 
-  $('#orga-new-btn').addEventListener('click', ouvrirCreation);
+  $('#orga-new-btn').addEventListener('click', () => ouvrirCreation());
   $('#orga-new-add').addEventListener('click', ajouterLigne);
   $('#orga-new-cancel').addEventListener('click', () => fermerCreation());
   $('#orga-new').addEventListener('submit', async e => {
@@ -532,7 +762,7 @@
     }));
     if (!dates.length) return;
     const ok = await action('creer', { dates }, dates.length > 1 ? dates.length + ' dates créées : les chefs d’unité sont prévenus.' : 'Date créée : les chefs d’unité sont prévenus.');
-    if (ok) { fermerCreation(); S.vue = 'traiter'; renderListe(); }
+    if (ok) { S.mois = dates.map(x => x.date).sort()[0].slice(0, 7); fermerCreation(); }
   });
   $('#orga-secteur').addEventListener('change', e => { S.secteur = e.target.value; renderListe(); });
 
@@ -548,7 +778,7 @@
 
   function reset() {
     store.del(KEY);
-    Object.assign(S, { data: null, fresh: false, espace: 'insc', vue: null, secteur: '', id: null, busy: false, edit: null });
+    Object.assign(S, { data: null, fresh: false, espace: 'insc', vue: null, secteur: '', id: null, busy: false, edit: null, mois: moisCourant() });
     badge();
   }
 

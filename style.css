@@ -2213,3 +2213,66 @@ body.doc-ouvert { overflow: hidden; }
 .orga-infos dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 420px) { .orga-infos { grid-template-columns: 1fr; } .orga-infos dd { margin-bottom: 6px; } }
 .orga-form textarea { display: block; width: 100%; box-sizing: border-box; margin-top: 6px; padding: 12px; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; resize: vertical; }
+
+/* calendrier mensuel du planning des FMPA (CT · Organiser) */
+.orga-cal { margin-top: 12px; touch-action: pan-y; }
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cal-titre { margin: 0; font-size: 1.15rem; text-align: center; flex: 1; }
+.cal-nav { width: 44px; height: 44px; border: 1px solid var(--line); border-radius: 99px; background: var(--card); color: var(--primary); font-size: 1.6rem; line-height: 1; }
+.cal-tools { min-height: 4px; text-align: center; }
+.cal-tools .link { font-size: .85rem; padding: 4px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; margin-top: 6px; }
+.cal-slide-g { animation: calG .25s ease; }
+.cal-slide-d { animation: calD .25s ease; }
+@keyframes calG { from { opacity: .3; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes calD { from { opacity: .3; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+.cal-wd { text-align: center; font-size: .68rem; font-weight: 700; color: var(--muted); text-transform: uppercase; padding: 2px 0; }
+.cal-day { min-height: 68px; display: flex; flex-direction: column; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); min-width: 0; }
+.cal-out { border: 0; background: none; }
+.cal-past { background: var(--bg); }
+.cal-past .cal-num { opacity: .55; }
+.cal-libre { cursor: pointer; }
+.cal-libre:hover { border-color: var(--primary); }
+.cal-today { border: 2px solid var(--primary); }
+.cal-today .cal-num { background: var(--primary); color: #fff; border-radius: 99px; padding: 0 5px; align-self: flex-start; }
+.cal-num { font-size: .72rem; font-weight: 700; line-height: 1.4; color: var(--muted); }
+.cal-fmpa { display: flex; flex-direction: column; align-items: stretch; gap: 1px; width: 100%; min-width: 0; padding: 3px 4px; border: 0; border-radius: 6px; text-align: left; font: inherit; font-size: .64rem; line-height: 1.2; color: #fff; cursor: pointer; }
+.cal-fmpa > span { display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cal-l1 { display: flex !important; align-items: center; gap: 2px; font-weight: 700; }
+.cal-sec { overflow: hidden; text-overflow: ellipsis; }
+.cal-cu { font-weight: 800; text-transform: uppercase; letter-spacing: .01em; }
+.cal-n { font-weight: 700; opacity: .95; }
+.cal-ico { display: inline-flex; flex: none; }
+.cal-ico svg { width: 13px; height: 13px; }
+.cal-passee { opacity: .55; }
+.st-attente { background: #e8870e; }
+.st-urgent { background: #d32235; }
+.st-candidat { background: #7b3fc4; }
+.st-ouvert { background: #1f63c6; }
+.st-complet { background: #1f8a4c; }
+.st-annulee { background: #8a8f98; text-decoration: line-through; }
+.cal-aide { margin: 8px 0 0; text-align: center; }
+.cal-legende { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 10px 0 0; padding: 0; font-size: .78rem; color: var(--muted); }
+.cal-legende li { display: inline-flex; align-items: center; gap: 5px; }
+.cal-pastille { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 5px; color: #fff; }
+.cal-pastille .cal-ico svg { width: 12px; height: 12px; }
+.cal-bulle { position: fixed; z-index: 60; max-width: 300px; display: grid; gap: 4px; padding: 10px 12px; border-radius: 10px; background: var(--card); color: var(--ink); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0,0,0,.18); font-size: .82rem; pointer-events: none; }
+.cal-bulle strong::first-letter { text-transform: uppercase; }
+.cal-b-etat { justify-self: start; padding: 1px 8px; border-radius: 99px; color: #fff; font-weight: 700; font-size: .75rem; }
+.cal-b-note { font-style: italic; color: var(--muted); }
+@media (min-width: 640px) {
+  .cal-day { min-height: 92px; padding: 5px; }
+  .cal-fmpa { font-size: .74rem; padding: 4px 6px; }
+  .cal-ico svg { width: 15px; height: 15px; }
+}
+.orga-cpt { width: 100%; font-size: .78rem; color: var(--muted); }
+.orga-designer { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; margin-top: 10px; padding: 10px; border: 1px dashed var(--line); border-radius: 10px; }
+.orga-designer label { flex: 1 1 220px; margin: 0; }
+.orga-designer select { margin-top: 4px; }
+@media (max-width: 639px) {
+  .cal-l1 { flex-wrap: wrap; }
+  .cal-l1 .cal-sec { flex-basis: 100%; }
+  .cal-grid { gap: 2px; }
+  .cal-day { padding: 2px; }
+  .cal-fmpa { font-size: .6rem; padding: 2px 3px; letter-spacing: -.01em; }
+}
