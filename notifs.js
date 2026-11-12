@@ -10,10 +10,14 @@
 // - Rafraîchie à l'ouverture de l'application, au retour sur l'application, à la réception
 //   d'une notification push (message du service worker) et toutes les 10 minutes.
 // - Dernière liste gardée sur l'appareil (consultation hors ligne), effacée à la déconnexion.
+// - Une suppression est mémorisée sur l'appareil (KEY_SUPP) tant que le serveur ne l'a pas enregistrée :
+//   la notification reste masquée et la suppression est renvoyée au prochain rafraîchissement
+//   (hors ligne, serveur occupé, liste rechargée au même moment…).
 (() => {
   'use strict';
 
   const KEY = 'smpm_notifs';
+  const KEY_SUPP = 'smpm_notifs_supp';
   const POLL_MS = 10 * 60e3;
   const $ = (sel, root = document) => root.querySelector(sel);
   const store = {
@@ -22,7 +26,23 @@
     del() { try { localStorage.removeItem(KEY); } catch (e) {} },
   };
   const app = () => window.SMPM_APP;
-  const S = { on: false, items: [], sel: new Set(), loading: false, error: '', last: 0, timer: 0 };
+  // gen : incrémenté à chaque action locale (lecture, suppression) ; une liste demandée avant l'action est ignorée
+  const S = { on: false, items: [], sel: new Set(), loading: false, error: '', last: 0, timer: 0, gen: 0, envoi: false };
+
+  // Suppressions pas encore confirmées par le serveur (identifiants), gardées sur l'appareil
+  const supp = {
+    get() { try { const l = JSON.parse(localStorage.getItem(KEY_SUPP) || '[]'); return Array.isArray(l) ? l.map(String) : []; } catch (e) { return []; } },
+    set(l) { try { if (l.length) localStorage.setItem(KEY_SUPP, JSON.stringify(l.slice(-200))); else localStorage.removeItem(KEY_SUPP); } catch (e) {} },
+    add(ids) { supp.set(supp.get().concat(ids).filter((id, i, t) => t.indexOf(id) === i)); },
+    del(ids) { supp.set(supp.get().filter(id => !ids.includes(id))); },
+  };
+  // Liste reçue du serveur, sans les notifications dont la suppression est en attente
+  const sansSupp = items => { const att = supp.get(); return att.length ? items.filter(x => !att.includes(x.id)) : items; };
+  function poser(items) {
+    S.items = sansSupp(items || []);
+    S.sel = new Set([...S.sel].filter(id => S.items.some(x => x.id === id)));
+    store.set(S.items);
+  }
 
   const fmtDate = t => {
     const d = new Date(t), now = new Date();
@@ -88,12 +108,16 @@
     if (!S.on || !a || !a.token() || !navigator.onLine || S.loading) return;
     S.loading = true;
     render();
+    const gen = S.gen;
+    let relancer = false;
     try {
       const r = await a.api('notif_list', { token: a.token() });
-      S.items = r.items || [];
+      // une lecture ou une suppression a eu lieu pendant l'appel : cette liste est déjà périmée
+      if (gen !== S.gen) { relancer = true; return; }
+      poser(r.items);
       S.error = '';
       S.last = Date.now();
-      store.set(S.items);
+      envoyerSupp();
     } catch (e) {
       if (a.AUTH_ERRORS && a.AUTH_ERRORS.includes(e.message)) return a.logout();
       // serveur pas encore à jour (action inconnue) : clochette discrète, pas d'erreur affichée
@@ -101,6 +125,28 @@
     } finally {
       S.loading = false;
       render();
+      if (relancer) setTimeout(charger, 3000);
+    }
+  }
+
+  // Envoie au serveur les suppressions en attente. Renvoie '' si tout est enregistré, sinon le motif.
+  async function envoyerSupp() {
+    const a = app(), ids = supp.get();
+    if (!ids.length || S.envoi || !a || !a.token()) return '';
+    if (!navigator.onLine) return 'hors ligne';
+    S.envoi = true;
+    const gen = S.gen;
+    try {
+      const r = await a.api('notif_delete', { token: a.token(), ids });
+      const reste = (r.items || []).filter(x => ids.includes(x.id)).map(x => x.id);
+      supp.del(ids.filter(id => !reste.includes(id)));      // enregistrées par le serveur
+      if (gen === S.gen) { poser(r.items); render(); }
+      return reste.length ? 'le serveur ne les a pas retirées' : '';
+    } catch (e) {
+      if (a.AUTH_ERRORS && a.AUTH_ERRORS.includes(e.message)) { a.logout(); return ''; }
+      return e.message || 'erreur';
+    } finally {
+      S.envoi = false;
     }
   }
 
@@ -109,14 +155,15 @@
   async function marquer(ids, mode) {
     const a = app();
     // affichage immédiat, puis confirmation du serveur
+    const gen = ++S.gen;
     S.items.forEach(x => { if (ids === 'tout' || ids.includes(x.id)) x.lu = true; });
     store.set(S.items);
     render();
     if (!a || !navigator.onLine) return;
     try {
       const r = await a.api('notif_read', { token: a.token(), ids, mode: mode || '' });
-      S.items = r.items || S.items;
-      store.set(S.items);
+      if (gen !== S.gen) return;
+      poser(r.items || S.items);
       render();
     } catch (e) {
       if (a.AUTH_ERRORS && a.AUTH_ERRORS.includes(e.message)) return a.logout();
@@ -125,24 +172,23 @@
 
   // Retire de la clochette, pour cette personne : 'lues' (toutes les lues) ou liste d'identifiants choisis (serveur : notif_delete)
   async function supprimer(ids) {
-    const a = app();
     const tous = ids === 'lues';
-    const n = tous ? 0 : ids.length;
+    const liste = (tous ? S.items.filter(x => x.lu).map(x => x.id) : ids).map(String);
+    const n = liste.length;
+    if (!n) return;
     const q = tous ? 'Supprimer les notifications lues' : `Supprimer ${n} notification${n > 1 ? 's' : ''}`;
     if (!confirm(q + ' ? Elles ne seront plus affichées dans votre clochette.')) return;
-    const retire = x => (tous ? x.lu : ids.includes(x.id));
-    S.items = S.items.filter(x => !retire(x));
-    S.sel = new Set([...S.sel].filter(id => S.items.some(x => x.id === id)));
-    store.set(S.items);
+    S.gen++;
+    supp.add(liste);
+    poser(S.items);
+    S.error = '';
     render();
-    if (!a || !navigator.onLine) return;
-    try {
-      const r = await a.api('notif_delete', { token: a.token(), ids });
-      S.items = r.items || S.items;
-      store.set(S.items);
+    const motif = await envoyerSupp();
+    if (motif && supp.get().length) {
+      S.error = motif === 'hors ligne'
+        ? 'Hors ligne : la suppression sera enregistrée au retour du réseau.'
+        : `Suppression pas encore enregistrée sur le serveur (${motif}) : nouvel essai automatique.`;
       render();
-    } catch (e) {
-      if (a.AUTH_ERRORS && a.AUTH_ERRORS.includes(e.message)) return a.logout();
     }
   }
 
@@ -172,7 +218,7 @@
     setSession(session, offline) {
       S.on = !!session;
       $('#btn-notif').hidden = !S.on;
-      if (!S.items.length) S.items = store.get() || [];
+      if (!S.items.length) S.items = sansSupp(store.get() || []);
       render();
       clearInterval(S.timer);
       if (S.on) {
@@ -186,9 +232,10 @@
     lue: (id, mode) => { if (S.on && id) marquer([String(id)], mode); },
     close: fermer,
     reset() {
-      S.on = false; S.items = []; S.last = 0; S.error = '';
+      S.on = false; S.items = []; S.last = 0; S.error = ''; S.gen++; S.sel = new Set();
       clearInterval(S.timer);
       store.del();
+      supp.set([]);
       fermer();
       const b = $('#btn-notif'); if (b) b.hidden = true;
       render();
