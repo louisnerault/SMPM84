@@ -1006,9 +1006,12 @@
     M.liens.clearLayers();
     M.liste = list;
     // liens entre points affichés : trait pointillé (une fois par paire)
-    const vus = new Set(list.map(p => p.id));
+    // (un lien enregistré d'un seul côté est aussi dessiné)
+    const vus = new Set(list.map(p => p.id)), faits = new Set();
     list.forEach(p => (p.liens || []).forEach(id => {
-      if (!vus.has(id) || id < p.id) return;
+      const k = [p.id, id].sort().join('|');
+      if (!vus.has(id) || id === p.id || faits.has(k)) return;
+      faits.add(k);
       const q = list.find(x => x.id === id);
       L.polyline([[p.lat, p.lng], [q.lat, q.lng]], { color: '#1d2733', weight: 2, opacity: .55, dashArray: '6 6', interactive: false }).addTo(M.liens);
     }));
