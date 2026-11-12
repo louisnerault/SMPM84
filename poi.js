@@ -131,6 +131,9 @@
     const local = app().poiDroits ? app().poiDroits() : { creer: false, modifier: false, gerer: false };
     return d ? { creer: !!d.creer && local.creer, modifier: !!d.modifier && local.modifier, gerer: !!d.gerer && !!local.gerer } : local;
   }
+  // Tout membre peut ajouter un point : création directe (chef d'unité et au-delà) ou proposition à valider
+  const peutAjouter = () => !!(app().token && app().token());
+  const propose = () => !droits().creer;
   // Point éphémère : son auteur peut le modifier ou le supprimer
   const peutModifier = p => droits().modifier || (!!p.ephemere && !!S.data && !!S.data.moi && p.cree_par === S.data.moi);
   // ---------- points éphémères (mode intervention) ----------
@@ -337,7 +340,8 @@
     $('#poi-tri').value = S.f.tri;
     $('#poi-search').value = S.f.q;
     document.querySelectorAll('.poi-view [data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === S.f.vue)));
-    $('#poi-add').hidden = !droits().creer;
+    $('#poi-add').hidden = !peutAjouter();
+    $('#poi-add').textContent = propose() ? '＋ Proposer un point' : '＋ Nouveau point';
     $('#poi-add-eph').hidden = !app().token || !app().token();
     $('#poi-gerer').hidden = !droits().gerer;
   }
@@ -372,12 +376,14 @@
       recent: (a, b) => String(b.cree_le).localeCompare(String(a.cree_le)) || byNom(a, b),
       distance: (a, b) => (S.pos ? distanceKm(S.pos, [a.lat, a.lng]) - distanceKm(S.pos, [b.lat, b.lng]) : byNom(a, b)),
     }[S.f.tri] || byNom;
-    return all.filter(match).sort(tri);
+    return all.filter(match).sort((a, b) => (b.peut_valider ? 1 : 0) - (a.peut_valider ? 1 : 0) || tri(a, b));
   }
 
   // ---------- liste ----------
   function render() {
     const all = ((S.data && S.data.points) || []).filter(p => !expire(p));
+    const aValider = all.filter(p => p.peut_valider).length;
+    if (aValider && !$('#poi-state').textContent) setState(`${aValider} proposition${aValider > 1 ? 's' : ''} de point à valider (en tête de liste).`);
     const list = filtered();
     const f = S.f;
     $('#poi-reset').hidden = !(f.q || f.secteurs.length || f.caracs.length);
@@ -602,6 +608,11 @@
         el('p', { class: 'ann-name poi-name' }, el('span', { class: 'poi-pin-mini', html: pinPoint(p) }), el('strong', { text: p.nom })),
         dist !== null ? el('span', { class: 'ann-fct', text: fmtKm(dist) }) : null),
       el('ul', { class: 'chips poi-tags' }, ...secteursOrdonnes(p.secteurs).map(c => el('li', { class: 'poi-tag', style: `background:${secteurCouleur(c)}`, text: '#' + c, title: secteurLib(c) + (secteurDef(c) && secteurDef(c).reserve ? ` (réservé ${secteurDef(c).reserve})` : '') }))),
+      p.propose ? el('div', { class: 'poi-prop' },
+        el('p', { class: 'poi-prop-badge', text: p.peut_valider ? 'Proposition à valider' : 'Proposition en attente de validation' }),
+        p.peut_valider ? el('div', { class: 'poi-prop-btns' },
+          el('button', { type: 'button', class: 'pill poi-add', text: 'Valider', onclick: e => valider(p, true, e.currentTarget) }),
+          el('button', { type: 'button', class: 'pill', text: 'Refuser', onclick: e => valider(p, false, e.currentTarget) })) : null) : null,
       p.ephemere ? el('p', { class: 'poi-eph-badge', text: `Point éphémère · disparaît ${fmtHeure(p.expire_le)}` }) : null,
       p.caracs.length ? el('ul', { class: 'chips ann-chips poi-types' }, ...p.caracs.map(c => el('li', { html: icoSvg(caracIcone(c), 14) }, c))) : null,
       liensDe(p).length ? el('div', { class: 'poi-liens' }, el('span', { class: 'muted small', text: 'Points liés : ' }),
@@ -618,6 +629,23 @@
       el('p', { class: 'poi-foot' },
         el('span', { class: 'muted small', text: auteur + modif }),
         peutModifier(p) ? el('button', { type: 'button', class: 'link', text: 'Modifier', onclick: () => openForm(p) }) : null));
+  }
+  // Proposition d'un équipier : validation ou refus (administrateurs, CTD, chefs de section concernés)
+  async function valider(p, ok, btn) {
+    let motif = '';
+    if (!ok) { motif = window.prompt(`Refuser la proposition « ${p.nom} » ? Motif (facultatif, transmis à l’auteur) :`, ''); if (motif === null) return; }
+    else if (!confirm(`Valider « ${p.nom} » ? Il sera visible de tous les membres de ses secteurs.`)) return;
+    btn.disabled = true;
+    try {
+      const res = await app().api('poi_valider', { token: app().token(), id: p.id, ok, motif });
+      S.data.points = S.data.points.filter(x => x.id !== p.id).concat(ok && res.point ? [res.point] : []);
+      save(); buildFilters(); render();
+      setState(ok ? `Point « ${p.nom} » validé. L’auteur est prévenu.` : `Proposition « ${p.nom} » refusée. L’auteur est prévenu.`);
+    } catch (e) {
+      if (app().AUTH_ERRORS.includes(e.message)) return app().logout();
+      setState(e instanceof app().NetworkError ? app().netLabel() + ' : validation impossible pour l’instant.' : e.message, true);
+      btn.disabled = false;
+    }
   }
   // Point lié : fiche affichée même si les filtres la masquaient
   function voirLie(q) {
@@ -769,7 +797,7 @@
         el('button', { type: 'button', class: 'link', text: 'Itinéraire sur la carte', onclick: () => tracerVers(p) }),
         el('button', { type: 'button', class: 'link', text: 'Appli GPS', onclick: () => openRoute(p) }),
         el('button', { type: 'button', class: 'link', text: 'Copier', onclick: e => copyGps(gps, e.currentTarget) }),
-        droits().creer ? el('button', { type: 'button', class: 'link', text: 'Nouveau point ici', onclick: () => {
+        peutAjouter() ? el('button', { type: 'button', class: 'link', text: propose() ? 'Proposer un point ici' : 'Nouveau point ici', onclick: () => {
           fermerScan(); if (M.map) M.map.closePopup(); if (plein()) pleinEcran(false);
           openForm(null);
           $('#poi-f-gps').value = gps;
@@ -944,7 +972,7 @@
       // en plein écran, également nouveau point à cet endroit (selon les droits)
       M.map.on('contextmenu', e => {
         const I = window.SMPM_ITIN;
-        const creer = plein() && droits().creer;
+        const creer = plein() && peutAjouter();
         const eph = !!app().token();
         const ll = [e.latlng.lat, e.latlng.lng];
         const ici = { nom: fmtLL(ll[0], ll[1]), lat: ll[0], lng: ll[1] };
@@ -959,7 +987,7 @@
             $('#poi-f-gps').value = fmtLL(ll[0], ll[1]);
             $('#poi-f-gps').dispatchEvent(new Event('input'));
           } }) : null,
-          creer ? el('button', { type: 'button', class: 'pill poi-add', text: '＋ Nouveau point ici', onclick: () => {
+          creer ? el('button', { type: 'button', class: 'pill poi-add', text: propose() ? '＋ Proposer un point ici' : '＋ Nouveau point ici', onclick: () => {
             M.map.closePopup();
             pleinEcran(false);
             openForm(null);
@@ -1027,6 +1055,7 @@
       const icon = L.divIcon({ className: 'poi-pin', html: pinPoint(p), iconSize: [25, 34], iconAnchor: [12.5, 34], popupAnchor: [0, -30] });
       const m = L.marker([p.lat, p.lng], { title: p.nom, icon, draggable: peutModifier(p) && plein() }).bindPopup(pop);
       m.on('dragend', () => deplacer(p, m));
+      if (p.propose) m.setOpacity(.55);
       m.poiId = p.id;
       m.poiSec = estSecondaire(p);   // l’échelle prime, quels que soient la recherche et les filtres
       m.poiEch = echPoint(p);
@@ -1169,7 +1198,7 @@
   function openForm(p, eph) {
     const d = droits();
     eph = p ? !!p.ephemere : !!eph;
-    if (p ? !peutModifier(p) : (!eph && !d.creer)) return;
+    if (p ? !peutModifier(p) : (!eph && !peutAjouter())) return;
     S.eph = eph;
     if (!S.data || !S.data.listes) { setState('Liste des secteurs indisponible : ouvrez la rubrique avec du réseau.', true); return; }
     S.edit = p || null;
@@ -1178,7 +1207,8 @@
     $('#poi-f-nom-avert').hidden = true;
     const f = $('#poi-form');
     f.reset();
-    $('#poi-form-title').textContent = eph ? (p ? 'Modifier le point éphémère' : 'Nouveau point éphémère') : (p ? 'Modifier le point' : 'Nouveau point d’intérêt');
+    $('#poi-form-title').textContent = eph ? (p ? 'Modifier le point éphémère' : 'Nouveau point éphémère') : (p ? 'Modifier le point' : (propose() ? 'Proposer un point d’intérêt' : 'Nouveau point d’intérêt'));
+    $('#poi-fs-liens').hidden = eph || (!p && propose());
     ['#poi-fs-secteurs', '#poi-fs-caracs', '#poi-fs-liens'].forEach(s => { $(s).hidden = eph; });
     $('#poi-fs-eph').hidden = !eph;
     $('#poi-f-nom-lbl').hidden = eph;   // point éphémère : pas de nom à saisir, le type sert de nom
@@ -1440,6 +1470,7 @@
       const n = res.notifies || 0;
       if ((poi.liens && poi.liens.length) || (S.edit && (S.edit.liens || []).length)) setTimeout(() => load(true), 300);   // liens réciproques mis à jour sur les autres points
       const msg = S.edit ? `Point « ${res.point.nom} » modifié.`
+        : res.point.propose ? `Point « ${res.point.nom} » proposé : il sera visible de tous une fois validé par un chef de section ou un administrateur.`
         : `Point « ${res.point.nom} » créé.` + (n ? ` Notification envoyée (${n} appareil${n > 1 ? 's' : ''}).` : '');
       closeForm();
       buildFilters();
@@ -1693,7 +1724,7 @@
 
   // Point refusé par le serveur : remis dans le formulaire pour le corriger
   function resume(e) {
-    if (!droits().creer) return;
+    if (!peutAjouter()) return;
     setOutbox(outbox().filter(x => x.sid !== e.sid));
     renderPending();
     openForm(null);

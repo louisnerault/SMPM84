@@ -19,6 +19,8 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+  { v: 156, titre: 'Proposer un point d’intérêt', texte: 'Chacun peut désormais proposer un point avec « ＋ Proposer un point » : il apparaît pour tous une fois validé par un chef de section ou un administrateur, et vous êtes prévenu de la décision.', pour: ['equipier'] },
+  { v: 156, titre: 'Points proposés à valider', texte: 'Les points proposés par les équipiers de vos secteurs vous sont notifiés et apparaissent en tête de la liste des points d’intérêt, avec les boutons Valider et Refuser.', pour: ['chef_section'] },
   { v: 153, titre: 'Point éphémère plus rapide', texte: 'Plus de nom à saisir pour un point éphémère : choisissez simplement son type (PRM, victime…) et sa position.', pour: ['tous'] },
   { v: 152, titre: 'Points éphémères en intervention', texte: 'Chacun peut poser un point éphémère (PRM, victime, PMA, DZ…) avec « ＋ Point éphémère » ou un clic droit sur la carte : il est visible de tous et s’efface au bout de 24 h.', pour: ['tous'] },
   { v: 152, titre: 'Points liés', texte: 'Un point peut être lié à d’autres (ex. un sommet, ses parkings et ses accès) : les points liés s’affichent sur sa fiche et en pointillés sur la carte.', pour: ['tous'] },

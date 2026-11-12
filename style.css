@@ -2159,3 +2159,7 @@ body.doc-ouvert { overflow: hidden; }
 @keyframes dash-rot { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
 @media (prefers-reduced-motion: reduce) { .dash-rot { animation: none; } }
 @media print { .dash-themes, .dash-filters, .dash-refresh { display: none; } }
+
+.poi-prop { margin: .3rem 0; padding: .4rem .6rem; border: 1px dashed #b8860b; border-radius: 8px; }
+.poi-prop-badge { margin: 0; font-size: .85rem; font-weight: 600; color: #b8860b; }
+.poi-prop-btns { display: flex; gap: .4rem; margin-top: .35rem; }
