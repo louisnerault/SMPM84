@@ -19,6 +19,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+  { v: 153, titre: 'Point éphémère plus rapide', texte: 'Plus de nom à saisir pour un point éphémère : choisissez simplement son type (PRM, victime…) et sa position.', pour: ['tous'] },
   { v: 152, titre: 'Points éphémères en intervention', texte: 'Chacun peut poser un point éphémère (PRM, victime, PMA, DZ…) avec « ＋ Point éphémère » ou un clic droit sur la carte : il est visible de tous et s’efface au bout de 24 h.', pour: ['tous'] },
   { v: 152, titre: 'Points liés', texte: 'Un point peut être lié à d’autres (ex. un sommet, ses parkings et ses accès) : les points liés s’affichent sur sa fiche et en pointillés sur la carte.', pour: ['tous'] },
     { v: 151, titre: 'Notifications supprimées pour de bon', texte: 'Les notifications supprimées dans la clochette ne réapparaissent plus, même si la suppression est faite hors ligne ou pendant un rafraîchissement : elle est enregistrée dès que le serveur répond.', pour: ['tous'] },
