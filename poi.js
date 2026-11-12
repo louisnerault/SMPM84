@@ -135,7 +135,7 @@
   const peutModifier = p => droits().modifier || (!!p.ephemere && !!S.data && !!S.data.moi && p.cree_par === S.data.moi);
   // ---------- points éphémères (mode intervention) ----------
   const EPH_COUL = '#d62828';
-  const EPH_ICO = { 'PRM': 'piste4x4', 'Victime': 'regroupement', 'PMA': 'pma', 'DZ / hélisurface': 'dz', 'Point de regroupement': 'rdv',
+  const EPH_ICO = { 'PRM': 'piste4x4', 'Victime': 'regroupement', 'PC': 'refuge', 'DZ / hélisurface': 'dz', 'Point de regroupement': 'rdv',
     'Danger': 'danger', 'Engin / véhicule': 'caserne', 'Autre': 'drapeau' };
   const ephTypes = () => (S.data && S.data.ephemere && S.data.ephemere.types) || Object.keys(EPH_ICO);
   const ephHeures = () => (S.data && S.data.ephemere && S.data.ephemere.heures) || 24;
