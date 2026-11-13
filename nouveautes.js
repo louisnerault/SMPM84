@@ -19,6 +19,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+  { v: 157, titre: 'Groupes de points d’intérêt', texte: 'Les points peuvent être rangés dans un ou plusieurs groupes (ex. « Autran » : aven, parking, accès). La liste les regroupe sous un titre repliable, et un filtre permet d’afficher un seul groupe, aussi sur la carte.', pour: ['tous'] },
   { v: 156, titre: 'Proposer un point d’intérêt', texte: 'Chacun peut désormais proposer un point avec « ＋ Proposer un point » : il apparaît pour tous une fois validé par un chef de section ou un administrateur, et vous êtes prévenu de la décision.', pour: ['equipier'] },
   { v: 156, titre: 'Points proposés à valider', texte: 'Les points proposés par les équipiers de vos secteurs vous sont notifiés et apparaissent en tête de la liste des points d’intérêt, avec les boutons Valider et Refuser.', pour: ['chef_section'] },
   { v: 153, titre: 'Point éphémère plus rapide', texte: 'Plus de nom à saisir pour un point éphémère : choisissez simplement son type (PRM, victime…) et sa position.', pour: ['tous'] },

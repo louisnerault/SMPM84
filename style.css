@@ -2163,3 +2163,9 @@ body.doc-ouvert { overflow: hidden; }
 .poi-prop { margin: .3rem 0; padding: .4rem .6rem; border: 1px dashed #b8860b; border-radius: 8px; }
 .poi-prop-badge { margin: 0; font-size: .85rem; font-weight: 600; color: #b8860b; }
 .poi-prop-btns { display: flex; gap: .4rem; margin-top: .35rem; }
+
+.poi-grp-li { list-style: none; }
+.poi-grp { border: 1px solid var(--border, #ccd3da); border-radius: 10px; margin: .4rem 0; padding: .3rem .6rem; }
+.poi-grp > summary { cursor: pointer; padding: .35rem 0; display: flex; align-items: center; gap: .3rem; }
+.poi-grp-carte { margin-left: auto; }
+.poi-grp > .ann-list { margin: .3rem 0 .2rem; padding: 0; }

@@ -349,6 +349,8 @@
             <div class="poi-checks" id="poi-caracs" role="group" aria-label="Types de points"></div>
           </details>
           <div class="ann-filters">
+            <select id="poi-groupe" aria-label="Groupe" hidden></select>
+            <label class="poi-check" id="poi-regrouper-l" hidden><input type="checkbox" id="poi-regrouper" checked><span>Regrouper</span></label>
             <select id="poi-tri" aria-label="Tri">
               <option value="nom">Tri : nom</option>
               <option value="distance">Tri : les plus proches</option>
@@ -451,6 +453,16 @@
         <fieldset class="poi-fs" id="poi-fs-caracs">
           <legend>Caractéristiques</legend>
           <div class="ann-qualifs" id="poi-f-caracs"></div>
+        </fieldset>
+        <fieldset class="poi-fs" id="poi-fs-groupes">
+          <legend>Groupes</legend>
+          <ul class="poi-liens-f" id="poi-f-groupes" hidden></ul>
+          <div class="gps-row poi-lien-row">
+            <input type="text" id="poi-f-groupe" list="poi-f-groupe-list" maxlength="40" placeholder="Ex. : Autran, Mont Ventoux…" autocomplete="off" aria-label="Ajouter à un groupe">
+            <button type="button" class="pill" id="poi-f-groupe-add">Ajouter</button>
+          </div>
+          <datalist id="poi-f-groupe-list"></datalist>
+          <p class="muted small">Facultatif. Choisissez un groupe existant ou tapez un nouveau nom ; un point peut être dans plusieurs groupes.</p>
         </fieldset>
         <fieldset class="poi-fs" id="poi-fs-liens">
           <legend>Points liés</legend>

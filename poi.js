@@ -25,7 +25,7 @@
   const app = () => window.SMPM_APP;
   const fold = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-  const F0 = () => ({ q: '', secteurs: [], caracs: [], tri: 'distance', vue: 'liste' });
+  const F0 = () => ({ q: '', secteurs: [], caracs: [], groupe: '', regrouper: true, tri: 'distance', vue: 'liste' });
   // tri par défaut : les plus proches (filtres enregistrés avant ce changement : tri remis à « distance » une fois)
   const filtresGardes = () => {
     const g = store.getJSON(KEY_FILTRES) || {};
@@ -145,6 +145,8 @@
   const expire = p => !!p.ephemere && !!p.expire_le && new Date(p.expire_le) <= new Date();
   const fmtHeure = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('fr-FR', { weekday: 'short', hour: '2-digit', minute: '2-digit' }); };
   const pointDe = id => ((S.data && S.data.points) || []).find(x => x.id === id && !expire(x));
+  const tousGroupes = () => [...new Set(((S.data && S.data.points) || []).filter(p => !expire(p)).flatMap(p => p.groupes || []))]
+    .sort((a, b) => a.localeCompare(b, 'fr'));
   const liensDe = p => (p.liens || []).map(pointDe).filter(Boolean);
   // ---------- icônes des types, couleurs des secteurs, épingles ----------
   // Icônes (traits 24×24) proposées pour les types de points ; la clé est enregistrée dans le classeur.
@@ -337,6 +339,15 @@
     }));
     $('#poi-types-box').hidden = !typesPresents.length;
     paintTypesN();
+    // Groupes : ceux présents dans les points visibles
+    const groupes = tousGroupes();
+    if (S.f.groupe && !groupes.includes(S.f.groupe)) S.f.groupe = '';
+    $('#poi-groupe').replaceChildren(el('option', { value: '', text: 'Tous les groupes' }),
+      ...groupes.map(g => el('option', { value: g, text: `${g} (${points.filter(p => (p.groupes || []).includes(g) && !expire(p)).length})` })));
+    $('#poi-groupe').value = S.f.groupe;
+    $('#poi-groupe').hidden = !groupes.length;
+    $('#poi-regrouper-l').hidden = !groupes.length;
+    $('#poi-regrouper').checked = S.f.regrouper !== false;
     $('#poi-tri').value = S.f.tri;
     $('#poi-search').value = S.f.q;
     document.querySelectorAll('.poi-view [data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === S.f.vue)));
@@ -362,9 +373,10 @@
     // points éphémères : toujours affichés quels que soient les filtres de secteurs et de types (seule la recherche s'applique)
     if (!p.ephemere && f.secteurs.length && !f.secteurs.some(c => p.secteurs.includes(c))) return false;
     if (!p.ephemere && f.caracs.length && !f.caracs.some(c => p.caracs.includes(c))) return false;
+    if (f.groupe && !(p.groupes || []).includes(f.groupe)) return false;
     const words = fold(f.q).split(/\s+/).filter(Boolean);
     if (!words.length) return true;
-    const hay = fold([p.nom, p.commentaire, p.caracs.join(' '), p.secteurs.join(' '), p.secteurs.map(secteurLib).join(' '), p.cree_par].join(' '));
+    const hay = fold([p.nom, (p.groupes || []).join(' '), p.commentaire, p.caracs.join(' '), p.secteurs.join(' '), p.secteurs.map(secteurLib).join(' '), p.cree_par].join(' '));
     return words.every(w => hay.includes(w));
   }
 
@@ -386,7 +398,7 @@
     if (aValider && !$('#poi-state').textContent) setState(`${aValider} proposition${aValider > 1 ? 's' : ''} de point à valider (en tête de liste).`);
     const list = filtered();
     const f = S.f;
-    $('#poi-reset').hidden = !(f.q || f.secteurs.length || f.caracs.length);
+    $('#poi-reset').hidden = !(f.q || f.secteurs.length || f.caracs.length || f.groupe);
     $('#poi-count').textContent = all.length ? `${list.length} / ${all.length}` : '';
     const empty = $('#poi-empty');
     empty.hidden = list.length > 0 || !S.data;
@@ -396,8 +408,32 @@
     $('#poi-list').hidden = carte;
     $('#poi-map').hidden = !carte;
     if (!carte) { $('#poi-map-note').textContent = ''; $('#poi-legend').hidden = true; }
-    $('#poi-list').replaceChildren(...(carte ? [] : list.map(card)));
+    $('#poi-list').replaceChildren(...(carte ? [] : listeGroupee(list)));
     if (carte) renderMap(list);
+  }
+
+  // Liste regroupée : les points d'un groupe sont rangés sous un titre repliable (un point de plusieurs groupes
+  // apparaît dans chacun) ; les points sans groupe restent à leur place. Ordre : celui du tri, au premier point du groupe.
+  function listeGroupee(list) {
+    if (S.f.regrouper === false || S.f.groupe || !list.some(p => (p.groupes || []).length)) return list.map(card);
+    const out = [], faits = new Set();
+    const nGroupes = new Set(list.flatMap(p => p.groupes || [])).size;
+    list.forEach(p => {
+      const gs = p.groupes || [];
+      if (!gs.length || p.peut_valider) { out.push(card(p)); return; }
+      gs.forEach(g => {
+        if (faits.has(g)) return;
+        faits.add(g);
+        const membres = list.filter(x => (x.groupes || []).includes(g));
+        const d = el('details', { class: 'poi-grp' },
+          el('summary', {}, el('strong', { text: g }), el('span', { class: 'muted small', text: ` · ${membres.length} point${membres.length > 1 ? 's' : ''}` }),
+            el('button', { type: 'button', class: 'link small poi-grp-carte', text: 'Carte', onclick: e => { e.preventDefault(); S.f.groupe = g; S.f.vue = 'carte'; buildFilters(); changed(); setView('carte'); } })),
+          el('ul', { class: 'ann-list' }, ...membres.map(card)));
+        d.open = nGroupes === 1;   // un seul groupe trouvé : ouvert d'emblée
+        out.push(el('li', { class: 'poi-grp-li' }, d));
+      });
+    });
+    return out;
   }
 
   const ICONS = {
@@ -615,6 +651,9 @@
           el('button', { type: 'button', class: 'pill', text: 'Refuser', onclick: e => valider(p, false, e.currentTarget) })) : null) : null,
       p.ephemere ? el('p', { class: 'poi-eph-badge', text: `Point éphémère · disparaît ${fmtHeure(p.expire_le)}` }) : null,
       p.caracs.length ? el('ul', { class: 'chips ann-chips poi-types' }, ...p.caracs.map(c => el('li', { html: icoSvg(caracIcone(c), 14) }, c))) : null,
+      (p.groupes || []).length ? el('div', { class: 'poi-liens' }, el('span', { class: 'muted small', text: 'Groupes : ' }),
+        ...p.groupes.map(g => el('button', { type: 'button', class: 'poi-lien poi-grp-chip', text: g, title: 'Afficher ce groupe',
+          onclick: () => { S.f.groupe = g; buildFilters(); changed(); } }))) : null,
       liensDe(p).length ? el('div', { class: 'poi-liens' }, el('span', { class: 'muted small', text: 'Points liés : ' }),
         ...liensDe(p).map(q => el('button', { type: 'button', class: 'poi-lien', html: `<span class="poi-pin-mini">${pinPoint(q)}</span>`, title: 'Voir la fiche', onclick: () => voirLie(q) }, q.nom))) : null,
       p.commentaire ? el('p', { class: 'poi-comment', text: p.commentaire }) : null,
@@ -1183,6 +1222,7 @@
   function showInList(p) {
     setView('liste');
     const li = document.querySelector(`.poi-card[data-id="${CSS.escape(p.id)}"]`);
+    if (li) { const d = li.closest('details'); if (d) d.open = true; }
     if (li) { li.scrollIntoView({ behavior: 'smooth', block: 'center' }); li.classList.add('flash-card'); setTimeout(() => li.classList.remove('flash-card'), 1600); }
   }
 
@@ -1224,6 +1264,9 @@
     }, c)));
     S.liens = p ? liensDe(p).map(q => q.id) : [];
     renderLiens();
+    S.groupes = p ? (p.groupes || []).slice() : (S.f.groupe ? [S.f.groupe] : []);
+    $('#poi-fs-groupes').hidden = eph;
+    renderGroupesF();
     f.elements.nom.value = p ? p.nom : '';
     $('#poi-f-gps').value = p ? fmtLL(p.lat, p.lng) : '';
     f.elements.commentaire.value = p ? p.commentaire : '';
@@ -1272,6 +1315,24 @@
       .filter(q => !q.ephemere && q.id !== moi && !S.liens.includes(q.id))
       .sort((a, b) => (ll ? distanceKm(ll, [a.lat, a.lng]) - distanceKm(ll, [b.lat, b.lng]) : a.nom.localeCompare(b.nom, 'fr')))
       .map(q => el('option', { value: q.nom })));
+  }
+  function renderGroupesF() {
+    const box = $('#poi-f-groupes');
+    box.replaceChildren(...S.groupes.map(g => el('li', { class: 'poi-lien' }, el('span', { text: g }),
+      el('button', { type: 'button', class: 'link', 'aria-label': `Retirer du groupe ${g}`, text: '✕',
+        onclick: () => { S.groupes = S.groupes.filter(x => x !== g); renderGroupesF(); } }))));
+    box.hidden = !S.groupes.length;
+    $('#poi-f-groupe-list').replaceChildren(...tousGroupes().filter(g => !S.groupes.includes(g)).map(g => el('option', { value: g })));
+  }
+  function ajouterGroupe() {
+    const inp = $('#poi-f-groupe');
+    let v = inp.value.replace(/[|,]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
+    if (!v) return;
+    const exist = tousGroupes().find(g => fold(g) === fold(v));   // même groupe malgré majuscules ou accents
+    if (exist) v = exist;
+    if (!S.groupes.some(g => fold(g) === fold(v)) && S.groupes.length < 10) S.groupes.push(v);
+    inp.value = '';
+    renderGroupesF();
   }
   function ajouterLien() {
     const inp = $('#poi-f-lien');
@@ -1448,7 +1509,7 @@
 
     const poi = S.eph
       ? { nom, lat: ll[0], lng: ll[1], secteurs: [], caracs: typesEph, ephemere: true, commentaire: f.elements.commentaire.value.trim() }
-      : { nom, lat: ll[0], lng: ll[1], secteurs, caracs, liens: S.liens.slice(), commentaire: f.elements.commentaire.value.trim() };
+      : { nom, lat: ll[0], lng: ll[1], secteurs, caracs, liens: S.liens.slice(), groupes: (S.groupes || []).slice(), commentaire: f.elements.commentaire.value.trim() };
     if (S.edit) poi.id = S.edit.id;
     if (S.ajouts.length) poi.ajouts = S.ajouts.map(x => ({ nom: x.nom, data: x.data }));
     if (S.edit && S.suppr.length) poi.suppr = S.suppr.slice();
@@ -1795,6 +1856,10 @@
   $('#poi-add').addEventListener('click', () => openForm(null));
   $('#poi-add-eph').addEventListener('click', () => openForm(null, true));
   $('#poi-f-lien-add').addEventListener('click', ajouterLien);
+  $('#poi-f-groupe-add').addEventListener('click', ajouterGroupe);
+  $('#poi-f-groupe').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ajouterGroupe(); } });
+  $('#poi-groupe').addEventListener('change', e => { S.f.groupe = e.target.value; changed(); });
+  $('#poi-regrouper').addEventListener('change', e => { S.f.regrouper = e.target.checked; changed(); });
   $('#poi-f-lien').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ajouterLien(); } });
   $('#poi-f-lien').addEventListener('change', ajouterLien);
 
