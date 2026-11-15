@@ -713,8 +713,9 @@
   const estImage = f => /^image\//.test(f.m || '');
   const fmtTaille = t => !t ? '' : t < 1024 * 1024 ? `${Math.max(1, Math.round(t / 1024))} Ko` : `${(t / 1048576).toFixed(1).replace('.', ',')} Mo`;
   // c=2 : écarte les copies faussées (même photo pour tous les numéros) gardées avant la correction du routeur
-  const photoReq = (p, i) => new Request(`poi-photo/${encodeURIComponent(p.id)}/${i}?v=${encodeURIComponent(p.modifie_le || p.cree_le || '')}&c=2`);
+  const photoReq = (p, i) => new Request(`poi-photo/${encodeURIComponent(p.id)}/${i}?v=${encodeURIComponent(p.modifie_le || p.cree_le || '')}&c=3`);
   const cacheDuPoint = (r, id) => r.url.includes(`/poi-photo/${encodeURIComponent(id)}/`) || r.url.includes(`/poi-photo/${encodeURIComponent(id)}?`);
+  let filePhotos = Promise.resolve();
   async function fichierBlob(p, i) {
     let cache = null;
     try { cache = await caches.open(PHOTO_CACHE); } catch (e) { cache = null; }
@@ -722,7 +723,12 @@
       const hit = await cache.match(photoReq(p, i));
       if (hit) return hit.blob();
     }
-    const res = await app().api('poi_photo', { token: app().token(), id: p.id, n: i });
+    // une demande à la fois : deux appels simultanés pouvaient recevoir la même réponse (même photo pour tous les numéros)
+    const tour = filePhotos.then(() => app().api('poi_photo', { token: app().token(), id: p.id, n: i }));
+    filePhotos = tour.catch(() => {});
+    const res = await tour;
+    const attendu = fichiersDe(p)[i];
+    if (attendu && res.nom && attendu.n && res.nom !== attendu.n) throw new Error('Fichier reçu incorrect, réessayez');
     const bin = atob(res.data);
     const bytes = new Uint8Array(bin.length);
     for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
