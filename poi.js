@@ -712,7 +712,8 @@
   const fichiersDe = p => (p && p.fichiers) || (p && p.photo ? [{ n: 'photo.jpg', m: 'image/jpeg', t: 0 }] : []);
   const estImage = f => /^image\//.test(f.m || '');
   const fmtTaille = t => !t ? '' : t < 1024 * 1024 ? `${Math.max(1, Math.round(t / 1024))} Ko` : `${(t / 1048576).toFixed(1).replace('.', ',')} Mo`;
-  const photoReq = (p, i) => new Request(`poi-photo/${encodeURIComponent(p.id)}/${i}?v=${encodeURIComponent(p.modifie_le || p.cree_le || '')}`);
+  // c=2 : écarte les copies faussées (même photo pour tous les numéros) gardées avant la correction du routeur
+  const photoReq = (p, i) => new Request(`poi-photo/${encodeURIComponent(p.id)}/${i}?v=${encodeURIComponent(p.modifie_le || p.cree_le || '')}&c=2`);
   const cacheDuPoint = (r, id) => r.url.includes(`/poi-photo/${encodeURIComponent(id)}/`) || r.url.includes(`/poi-photo/${encodeURIComponent(id)}?`);
   async function fichierBlob(p, i) {
     let cache = null;
