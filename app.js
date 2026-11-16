@@ -290,8 +290,9 @@
     {
       const prevue = Math.max(3000, Number(store.get(cle)) || 15000);
       onP(0);
-      // courbe qui approche 90 % sans l'atteindre si le serveur est plus lent que prévu
-      estim = setInterval(() => { const x = (Date.now() - t0) / prevue; onP(Math.min(90, 90 * (1 - Math.exp(-2.3 * x)))); }, 250);
+      // 80 % à la durée prévue, puis la barre continue d'avancer de plus en plus lentement vers 99 %
+      // (jamais figée) si le serveur est plus lent que prévu ; 100 % à l'arrivée des données
+      estim = setInterval(() => { const x = (Date.now() - t0) / prevue; onP(99 * (1 - Math.exp(-1.6 * x))); }, 250);
     }
     const stopEstim = () => { if (estim) { clearInterval(estim); estim = null; } };
     const finCharge = () => { charges.delete(id); majPct(); };
@@ -310,16 +311,17 @@
     let data;
     try {
       if (res.body && res.body.getReader) {
-        // Téléchargement : 90 → 100 %, d'après la taille annoncée quand le serveur la donne
+        // Téléchargement : de l'estimation à 100 %, d'après la taille annoncée quand le serveur la donne
         const total = Number(res.headers.get('Content-Length')) || 0;
         const reader = res.body.getReader(), morceaux = [];
         let recu = 0;
         stopEstim();
+        const p0 = charges.get(id) || 0;
         for (;;) {
           const { done, value } = await reader.read();
           if (done) break;
           morceaux.push(value); recu += value.length;
-          if (total) onP(90 + 10 * Math.min(1, recu / total));
+          if (total) onP(p0 + (100 - p0) * Math.min(1, recu / total));
         }
         const buf = new Uint8Array(recu); let o = 0;
         morceaux.forEach(m => { buf.set(m, o); o += m.length; });
