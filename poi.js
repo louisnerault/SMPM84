@@ -1079,16 +1079,22 @@
     M.group.clearLayers();
     M.liens.clearLayers();
     M.liste = list;
-    // liens entre points affichés : trait pointillé (une fois par paire)
-    // (un lien enregistré d'un seul côté est aussi dessiné)
-    const vus = new Set(list.map(p => p.id)), faits = new Set();
-    list.forEach(p => (p.liens || []).forEach(id => {
-      const k = [p.id, id].sort().join('|');
-      if (!vus.has(id) || id === p.id || faits.has(k)) return;
-      faits.add(k);
-      const q = list.find(x => x.id === id);
-      L.polyline([[p.lat, p.lng], [q.lat, q.lng]], { color: '#1d2733', weight: 2, opacity: .55, dashArray: '6 6', interactive: false }).addTo(M.liens);
-    }));
+    // liens entre points affichés : un cercle transparent de la couleur du secteur englobe chaque ensemble de points liés
+    // (un lien enregistré d'un seul côté compte aussi ; les liens de proche en proche forment un seul ensemble)
+    const vus = new Map(list.map(p => [p.id, p])), chef = new Map(list.map(p => [p.id, p.id]));
+    const racine = id => { while (chef.get(id) !== id) id = chef.get(id); return id; };
+    list.forEach(p => (p.liens || []).forEach(id => { if (vus.has(id)) chef.set(racine(id), racine(p.id)); }));
+    const ensembles = new Map();
+    list.forEach(p => { const r = racine(p.id); if (!ensembles.has(r)) ensembles.set(r, []); ensembles.get(r).push(p); });
+    ensembles.forEach(pts => {
+      if (pts.length < 2) return;
+      const lats = pts.map(p => p.lat), lngs = pts.map(p => p.lng);
+      const centre = L.latLng((Math.min(...lats) + Math.max(...lats)) / 2, (Math.min(...lngs) + Math.max(...lngs)) / 2);
+      const r = Math.max(...pts.map(p => centre.distanceTo([p.lat, p.lng])));
+      const sect = pts.map(p => secteursOrdonnes(p.secteurs || [])[0]).find(Boolean);
+      const coul = sect ? secteurCouleur(sect) : '#5d6b7a';
+      L.circle(centre, { radius: r * 1.15 + 40, color: coul, weight: 2, opacity: .7, fillColor: coul, fillOpacity: .15, interactive: false }).addTo(M.liens);
+    });
     list.forEach(p => {
       const pop = el('div', { class: 'poi-pop' },
         el('strong', { text: p.nom }),
