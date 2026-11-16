@@ -971,6 +971,14 @@
     const year = state.year;
     const list = ((L && L.formations) || []).filter(f => f.date.startsWith(String(year)));
     renderCounters(L, list, year);
+    // Origine des heures : base FMPA (normal) ou ancien onglet du livret (agent introuvable dans la base)
+    const src = $('#livret-source');
+    if (src) {
+      src.hidden = !L || !L.source;
+      src.textContent = L && L.source === 'livret'
+        ? 'Heures reprises de l’ancien livret : votre nom n’a été trouvé dans aucune FMPA de la base. Signalez-le à un administrateur.'
+        : 'Heures calculées à partir des FMPA enregistrées (base FMPA).';
+    }
     if (window.SMPM_CSH) window.SMPM_CSH.home(year);
     renderValidations(L, year);
     renderFormations(L, list, year);
