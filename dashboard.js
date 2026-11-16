@@ -35,13 +35,17 @@
     { id: 'speleo', nom: 'Spéléo', sets: ['personnel', 'fmpa', 'itv', 'livrets', 'inv'], ico: ico('<path d="M3 20h18"/><path d="M5 20c0-6 3-11 7-11s7 5 7 11"/><path d="M12 9V4M9.5 5.5L12 4l2.5 1.5"/>') },
     { id: 'inv', nom: 'Inventaires', sets: ['inv'], ico: ico('<path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9"/>') },
   ];
+  // Données d'intervention : CT et administrateurs seulement (le serveur refuse aussi le jeu « itv » aux autres)
+  const voitItv = () => !!(app() && app().allInterv && app().allInterv());
+  const themesVisibles = () => THEMES.filter(t => t.id !== 'itv' || voitItv());
+  const jeux = t => t.sets.filter(s => s !== 'itv' || voitItv());
   const KEY_PREF = 'smpm_dash_pref';        // thème et mode préférés (aucune donnée personnelle)
   const FRAIS_MS = 10 * 60000;              // données rechargées au-delà de 10 min
 
   const auj = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
   const pref = (() => { try { return JSON.parse(localStorage.getItem(KEY_PREF) || '{}') || {}; } catch (e) { return {}; } })();
   const st = {
-    theme: THEMES.some(t => t.id === pref.theme) ? pref.theme : 'itv',
+    theme: THEMES.some(t => t.id === pref.theme) ? pref.theme : '',
     mode: pref.mode === 'periode' ? 'periode' : 'annee',
     annee: new Date().getFullYear(),
     du: `${new Date().getFullYear()}-01-01`, au: auj(),
@@ -387,7 +391,7 @@
   // ====================== Neige / Spéléo ======================
   function vueSpecialite(D, r, rp, S) {
     const nom = S === 'NEIGE' ? 'Neige' : 'Spéléo (ISS)';
-    const P = D.personnel, F = D.fmpa, I = D.itv, LV = D.livrets, V = D.inv;
+    const P = D.personnel, F = D.fmpa, I = voitItv() ? D.itv : null, LV = D.livrets, V = D.inv;
     const e = erreurJeu('Personnel', P); if (e) return e;
     const pm = persMap(P);
     const Q = P.agents.filter(a => a.q[S]);
@@ -604,7 +608,6 @@
     if (construit) return;
     construit = true;
     const th = $('#dash-themes');
-    th.innerHTML = THEMES.map(t => `<button type="button" role="tab" data-theme="${t.id}">${t.ico}<span>${esc(t.nom)}</span></button>`).join('');
     th.addEventListener('click', e => {
       const b = e.target.closest('[data-theme]');
       if (!b || b.dataset.theme === st.theme) return;
@@ -632,16 +635,22 @@
     const ys = new Set([new Date().getFullYear()]);
     const add = d => { const y = Number(jour(d).slice(0, 4)); if (y > 2000 && y < 2100) ys.add(y); };
     const D = donnees();
-    if (D.itv && D.itv.recs) D.itv.recs.forEach(x => add(x.d));
+    if (voitItv() && D.itv && D.itv.recs) D.itv.recs.forEach(x => add(x.d));
     if (D.fmpa && D.fmpa.recs) D.fmpa.recs.forEach(x => add(x.d));
     if (D.inv && D.inv.inv) D.inv.inv.forEach(x => add(x.d));
     if (D.livrets && D.livrets.agents) D.livrets.agents.forEach(a => Object.keys(a.h || {}).forEach(k => add(k.slice(0, 4) + '-01-01')));
     return [...ys].sort((a, b) => b - a);
   }
-  const theme = () => THEMES.find(t => t.id === st.theme) || THEMES[0];
+  const theme = () => { const v = themesVisibles(); return v.find(t => t.id === st.theme) || v[0]; };
   function donnees() { const D = {}; Object.keys(cache).forEach(k => { D[k] = cache[k].d; }); return D; }
 
   function majFiltres() {
+    const vis = themesVisibles(), th = $('#dash-themes');
+    if (th.dataset.ids !== vis.map(t => t.id).join()) {
+      th.innerHTML = vis.map(t => `<button type="button" role="tab" data-theme="${t.id}">${t.ico}<span>${esc(t.nom)}</span></button>`).join('');
+      th.dataset.ids = vis.map(t => t.id).join();
+    }
+    st.theme = theme().id;
     $$('#dash-themes [data-theme]').forEach(b => { const on = b.dataset.theme === st.theme; b.setAttribute('aria-selected', String(on)); b.classList.toggle('on', on); });
     $$('#dash-mode [data-mode]').forEach(b => { const on = b.dataset.mode === st.mode; b.setAttribute('aria-pressed', String(on)); b.classList.toggle('on', on); });
     const ys = annees();
@@ -664,7 +673,7 @@
     carteDonnees = [];
     const D = donnees();
     const t = theme();
-    const manquants = t.sets.filter(s => !D[s]);
+    const manquants = jeux(t).filter(s => !D[s]);
     const body = $('#dash-body');
     if (manquants.length) { body.innerHTML = ''; return; }
     const r = periode(), rp = precedente(r);
@@ -682,18 +691,18 @@
     }
     body.innerHTML = `<p class="dash-titre">${t.ico}<strong>${esc(t.nom)}</strong><span>${esc(r.lib)}${st.secteur && !['neige', 'speleo'].includes(t.id) ? ' · secteur ' + esc(NOM_SECTEUR[st.secteur]) : ''}</span></p>${html}`;
     monterCarte();
-    const plus = Math.min(...t.sets.map(s => (cache[s] ? cache[s].t : Date.now())));
+    const plus = Math.min(...jeux(t).map(s => (cache[s] ? cache[s].t : Date.now())));
     $('#dash-maj').textContent = 'Données du ' + new Date(plus).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
   }
 
   async function charger(force) {
     construire();
     const t = theme();
-    const manquants = t.sets.filter(s => force || !cache[s] || Date.now() - cache[s].t > FRAIS_MS);
+    const manquants = jeux(t).filter(s => force || !cache[s] || Date.now() - cache[s].t > FRAIS_MS);
     rendre();
     if (!manquants.length) { $('#dash-state').textContent = ''; return; }
     const id = ++demande;
-    const tousAbsents = t.sets.every(s => !cache[s]);
+    const tousAbsents = jeux(t).every(s => !cache[s]);
     $('#dash-state').textContent = 'Chargement des données…';
     if (tousAbsents) $('#dash-body').innerHTML = '<div class="dash-attente is-loading center"></div>';
     $('#dash-refresh').disabled = true;

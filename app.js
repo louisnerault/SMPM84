@@ -1426,6 +1426,8 @@
     pieChart: (pct, full) => pieChart(pct, full),
     animateCounters: box => animateCounters(box),
     csAccess: () => !!state.data && canAllFmpa(state.data.session),
+    // Données d'intervention (liste, tableau de bord) : CT et administrateurs seulement
+    allInterv: () => !!state.data && canAllInterv(state.data.session),
     // Gestion du personnel (personnel.js) : grades proposés et centres d'affectation connus
     gradeChoices: current => gradeChoices(state.options && state.options.grades, current),
     affectations: () => (state.options && state.options.affectations) || [],
