@@ -2169,3 +2169,6 @@ body.doc-ouvert { overflow: hidden; }
 .poi-grp > summary { cursor: pointer; padding: .35rem 0; display: flex; align-items: center; gap: .3rem; }
 .poi-grp-carte { margin-left: auto; }
 .poi-grp > .ann-list { margin: .3rem 0 .2rem; padding: 0; }
+.hb-plus { margin-top: 4px; }
+.hb-plus > summary { cursor: pointer; font-size: .8rem; color: var(--muted, #666); padding: 4px 0; }
+.hb-plus[open] > summary { margin-bottom: 4px; }

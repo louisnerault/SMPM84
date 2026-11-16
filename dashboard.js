@@ -108,22 +108,20 @@
   const titreGroupe = t => `<h2 class="dash-group">${esc(t)}</h2>`;
   const grille = cartes => `<div class="dash-grid">${cartes.filter(Boolean).join('')}</div>`;
 
-  // Barres horizontales : items [{ l, v, tip?, s? (sous-libellé) }], triées, au-delà de top regroupées en « Autres »
+  // Barres horizontales : items [{ l, v, tip?, s? (sous-libellé) }], triées ; au-delà de top, le reste se déroule (« Tout afficher »)
   function barres(items, o = {}) {
     const fmt = o.fmt || n0;
     let list = items.filter(x => x.v > 0 || o.zero);
     if (!list.length) return vide(o.vide);
     if (o.tri !== false) list.sort((a, b) => b.v - a.v);
     const top = o.top || 10;
-    if (list.length > top && o.autres !== false) {
-      const reste = list.slice(top - 1);
-      list = list.slice(0, top - 1).concat({ l: `Autres (${reste.length})`, v: sum(reste, x => x.v), autre: true, tip: reste.slice(0, 12).map(x => `${x.l} : ${fmt(x.v)}`).join('\n') });
-    } else list = list.slice(0, top);
-    const max = o.max || Math.max(...list.filter(x => !x.autre).map(x => x.v), 0) || 1;
-    return `<div class="hb-list">${list.map(x => `<div class="hb${x.autre ? ' autre' : ''}" data-tip="${esc(x.tip || `${x.l} : ${fmt(x.v)}`)}">
+    const max = o.max || Math.max(...list.map(x => x.v), 0) || 1;
+    const ligne = x => `<div class="hb" data-tip="${esc(x.tip || `${x.l} : ${fmt(x.v)}`)}">
       <span class="hb-l">${esc(x.l)}${x.s ? `<small>${esc(x.s)}</small>` : ''}</span>
       <span class="hb-t"><span class="hb-b" style="width:${x.v > 0 ? Math.max(1.5, Math.min(100, x.v / max * 100)) : 0}%;${x.c ? `background:${x.c}` : ''}"></span></span>
-      <span class="hb-v">${esc(fmt(x.v))}</span></div>`).join('')}</div>`;
+      <span class="hb-v">${esc(fmt(x.v))}</span></div>`;
+    const reste = list.slice(top);
+    return `<div class="hb-list">${list.slice(0, top).map(ligne).join('')}</div>${reste.length ? `<details class="hb-plus"><summary>Tout afficher (${list.length})</summary><div class="hb-list">${reste.map(ligne).join('')}</div></details>` : ''}`;
   }
 
   const graduation = max => {
@@ -174,7 +172,7 @@
   // Tableau dans une section dépliable : cols [{ t, f, cls }]
   function tableau(titre, cols, rows, o = {}) {
     if (!rows.length) return o.cacheVide ? '' : `<details class="dash-det"><summary>${esc(titre)} (0)</summary>${vide()}</details>`;
-    const max = o.max || 300;
+    const max = o.max || Infinity;
     return `<details class="dash-det"${o.ouvert ? ' open' : ''}><summary>${esc(titre)} (${rows.length})</summary><div class="dash-tbl-wrap"><table class="dash-tbl"><thead><tr>${cols.map(c => `<th class="${c.cls || ''}">${esc(c.t)}</th>`).join('')}</tr></thead>
       <tbody>${rows.slice(0, max).map(r => `<tr>${cols.map(c => `<td class="${c.cls || ''}">${c.f(r)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
       ${rows.length > max ? `<p class="muted small">${rows.length - max} ligne(s) non affichée(s).</p>` : ''}</details>`;
