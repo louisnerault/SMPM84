@@ -125,8 +125,9 @@
   // de l'appareil au lieu d'attendre indéfiniment. Les envois (déclarations, décisions)
   // ont un délai plus long : ils portent un identifiant qui évite les doublons au renvoi.
   // 40 s : le serveur Apps Script met souvent 20 s à répondre lorsque plusieurs requêtes arrivent ensemble
-  const API_TIMEOUT = 40000;
-  const API_TIMEOUT_LONG = 60000;
+  // 120 s : certaines listes (toutes les FMPA, tableaux de bord…) sont longues à préparer par le serveur
+  const API_TIMEOUT = 120000;
+  const API_TIMEOUT_LONG = 120000;
   const LONG_ACTIONS = /(_submit|_update|_create|_decide|^itv_list$|^itv_get$|^itv_form$|^update_me$|^login$|^verify_code$|^request_code$|^livret_pdf$|^bug_report$|^dash_data$)/;
 
   // ---------- barre de progression des requêtes ----------
@@ -201,7 +202,10 @@
     const RE = /^\s*(Chargement|Mise à jour)[^\n]*…\s*$/;
     const check = el => {
       if (!el || el.nodeType !== 1 || el.children.length || el.closest('#view-loading')) return;
-      el.classList.toggle('is-loading', RE.test(el.textContent || ''));
+      const on = RE.test(el.textContent || '');
+      el.classList.toggle('is-loading', on);
+      if (!on) { el.classList.remove('is-pct', 'is-failed'); delete el.dataset.pct; }
+      else if (window.SMPM_MAJ_PCT) window.SMPM_MAJ_PCT();
     };
     const scan = root => {
       check(root);
@@ -217,11 +221,59 @@
   })();
 
   // opts.timeout : délai en ms (0 = aucun) ; opts.onProgress(pct) : progression 0-100 (estimée pendant
-  // le travail du serveur d'après la durée du dernier appel identique, réelle pendant le téléchargement si connue)
+  // le travail du serveur d'après la durée du dernier appel identique, réelle pendant le téléchargement si connue).
+  // Échec réseau pendant qu'un message « Chargement… » est affiché : bouton « Réessayer » sous le message ;
+  // l'appel est relancé à l'identique, la rubrique reçoit alors la réponse comme si de rien n'était.
   async function api(action, payload = {}, opts = {}) {
     progress.start();
-    try { return await apiCall(action, payload, opts); }
-    finally { progress.end(); }
+    try {
+      for (;;) {
+        try { return await apiCall(action, payload, opts); }
+        catch (e) {
+          if (!(e instanceof NetworkError) || !navigator.onLine || opts.noRetry || ECRITURES.test(action)) throw e;
+          const host = chargementVisible();
+          if (!host || !(await proposerReessai(host, e))) throw e;
+        }
+      }
+    } finally { progress.end(); }
+  }
+
+  // envois (déclarations, modifications…) : jamais retenus par le bouton Réessayer, ils ont leur propre file d'attente
+  const ECRITURES = /(_submit|_update|_create|_decide|_delete|_save|_send|^update_me$|^login$|^verify_code$|^request_code$|^bug_report$)/;
+
+  // ---------- pourcentage des chargements ----------
+  const charges = new Map();                // appel en cours -> pourcentage
+  let chargeN = 0;
+  function majPct() {
+    const vals = [...charges.values()];
+    const p = vals.length ? vals[vals.length - 1] : null;  // le plus récent
+    document.querySelectorAll('.is-loading').forEach(el => {
+      if (p === null) { el.classList.remove('is-pct'); delete el.dataset.pct; return; }
+      el.classList.add('is-pct');
+      el.style.setProperty('--pct', p.toFixed(1) + '%');
+      el.dataset.pct = Math.round(p) + ' %';
+    });
+  }
+  window.SMPM_MAJ_PCT = majPct;
+  function chargementVisible() {
+    return [...document.querySelectorAll('.is-loading')].find(el => el.offsetParent !== null && !el.classList.contains('is-failed')) || null;
+  }
+  function proposerReessai(host, err) {
+    return new Promise(resolve => {
+      host.classList.add('is-failed');
+      const box = document.createElement('div');
+      box.className = 'load-retry';
+      box.setAttribute('role', 'alert');
+      const msg = document.createElement('span');
+      msg.textContent = (err.message === 'Réseau trop lent' ? 'Le serveur n’a pas répondu en 2 minutes.' : 'Chargement des données impossible.');
+      const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = 'Réessayer';
+      const non = document.createElement('button'); non.type = 'button'; non.className = 'link'; non.textContent = 'Annuler';
+      box.append(msg, ok, non);
+      host.after(box);
+      const fin = v => { box.remove(); host.classList.remove('is-failed'); resolve(v); };
+      ok.addEventListener('click', () => fin(true));
+      non.addEventListener('click', () => fin(false));
+    });
   }
 
   const KEY_DUREE = 'smpm_api_duree_';
@@ -230,17 +282,19 @@
     const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
     const delai = opts.timeout !== undefined ? opts.timeout : (LONG_ACTIONS.test(action) ? API_TIMEOUT_LONG : API_TIMEOUT);
     const timer = ctrl && delai ? setTimeout(() => ctrl.abort(), delai) : null;
-    const onP = typeof opts.onProgress === 'function' ? opts.onProgress : null;
+    const id = ++chargeN;
+    const onP = p => { charges.set(id, p); majPct(); if (typeof opts.onProgress === 'function') opts.onProgress(p); };
     const cle = KEY_DUREE + action + (payload.scope ? '_' + payload.scope : '');
     const t0 = Date.now();
     let estim = null;
-    if (onP) {
+    {
       const prevue = Math.max(3000, Number(store.get(cle)) || 15000);
       onP(0);
       // courbe qui approche 90 % sans l'atteindre si le serveur est plus lent que prévu
       estim = setInterval(() => { const x = (Date.now() - t0) / prevue; onP(Math.min(90, 90 * (1 - Math.exp(-2.3 * x)))); }, 250);
     }
     const stopEstim = () => { if (estim) { clearInterval(estim); estim = null; } };
+    const finCharge = () => { charges.delete(id); majPct(); };
     try {
       // text/plain : évite la requête préliminaire CORS, non gérée par Apps Script
       res = await fetch(API_URL, {
@@ -250,12 +304,12 @@
         signal: ctrl ? ctrl.signal : undefined,
       });
     } catch (e) {
-      clearTimeout(timer); stopEstim();
+      clearTimeout(timer); stopEstim(); finCharge();
       throw new NetworkError(e && e.name === 'AbortError' ? 'Réseau trop lent' : 'Réseau indisponible');
     }
     let data;
     try {
-      if (onP && res.body && res.body.getReader) {
+      if (res.body && res.body.getReader) {
         // Téléchargement : 90 → 100 %, d'après la taille annoncée quand le serveur la donne
         const total = Number(res.headers.get('Content-Length')) || 0;
         const reader = res.body.getReader(), morceaux = [];
@@ -275,8 +329,8 @@
       }
     } catch (e) {
       throw e && e.name === 'AbortError' ? new NetworkError('Réseau trop lent') : new NetworkError('Réponse inattendue du serveur');
-    } finally { clearTimeout(timer); stopEstim(); }
-    if (onP) { store.set(cle, String(Date.now() - t0)); onP(100); }
+    } finally { clearTimeout(timer); stopEstim(); finCharge(); }
+    store.set(cle, String(Date.now() - t0));
     if (!data.ok) throw new Error(data.error || 'Erreur');
     return data;
   }

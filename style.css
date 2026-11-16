@@ -1116,6 +1116,16 @@ body:not(.mode-intervention) .only-intervention { display: none; }
 .is-loading.center::after { margin-left: auto; margin-right: auto; max-width: 320px; }
 @keyframes load-slide { 0% { background-position: -40% 0, 0 0; } 100% { background-position: 140% 0, 0 0; } }
 @media (prefers-reduced-motion: reduce) { .is-loading::after { animation: none; background: var(--primary-soft); } }
+/* avancement connu d'un appel au serveur : barre pleine jusqu'au pourcentage, affiché à droite */
+.is-loading.is-pct::after {
+  height: 8px; animation: none; transition: background-size .25s linear;
+  background: linear-gradient(var(--primary), var(--primary)) no-repeat, var(--primary-soft);
+  background-size: var(--pct, 0%) 100%, 100% 100%;
+}
+.is-loading.is-pct::before { content: attr(data-pct); float: right; margin-left: .6em; font-variant-numeric: tabular-nums; color: var(--muted); }
+.is-loading.is-failed::after, .is-loading.is-failed::before { display: none; }
+.load-retry { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .8rem; margin: .4rem 0 .8rem; color: var(--danger); }
+.load-retry span { flex: 1 1 100%; }
 
 /* fenêtre de validation : titre et boutons toujours visibles, seul le contenu défile */
 .mdl-title, .mdl-actions { flex: none; }
@@ -2173,9 +2183,3 @@ body.doc-ouvert { overflow: hidden; }
 .hb-plus > summary { cursor: pointer; font-size: .8rem; color: var(--muted, #666); padding: 4px 0; }
 .hb-plus[open] > summary { margin-bottom: 4px; }
 
-/* Barre de progression des chargements longs (Toutes les FMPA) */
-.loadbar { display: flex; align-items: center; gap: .6rem; margin: .4rem 0 .8rem; }
-.loadbar-track { flex: 1; height: 10px; border-radius: 5px; background: var(--primary-soft); overflow: hidden; }
-.loadbar-fill { height: 100%; width: 0; background: var(--primary); border-radius: 5px; transition: width .25s linear; }
-.loadbar-pct { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; font-size: .9em; color: var(--muted); }
-#fmpal-retry { margin: .2rem 0 .8rem; }

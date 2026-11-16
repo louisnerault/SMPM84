@@ -19,6 +19,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 165, titre: 'Chargements suivis partout', texte: 'Dans toutes les rubriques, le chargement des données affiche son avancement en pourcentage. L’application attend jusqu’à 2 minutes ; si le chargement échoue, un bouton Réessayer le relance.', pour: ['tous'] },
     { v: 164, titre: 'Toutes les FMPA : chargement suivi', texte: 'Pendant le chargement de la liste, une barre indique l’avancement en pourcentage. Le chargement peut durer jusqu’à 2 minutes ; en cas d’échec, un bouton Réessayer le relance.', pour: ['chef_section', 'ctd'] },
   { v: 162, titre: 'Tableaux de bord : listes complètes', texte: 'Les classements des tableaux de bord (communes, lieux, spécialistes…) ne s’arrêtent plus aux 10 premiers : touchez « Tout afficher » pour dérouler la liste entière. Les tableaux détaillés affichent aussi toutes les lignes.', pour: ['tous'] },
   { v: 161, titre: 'Points liés sur la carte', texte: 'Sur la carte des points d’intérêt, les points liés entre eux sont maintenant entourés d’un cercle transparent de la couleur de leur secteur, au lieu d’être reliés par des pointillés.', pour: ['tous'] },
