@@ -2172,3 +2172,10 @@ body.doc-ouvert { overflow: hidden; }
 .hb-plus { margin-top: 4px; }
 .hb-plus > summary { cursor: pointer; font-size: .8rem; color: var(--muted, #666); padding: 4px 0; }
 .hb-plus[open] > summary { margin-bottom: 4px; }
+
+/* Barre de progression des chargements longs (Toutes les FMPA) */
+.loadbar { display: flex; align-items: center; gap: .6rem; margin: .4rem 0 .8rem; }
+.loadbar-track { flex: 1; height: 10px; border-radius: 5px; background: var(--primary-soft); overflow: hidden; }
+.loadbar-fill { height: 100%; width: 0; background: var(--primary); border-radius: 5px; transition: width .25s linear; }
+.loadbar-pct { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; font-size: .9em; color: var(--muted); }
+#fmpal-retry { margin: .2rem 0 .8rem; }

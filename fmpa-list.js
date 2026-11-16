@@ -62,10 +62,39 @@
     if (!cached || S.stale[conf.scope] || !S.data[conf.scope].fresh) load(conf.scope);
   }
 
+  // Barre de progression avec pourcentage (sous le texte d'état)
+  function barre(pct) {
+    let b = $('#fmpal-bar');
+    if (pct === null) { if (b) b.remove(); return; }
+    if (!b) {
+      b = el('div', { id: 'fmpal-bar', class: 'loadbar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-label': 'Chargement des FMPA' },
+        el('div', { class: 'loadbar-track' }, el('div', { class: 'loadbar-fill' })), el('span', { class: 'loadbar-pct' }));
+      $('#fmpal-state').after(b);
+    }
+    const v = Math.round(pct);
+    b.querySelector('.loadbar-fill').style.width = v + '%';
+    b.querySelector('.loadbar-pct').textContent = v + ' %';
+    b.setAttribute('aria-valuenow', String(v));
+  }
+
+  function boutonReessayer(scope) {
+    const old = $('#fmpal-retry'); if (old) old.remove();
+    if (scope === null) return;
+    const b = el('button', { type: 'button', id: 'fmpal-retry', class: 'primary' }, 'Réessayer');
+    b.addEventListener('click', () => { b.remove(); load(scope); });
+    $('#fmpal-state').after(b);
+  }
+
+  let chargeEnCours = null;
   async function load(scope) {
-    setState(S.data[scope] ? 'Mise à jour…' : 'Chargement…');
+    if (chargeEnCours === scope) return;
+    chargeEnCours = scope;
+    boutonReessayer(null);
+    setState(S.data[scope] ? 'Mise à jour…' : 'Chargement des FMPA…');
+    barre(0);
     try {
-      const res = await app().api('fmpa_list', { token: app().token(), scope });
+      // La liste complète peut être longue à préparer : 120 s avant d'abandonner
+      const res = await app().api('fmpa_list', { token: app().token(), scope }, { timeout: 120000, onProgress: barre });
       const data = { fmpa: res.fmpa || [], maj: res.maj, fresh: true };
       S.data[scope] = data;
       S.stale[scope] = false;
@@ -79,6 +108,10 @@
       setState(err instanceof app().NetworkError
         ? (d ? `${app().netLabel()} : liste du ${maj}.` : app().netLabel() + ' : liste indisponible sur cet appareil.')
         : err.message === 'Action inconnue' ? 'La liste des FMPA n’est pas encore activée sur le serveur.' : err.message, !d);
+      if (err.message !== 'Action inconnue') boutonReessayer(scope);
+    } finally {
+      chargeEnCours = null;
+      barre(null);
     }
   }
 

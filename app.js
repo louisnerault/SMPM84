@@ -216,16 +216,31 @@
     scan(document.body);
   })();
 
-  async function api(action, payload = {}) {
+  // opts.timeout : délai en ms (0 = aucun) ; opts.onProgress(pct) : progression 0-100 (estimée pendant
+  // le travail du serveur d'après la durée du dernier appel identique, réelle pendant le téléchargement si connue)
+  async function api(action, payload = {}, opts = {}) {
     progress.start();
-    try { return await apiCall(action, payload); }
+    try { return await apiCall(action, payload, opts); }
     finally { progress.end(); }
   }
 
-  async function apiCall(action, payload) {
+  const KEY_DUREE = 'smpm_api_duree_';
+  async function apiCall(action, payload, opts = {}) {
     let res;
     const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
-    const timer = ctrl ? setTimeout(() => ctrl.abort(), LONG_ACTIONS.test(action) ? API_TIMEOUT_LONG : API_TIMEOUT) : null;
+    const delai = opts.timeout !== undefined ? opts.timeout : (LONG_ACTIONS.test(action) ? API_TIMEOUT_LONG : API_TIMEOUT);
+    const timer = ctrl && delai ? setTimeout(() => ctrl.abort(), delai) : null;
+    const onP = typeof opts.onProgress === 'function' ? opts.onProgress : null;
+    const cle = KEY_DUREE + action + (payload.scope ? '_' + payload.scope : '');
+    const t0 = Date.now();
+    let estim = null;
+    if (onP) {
+      const prevue = Math.max(3000, Number(store.get(cle)) || 15000);
+      onP(0);
+      // courbe qui approche 90 % sans l'atteindre si le serveur est plus lent que prévu
+      estim = setInterval(() => { const x = (Date.now() - t0) / prevue; onP(Math.min(90, 90 * (1 - Math.exp(-2.3 * x)))); }, 250);
+    }
+    const stopEstim = () => { if (estim) { clearInterval(estim); estim = null; } };
     try {
       // text/plain : évite la requête préliminaire CORS, non gérée par Apps Script
       res = await fetch(API_URL, {
@@ -235,12 +250,33 @@
         signal: ctrl ? ctrl.signal : undefined,
       });
     } catch (e) {
-      clearTimeout(timer);
+      clearTimeout(timer); stopEstim();
       throw new NetworkError(e && e.name === 'AbortError' ? 'Réseau trop lent' : 'Réseau indisponible');
     }
     let data;
-    try { data = await res.json(); } catch (e) { throw new NetworkError('Réponse inattendue du serveur'); }
-    finally { clearTimeout(timer); }
+    try {
+      if (onP && res.body && res.body.getReader) {
+        // Téléchargement : 90 → 100 %, d'après la taille annoncée quand le serveur la donne
+        const total = Number(res.headers.get('Content-Length')) || 0;
+        const reader = res.body.getReader(), morceaux = [];
+        let recu = 0;
+        stopEstim();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          morceaux.push(value); recu += value.length;
+          if (total) onP(90 + 10 * Math.min(1, recu / total));
+        }
+        const buf = new Uint8Array(recu); let o = 0;
+        morceaux.forEach(m => { buf.set(m, o); o += m.length; });
+        data = JSON.parse(new TextDecoder('utf-8').decode(buf));
+      } else {
+        data = await res.json();
+      }
+    } catch (e) {
+      throw e && e.name === 'AbortError' ? new NetworkError('Réseau trop lent') : new NetworkError('Réponse inattendue du serveur');
+    } finally { clearTimeout(timer); stopEstim(); }
+    if (onP) { store.set(cle, String(Date.now() - t0)); onP(100); }
     if (!data.ok) throw new Error(data.error || 'Erreur');
     return data;
   }
