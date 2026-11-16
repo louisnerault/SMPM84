@@ -286,22 +286,39 @@
     const onP = p => { charges.set(id, p); majPct(); if (typeof opts.onProgress === 'function') opts.onProgress(p); };
     const cle = KEY_DUREE + action + (payload.scope ? '_' + payload.scope : '');
     const t0 = Date.now();
-    let estim = null;
+    let estim = null, reel = false, sonde = null, sondeOk = true;
+    // Avancement réel (Progress.gs) : identifiant aléatoire envoyé avec la requête, interrogé si elle tarde
+    const pid = !ECRITURES.test(action) && action !== 'progress' && typeof crypto !== 'undefined' && crypto.getRandomValues
+      ? Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(16).padStart(2, '0')).join('') : '';
+    const sonder = async () => {
+      sonde = null;
+      if (!pid || !sondeOk || !estim) return;
+      if (chargementVisible()) {
+        try {
+          const r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'progress', progress_id: pid }) });
+          const d = await r.json();
+          if (!d.ok) sondeOk = false;                         // action pas encore installée sur le serveur : estimation
+          else if (d.p && typeof d.p.f === 'number' && estim) { reel = true; onP(Math.max(charges.get(id) || 0, Math.min(99, d.p.f * 100))); }
+        } catch (e) { /* sonde perdue : on réessaie au tour suivant */ }
+      }
+      if (estim && sondeOk) sonde = setTimeout(sonder, 1200);
+    };
     {
       const prevue = Math.max(3000, Number(store.get(cle)) || 15000);
       onP(0);
       // 80 % à la durée prévue, puis la barre continue d'avancer de plus en plus lentement vers 99 %
       // (jamais figée) si le serveur est plus lent que prévu ; 100 % à l'arrivée des données
-      estim = setInterval(() => { const x = (Date.now() - t0) / prevue; onP(99 * (1 - Math.exp(-1.6 * x))); }, 250);
+      estim = setInterval(() => { if (reel) return; const x = (Date.now() - t0) / prevue; onP(99 * (1 - Math.exp(-1.6 * x))); }, 250);
+      if (pid) sonde = setTimeout(sonder, 1500);
     }
-    const stopEstim = () => { if (estim) { clearInterval(estim); estim = null; } };
+    const stopEstim = () => { if (estim) { clearInterval(estim); estim = null; } if (sonde) { clearTimeout(sonde); sonde = null; } };
     const finCharge = () => { charges.delete(id); majPct(); };
     try {
       // text/plain : évite la requête préliminaire CORS, non gérée par Apps Script
       res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action, ...payload }),
+        body: JSON.stringify(pid ? { action, ...payload, progress_id: pid } : { action, ...payload }),
         signal: ctrl ? ctrl.signal : undefined,
       });
     } catch (e) {
