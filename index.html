@@ -138,7 +138,7 @@
           <button data-page="cs-heures-toutes" id="nav-csh-all" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>Toutes les heures</button>
         </div>
       </div>
-      <button type="button" id="nav-eval-gnr"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.8h6V4"/><path d="M8.5 12.5l2 2 4-4.5"/></svg>Évaluation GNR</button>
+      <button data-page="cs-eval" id="nav-eval-gnr"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.8h6V4"/><path d="M8.5 12.5l2 2 4-4.5"/></svg>Évaluation GNR<span class="pending-dot" title="Évaluation en attente d'envoi" hidden></span></button>
       <button data-page="cs-tableau"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="9" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="5" rx="1.5"/><rect x="13.5" y="11.5" width="7" height="9" rx="1.5"/><rect x="3.5" y="15.5" width="7" height="5" rx="1.5"/></svg>Tableau de bord</button>
       <button data-page="cs-specialistes"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/><path d="M17.5 3.5l1 2 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5 2.2-.3z"/></svg>Mes spécialistes</button>
     </div>
@@ -871,6 +871,31 @@
       </section>
       <p id="csh-none" class="muted" hidden></p>
       <ul id="csh-list" class="csh-list"></ul>
+    </div>
+    <!-- Évaluation GNR (fmpa.js, moteur createDeclarer ; back-end EvalGnr.gs) : formulaire « Évaluation IMP 2 - IMP3 » -->
+    <div id="tab-cs-eval" hidden>
+      <div id="eval-head"><h1>Évaluation GNR</h1></div>
+      <div data-eval-pending></div>
+      <p id="eval-state" class="muted small" role="status"></p>
+      <div id="eval-form" hidden></div>
+
+      <p id="eval-msg" class="fmpa-msg" role="alert"></p>
+
+      <div id="eval-bar" class="fmpa-bar" hidden>
+        <div id="eval-count" class="fmpa-count" aria-live="polite" hidden>
+          <strong id="eval-count-n">0</strong>
+          <span><span id="eval-count-label">personne cochée</span><small id="eval-count-detail"></small></span>
+        </div>
+        <button type="button" id="eval-send" class="primary">Envoyer</button>
+      </div>
+
+      <div id="eval-done" class="fmpa-done" hidden>
+        <div class="login-icon" id="eval-done-icon" aria-hidden="true">✓</div>
+        <p class="login-title" id="eval-done-title">Évaluation envoyée</p>
+        <p class="muted" id="eval-done-recap"></p>
+        <p class="muted small" id="eval-done-note"></p>
+        <button type="button" class="primary" id="eval-again">Nouvelle évaluation</button>
+      </div>
     </div>
     <!-- Tableaux de bord (dashboard.js, backend Dashboard.gs) -->
     <div id="tab-cs-tableau" class="dash" hidden>

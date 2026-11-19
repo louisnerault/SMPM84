@@ -77,10 +77,8 @@
   // Planning des FMPA (fmpa-orga.js, Orga.gs) : un espace par rôle — à garder cohérent avec ORGA.GERER
   const ORGA_PAGES = ['orga-ct', 'orga-cu', 'orga-insc'];
   // Rubriques réservées aux chefs de section (et CTD, administrateurs) — à garder cohérent avec backend/Heures.gs
-  const CS_PAGES = ['cs-heures', 'cs-tableau', 'cs-specialistes'];
+  const CS_PAGES = ['cs-heures', 'cs-eval', 'cs-tableau', 'cs-specialistes'];
   // Heures chefs de section : « Mes heures » (chefs de section, CTD, admin), « Toutes les heures » (CTD, admin)
-  // Formulaire d'évaluation GNR (validation annuelle), rempli par les chefs de section
-  const EVAL_GNR_URL = 'https://forms.gle/PXaEKRtDN5dFeo9a6';
   const canAllCsHeures = session => !!session && (isAdm(session) || ['ctd', 'admin'].includes(session.role));
   function allowedPage(name, session) {
     if (name === 'fmpa') return canDeclare(session) && canEncadrer(state.data);
@@ -509,6 +507,7 @@
     if (name === 'livret-themes' && window.SMPM_THEMES_VUS) window.SMPM_THEMES_VUS.open();
     if (name === 'fmpa' && window.SMPM_FMPA) window.SMPM_FMPA.open();
     if (name === 'interv-new' && window.SMPM_ITV) window.SMPM_ITV.open();
+    if (name === 'cs-eval' && window.SMPM_EVAL) window.SMPM_EVAL.open();
     if (name === 'interv-mes' && window.SMPM_ITV) window.SMPM_ITV.renderPending();
     if ((name === 'interv-mes' || name === 'interv-toutes') && window.SMPM_ITV_LIST) window.SMPM_ITV_LIST.open(name);
     if (FMPA_LISTS.includes(name) && window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.open(name);
@@ -609,6 +608,7 @@
       loadLivret();
       if (window.SMPM_FMPA) window.SMPM_FMPA.flush();
       if (window.SMPM_ITV) window.SMPM_ITV.flush();
+      if (window.SMPM_EVAL) window.SMPM_EVAL.flush();
       if (window.SMPM_THEMES) window.SMPM_THEMES.flush();
       if (window.SMPM_POI) { window.SMPM_POI.flush(); window.SMPM_POI.prefetch(); }
       if (window.SMPM_INV) window.SMPM_INV.flush();
@@ -744,6 +744,7 @@
     store.del(KEY_MODE);
     if (window.SMPM_FMPA) window.SMPM_FMPA.reset(explicit === true);
     if (window.SMPM_ITV) window.SMPM_ITV.reset(explicit === true);
+    if (window.SMPM_EVAL) window.SMPM_EVAL.reset(explicit === true);
     if (window.SMPM_ITV_LIST) window.SMPM_ITV_LIST.reset();
     if (window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.reset();
     if (window.SMPM_PERSONNEL) window.SMPM_PERSONNEL.reset();
@@ -907,6 +908,11 @@
       window.SMPM_ITV.renderPending();
       // formulaire gardé sur l'appareil dès l'ouverture : saisie possible ensuite sans réseau
       if (!offline) { window.SMPM_ITV.flush(); window.SMPM_ITV.prefetch(); }
+    }
+    // évaluations GNR saisies hors ligne (chefs de section, CTD, administrateurs) : idem
+    if (window.SMPM_EVAL && canAllFmpa(data.session)) {
+      window.SMPM_EVAL.renderPending();
+      if (!offline) { window.SMPM_EVAL.flush(); window.SMPM_EVAL.prefetch(); }
     }
     // thèmes saisis hors ligne (Remplir mon livret) : envoi dès que possible
     if (!offline && window.SMPM_THEMES) window.SMPM_THEMES.flush();
@@ -1415,9 +1421,9 @@
   });
 
   $('#btn-logout').addEventListener('click', () => {
-    const n = (window.SMPM_FMPA ? window.SMPM_FMPA.pending() : 0) + (window.SMPM_ITV ? window.SMPM_ITV.pending() : 0) + (window.SMPM_POI ? window.SMPM_POI.pending() : 0)
+    const n = (window.SMPM_FMPA ? window.SMPM_FMPA.pending() : 0) + (window.SMPM_ITV ? window.SMPM_ITV.pending() : 0) + (window.SMPM_EVAL ? window.SMPM_EVAL.pending() : 0) + (window.SMPM_POI ? window.SMPM_POI.pending() : 0)
       + (window.SMPM_INV ? window.SMPM_INV.pending() : 0);
-    if (n && !confirm(`${n} saisie${n > 1 ? 's' : ''} (FMPA, intervention, point d’intérêt ou inventaire) ${n > 1 ? 'ne sont' : 'n’est'} pas encore envoyée${n > 1 ? 's' : ''}. ` +
+    if (n && !confirm(`${n} saisie${n > 1 ? 's' : ''} (FMPA, intervention, évaluation, point d’intérêt ou inventaire) ${n > 1 ? 'ne sont' : 'n’est'} pas encore envoyée${n > 1 ? 's' : ''}. ` +
       'Se déconnecter les supprimera de cet appareil. Continuer ?')) return;
     logout(true);
   });
@@ -1445,10 +1451,6 @@
   });
   $('#nav-livret .nav-group-btn').addEventListener('click', e => {
     setLivretGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
-  });
-  $('#nav-eval-gnr').addEventListener('click', () => {
-    closeMenu();
-    window.open(EVAL_GNR_URL, '_blank', 'noopener');
   });
   $('#nav-csh .nav-group-btn').addEventListener('click', e => {
     setCshGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
@@ -1598,6 +1600,7 @@
       await retryOnline();
       if (window.SMPM_FMPA) await window.SMPM_FMPA.flush();
       if (window.SMPM_ITV) await window.SMPM_ITV.flush();
+      if (window.SMPM_EVAL) await window.SMPM_EVAL.flush();
       if (window.SMPM_THEMES) await window.SMPM_THEMES.flush();
       if (window.SMPM_POI) await window.SMPM_POI.flush();
       if (window.SMPM_INV) await window.SMPM_INV.flush();

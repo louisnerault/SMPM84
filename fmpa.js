@@ -1721,6 +1721,35 @@
     onSent: () => { if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.invalidate(); },
   });
 
+  // Évaluation GNR (Chefs de section › Évaluation GNR) : formulaire « Évaluation IMP 2 - IMP3 », soumis au
+  // formulaire lui-même (back-end EvalGnr.gs) ; le script du classeur des réponses crée le PDF et la validation annuelle.
+  window.SMPM_EVAL = createDeclarer({
+    p: 'eval', page: 'cs-eval', navDot: '#nav-eval-gnr .pending-dot',
+    keys: { form: 'smpm_eval_form', draft: 'smpm_eval_draft', outbox: 'smpm_eval_outbox' },
+    api: { form: 'eval_form', submit: 'eval_submit' },
+    rec: {
+      key: 'evaluation', loading: 'Chargement…', confirm: 'Enregistrer ?', offline: 'Réseau indisponible.',
+      notActive: 'Non disponible.', back: () => 'Retour', title: () => 'Évaluation', bits: () => [],
+    },
+    txt: {
+      title: 'Évaluation GNR', short: 'Évaluation', confirm: 'Envoyer l’évaluation ?',
+      saving: 'Envoi de l’évaluation…',
+      notActive: 'L’évaluation GNR n’est pas encore activée sur le serveur.',
+      sentNote: 'Elle est enregistrée dans le classeur des réponses, comme une saisie du formulaire : le PDF et la validation annuelle du livret sont créés automatiquement.',
+    },
+    returnHome: (status, entry) => {
+      const a = window.SMPM_APP;
+      if (status === 'sent') {
+        a.flash({ kind: 'ok', text: 'Évaluation envoyée. Le PDF et la validation annuelle du livret de l’agent sont mis à jour automatiquement.' });
+      } else if (status === 'queued') {
+        a.flash({ kind: 'info', text: 'Évaluation enregistrée sur l’appareil : elle sera envoyée automatiquement dès le retour du réseau.' });
+      } else {
+        a.flash({ kind: 'error', text: `Évaluation non envoyée : ${String((entry && entry.error) || 'refusée par le serveur').replace(/[.!]?\s*$/, '.')} Vous pouvez la reprendre ou la renvoyer depuis le bandeau ci-dessous.` });
+      }
+      a.goto('cs-eval');
+    },
+  });
+
   window.SMPM_ITV = createDeclarer({
     p: 'itv', page: 'interv-new', navDot: '#nav-interv .pending-dot', gps: true,
     imp3List: true, imp3Re: /chef d.?unit|imp\s*3/i,   // liste « Chef d'unité » = IMP3 actifs du personnel
