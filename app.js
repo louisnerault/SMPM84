@@ -77,6 +77,8 @@
   // Rubriques réservées aux chefs de section (et CTD, administrateurs) — à garder cohérent avec backend/Heures.gs
   const CS_PAGES = ['cs-heures', 'cs-tableau', 'cs-specialistes'];
   // Heures chefs de section : « Mes heures » (chefs de section, CTD, admin), « Toutes les heures » (CTD, admin)
+  // Formulaire d'évaluation GNR (validation annuelle), rempli par les chefs de section
+  const EVAL_GNR_URL = 'https://forms.gle/PXaEKRtDN5dFeo9a6';
   const canAllCsHeures = session => !!session && (isAdm(session) || ['ctd', 'admin'].includes(session.role));
   function allowedPage(name, session) {
     if (name === 'fmpa') return canDeclare(session) && canEncadrer(state.data);
@@ -1418,6 +1420,10 @@
   });
   $('#nav-livret .nav-group-btn').addEventListener('click', e => {
     setLivretGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
+  });
+  $('#nav-eval-gnr').addEventListener('click', () => {
+    closeMenu();
+    window.open(EVAL_GNR_URL, '_blank', 'noopener');
   });
   $('#nav-csh .nav-group-btn').addEventListener('click', e => {
     setCshGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
