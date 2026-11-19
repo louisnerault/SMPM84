@@ -26,6 +26,24 @@
 
   const S = { session: null, busy: false, messaging: null };
 
+  // Délais maximaux de chaque étape de l'activation : au-delà, message explicite au lieu d'une attente muette.
+  const DELAI = { permission: 60e3, sw: 15e3, firebase: 20e3, fcm: 20e3, serveur: 45e3 };
+  const ERR = {
+    permission: "Pas de réponse à la demande d'autorisation. Autorisez les notifications pour SMPM 84 (ou pour Chrome) dans les réglages du téléphone, puis touchez de nouveau le bouton.",
+    refus: "Autorisation non accordée : touchez de nouveau le bouton et choisissez « Autoriser ». Si aucune fenêtre ne s'affiche, autorisez les notifications dans les réglages du téléphone.",
+    sw: "L'application n'est pas complètement installée sur ce téléphone. Fermez-la complètement, rouvrez-la avec du réseau, puis réessayez.",
+    firebase: "Impossible de charger le module de notifications. Vérifiez la connexion internet, puis réessayez.",
+    fcm: "Ce téléphone ne parvient pas à joindre le service de notifications de Google (téléphone sans services Google, comme certains Huawei, économiseur de données ou navigateur non compatible). Sur Android, utilisez Chrome.",
+  };
+  /** Promesse limitée dans le temps : rejetée avec le message donné si elle n'aboutit pas à temps. */
+  function avecDelai(promesse, ms, message) {
+    let t;
+    return Promise.race([
+      promesse,
+      new Promise((_, rej) => { t = setTimeout(() => rej(new Error(message)), ms); }),
+    ]).finally(() => clearTimeout(t));
+  }
+
   // ---------- capacités de l'appareil ----------
   const isIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const standalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
@@ -43,10 +61,10 @@
   async function messaging() {
     if (S.messaging) return S.messaging;
     const base = `https://www.gstatic.com/firebasejs/${FB_VERSION}/`;
-    const [{ initializeApp }, m] = await Promise.all([
+    const [{ initializeApp }, m] = await avecDelai(Promise.all([
       import(base + 'firebase-app.js'),
       import(base + 'firebase-messaging.js'),
-    ]);
+    ]), DELAI.firebase, ERR.firebase);
     if (!(await m.isSupported())) throw new Error('Notifications non prises en charge sur cet appareil');
     const c = cfg();
     const fb = initializeApp({ apiKey: c.apiKey, authDomain: c.authDomain, projectId: c.projectId, messagingSenderId: c.messagingSenderId, appId: c.appId });
@@ -56,9 +74,9 @@
 
   /** Jeton FCM de l'appareil, lié au service worker de l'application (pas de second service worker). */
   async function jetonFcm() {
-    const reg = await navigator.serviceWorker.ready;
+    const reg = await avecDelai(navigator.serviceWorker.ready, DELAI.sw, ERR.sw);
     const { m, inst } = await messaging();
-    const t = await m.getToken(inst, { vapidKey: cfg().vapidKey, serviceWorkerRegistration: reg });
+    const t = await avecDelai(m.getToken(inst, { vapidKey: cfg().vapidKey, serviceWorkerRegistration: reg }), DELAI.fcm, ERR.fcm);
     if (!t) throw new Error("Impossible d'obtenir l'abonnement de cet appareil");
     return t;
   }
@@ -74,13 +92,15 @@
   }
 
   /** Envoie le jeton au serveur (à l'activation, puis une fois par jour ou s'il a changé). */
-  async function enregistrer(force) {
+  async function enregistrer(force, etape) {
     if (!app() || !app().token() || !navigator.onLine) return;
+    if (etape) etape('Abonnement de ce téléphone…');
     const fcm = await jetonFcm();
     const old = store.get(KEY_FCM);
     const last = Number(store.get(KEY_SYNC) || 0);
     if (!force && fcm === old && Date.now() - last < RESYNC_MS) return;
-    await app().api('push_register', { token: app().token(), fcm, appareil: appareil(), ancien: old && old !== fcm ? old : '' });
+    if (etape) etape('Enregistrement auprès du serveur…');
+    await app().api('push_register', { token: app().token(), fcm, appareil: appareil(), ancien: old && old !== fcm ? old : '' }, { timeout: DELAI.serveur });
     store.set(KEY_FCM, fcm);
     store.set(KEY_SYNC, String(Date.now()));
   }
@@ -116,18 +136,23 @@
   async function activer() {
     if (S.busy) return;
     S.busy = true;
-    msg('');
+    const btn = $('#btn-push-on');
+    const libelle = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Activation en cours…'; }
+    msg('Demande d\'autorisation…');
     try {
-      const p = await Promise.resolve(Notification.requestPermission());
-      if (p !== 'granted') { render(); return; }
+      const p = await avecDelai(Promise.resolve(Notification.requestPermission()), DELAI.permission, ERR.permission);
+      if (p === 'denied') { msg(''); return; }               // l'encart explique comment rétablir l'autorisation
+      if (p !== 'granted') throw new Error(ERR.refus);
       if (!navigator.onLine) throw new Error('Connexion nécessaire pour terminer l\'activation');
-      await enregistrer(true);
+      await enregistrer(true, t => msg(t));
       msg('Notifications activées.');
     } catch (err) {
       if (app() && app().AUTH_ERRORS.includes(err.message)) return app().logout();
       msg(err.message || 'Activation impossible', true);
     } finally {
       S.busy = false;
+      if (btn) { btn.disabled = false; btn.textContent = libelle; }
       render();
     }
   }

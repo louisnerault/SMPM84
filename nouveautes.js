@@ -19,6 +19,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 169, titre: 'Activation des notifications', texte: 'Le bouton « Activer sur ce téléphone » indique maintenant où en est l’activation. Si elle bloque (autorisation non donnée, téléphone sans services Google…), un message explique quoi faire au lieu de ne rien afficher.', pour: ['tous'] },
     { v: 168, titre: 'Heures du livret fiabilisées', texte: 'Les heures de « Mon livret » sont maintenant calculées directement à partir des FMPA enregistrées (base FMPA), et non plus recopiées dans l’ancien tableau du livret. Une FMPA déclarée deux fois n’est comptée qu’une fois.', pour: ['tous'] },
     { v: 167, titre: 'Pourcentage réel', texte: 'Pour Toutes les FMPA, les interventions et le tableau de bord, le pourcentage de chargement suit maintenant l’avancement réel du serveur (lecture des données, préparation de la liste).', pour: ['chef_unite', 'chef_section', 'ctd'] },
     { v: 165, titre: 'Chargements suivis partout', texte: 'Dans toutes les rubriques, le chargement des données affiche son avancement en pourcentage. L’application attend jusqu’à 2 minutes ; si le chargement échoue, un bouton Réessayer le relance.', pour: ['tous'] },
