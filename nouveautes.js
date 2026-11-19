@@ -10,7 +10,10 @@
  * Ajouter une entrée à chaque version qui apporte quelque chose d'utile à l'utilisateur :
  *   { v: 135, titre: '…', texte: '…', pour: ['tous'] }
  *   v     : numéro de version (celui de CACHE dans sw.js, smpm84-shell-vNN)
- *   pour  : 'tous' ou rôles parmi equipier, chef_unite, chef_section, ctd (les administrateurs voient tout)
+ *   pour  : rôles concernés parmi equipier, chef_unite, chef_section, ctd, admin.
+ *           'tous' uniquement si TOUS les rôles utilisent la fonction (équipiers compris).
+ *           Les administrateurs ne voient que 'tous', 'admin' et les entrées de leur propre rôle.
+ *           Une entrée sans « pour » n'est montrée à personne.
  * Ne pas y mettre les corrections internes sans effet visible.
  */
 (function () {
@@ -24,7 +27,7 @@
     { v: 167, titre: 'Pourcentage réel', texte: 'Pour Toutes les FMPA, les interventions et le tableau de bord, le pourcentage de chargement suit maintenant l’avancement réel du serveur (lecture des données, préparation de la liste).', pour: ['chef_unite', 'chef_section', 'ctd'] },
     { v: 165, titre: 'Chargements suivis partout', texte: 'Dans toutes les rubriques, le chargement des données affiche son avancement en pourcentage. L’application attend jusqu’à 2 minutes ; si le chargement échoue, un bouton Réessayer le relance.', pour: ['tous'] },
     { v: 164, titre: 'Toutes les FMPA : chargement suivi', texte: 'Pendant le chargement de la liste, une barre indique l’avancement en pourcentage. Le chargement peut durer jusqu’à 2 minutes ; en cas d’échec, un bouton Réessayer le relance.', pour: ['chef_section', 'ctd'] },
-  { v: 162, titre: 'Tableaux de bord : listes complètes', texte: 'Les classements des tableaux de bord (communes, lieux, spécialistes…) ne s’arrêtent plus aux 10 premiers : touchez « Tout afficher » pour dérouler la liste entière. Les tableaux détaillés affichent aussi toutes les lignes.', pour: ['tous'] },
+  { v: 162, titre: 'Tableaux de bord : listes complètes', texte: 'Les classements des tableaux de bord (communes, lieux, spécialistes…) ne s’arrêtent plus aux 10 premiers : touchez « Tout afficher » pour dérouler la liste entière. Les tableaux détaillés affichent aussi toutes les lignes.', pour: ['chef_section', 'ctd'] },
   { v: 161, titre: 'Points liés sur la carte', texte: 'Sur la carte des points d’intérêt, les points liés entre eux sont maintenant entourés d’un cercle transparent de la couleur de leur secteur, au lieu d’être reliés par des pointillés.', pour: ['tous'] },
   { v: 157, titre: 'Groupes de points d’intérêt', texte: 'Les points peuvent être rangés dans un ou plusieurs groupes (ex. « Autran » : aven, parking, accès). La liste les regroupe sous un titre repliable, et un filtre permet d’afficher un seul groupe, aussi sur la carte.', pour: ['tous'] },
   { v: 156, titre: 'Proposer un point d’intérêt', texte: 'Chacun peut désormais proposer un point avec « ＋ Proposer un point » : il apparaît pour tous une fois validé par un chef de section ou un administrateur, et vous êtes prévenu de la décision.', pour: ['equipier'] },
@@ -74,12 +77,14 @@
     } catch (e) { return false; }
   }
 
+  // Une nouveauté n'est montrée qu'aux rôles qu'elle concerne : plus de passe-droit « administrateur voit tout »
   function concerne(n, session) {
-    const pour = n.pour || ['tous'];
+    const pour = Array.isArray(n.pour) ? n.pour : [];
     if (pour.includes('tous')) return true;
     if (!session) return false;
-    if (session.is_admin === true || session.admin === true || session.role === 'admin') return true;
-    return pour.includes(session.role);
+    const admin = session.is_admin === true || session.admin === true || session.role === 'admin';
+    if (admin && pour.includes('admin')) return true;
+    return !!session.role && pour.includes(session.role);
   }
 
   function afficher(liste, onClose) {
