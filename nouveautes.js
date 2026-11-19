@@ -22,6 +22,8 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 172, titre: 'Planning des FMPA', texte: 'Nouvelle rubrique « Planning des FMPA » dans le menu : le CT propose les dates, les chefs d’unité se positionnent pour encadrer, puis chacun s’inscrit (6 places par chef d’unité, liste d’attente au-delà). Vous êtes prévenu à chaque étape et des informations de rendez-vous.', pour: ['tous'] },
+    { v: 172, titre: 'Calendrier des FMPA', texte: 'Dans « Planning des FMPA › CT · Organiser », les dates s’affichent sur un calendrier mensuel coloré selon leur état. Pour valider ou désigner un IMP 3, son nombre de FMPA encadrées dans l’année est affiché, les moins sollicités en premier.', pour: ['ctd', 'admin'] },
     { v: 171, titre: 'Évaluation GNR', texte: 'Nouvelle entrée « Évaluation GNR » dans la section Chefs de section du menu : elle ouvre directement le formulaire d’évaluation annuelle des spécialistes.', pour: ['chef_section', 'ctd', 'admin'] },
     { v: 169, titre: 'Activation des notifications', texte: 'Le bouton « Activer sur ce téléphone » indique maintenant où en est l’activation. Si elle bloque (autorisation non donnée, téléphone sans services Google…), un message explique quoi faire au lieu de ne rien afficher.', pour: ['tous'] },
     { v: 168, titre: 'Heures du livret fiabilisées', texte: 'Les heures de « Mon livret » sont maintenant calculées directement à partir des FMPA enregistrées (base FMPA), et non plus recopiées dans l’ancien tableau du livret. Une FMPA déclarée deux fois n’est comptée qu’une fois.', pour: ['tous'] },
