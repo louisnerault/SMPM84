@@ -308,6 +308,18 @@
     });
   }
 
+  // Réponse non JSON (page d'erreur HTML d'Apps Script, réponse vide…) : extrait lisible pour la cause affichée
+  function extraitErreur(t) {
+    t = String(t || '');
+    if (!t.trim()) return ' (réponse vide)';
+    const corps = /<body[^>]*>([\s\S]*)<\/body>/i.exec(t);
+    const brut = (corps ? corps[1] : t)
+      .replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s+/g, ' ').trim();
+    return brut ? ' : « ' + (brut.length > 220 ? brut.slice(0, 220) + '…' : brut) + ' »' : '';
+  }
+
   const KEY_DUREE = 'smpm_api_duree_';
   async function apiCall(action, payload, opts = {}) {
     let res;
@@ -361,7 +373,7 @@
       clearTimeout(timer); stopEstim(); finCharge();
       throw new NetworkError('Serveur indisponible (HTTP ' + res.status + ')');
     }
-    let data;
+    let data, texte = '';
     try {
       if (res.body && res.body.getReader) {
         // Téléchargement : de l'estimation à 100 %, d'après la taille annoncée quand le serveur la donne
@@ -378,12 +390,14 @@
         }
         const buf = new Uint8Array(recu); let o = 0;
         morceaux.forEach(m => { buf.set(m, o); o += m.length; });
-        data = JSON.parse(new TextDecoder('utf-8').decode(buf));
+        texte = new TextDecoder('utf-8').decode(buf);
       } else {
-        data = await res.json();
+        texte = await res.text();
       }
+      data = JSON.parse(texte);
+      if (!data || typeof data !== 'object') throw new SyntaxError('JSON');
     } catch (e) {
-      throw e && e.name === 'AbortError' ? new NetworkError('Réseau trop lent') : new NetworkError('Réponse inattendue du serveur');
+      throw e && e.name === 'AbortError' ? new NetworkError('Réseau trop lent') : new NetworkError('Réponse inattendue du serveur' + extraitErreur(texte));
     } finally { clearTimeout(timer); stopEstim(); finCharge(); }
     store.set(cle, String(Date.now() - t0));
     if (!data.ok) throw new Error(data.error || 'Erreur');
