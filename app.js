@@ -231,15 +231,37 @@
   async function api(action, payload = {}, opts = {}) {
     progress.start();
     try {
+      let auto = 0;
       for (;;) {
         try { return await apiCall(action, payload, opts); }
         catch (e) {
-          if (!(e instanceof NetworkError) || !navigator.onLine || opts.noRetry || ECRITURES.test(action)) throw e;
+          if (!(e instanceof NetworkError) || opts.noRetry || ECRITURES.test(action)) throw e;
+          // Raté passager (requête coupée quand l'appli passe en arrière-plan, page d'erreur Google,
+          // serveur saturé un instant) : jusqu'à 3 nouveaux essais automatiques avant de proposer « Réessayer ».
+          // Pas après un délai de 2 minutes dépassé : l'utilisateur a déjà assez attendu.
+          if (auto < 3 && e.message !== 'Réseau trop lent') {
+            await attendreReessai([1500, 4000, 8000][auto++]);
+            continue;
+          }
+          if (!navigator.onLine) throw e;
           const host = chargementVisible();
           if (!host || !(await proposerReessai(host, e))) throw e;
         }
       }
     } finally { progress.end(); }
+  }
+
+  // attente avant un nouvel essai automatique : prolongée tant que l'appli est en arrière-plan ou hors ligne
+  function attendreReessai(ms) {
+    return new Promise(resolve => {
+      const t0 = Date.now();
+      const tic = () => {
+        if (Date.now() - t0 >= ms && document.visibilityState !== 'hidden' && navigator.onLine) return resolve();
+        if (Date.now() - t0 > 60000) return resolve();   // au-delà d'une minute : on tente quand même
+        setTimeout(tic, 500);
+      };
+      setTimeout(tic, Math.min(ms, 500));
+    });
   }
 
   // envois (déclarations, modifications…) : jamais retenus par le bouton Réessayer, ils ont leur propre file d'attente
@@ -270,6 +292,12 @@
       box.setAttribute('role', 'alert');
       const msg = document.createElement('span');
       msg.textContent = (err.message === 'Réseau trop lent' ? 'Le serveur n’a pas répondu en 2 minutes.' : 'Chargement des données impossible.');
+      if (err.message && err.message !== 'Réseau trop lent') {
+        const cause = document.createElement('small');
+        cause.className = 'load-retry-cause';
+        cause.textContent = 'Cause : ' + err.message + (navigator.onLine ? '' : ' (téléphone hors ligne)');
+        msg.append(document.createElement('br'), cause);
+      }
       const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = 'Réessayer';
       const non = document.createElement('button'); non.type = 'button'; non.className = 'link'; non.textContent = 'Annuler';
       box.append(msg, ok, non);
@@ -328,6 +356,10 @@
     } catch (e) {
       clearTimeout(timer); stopEstim(); finCharge();
       throw new NetworkError(e && e.name === 'AbortError' ? 'Réseau trop lent' : 'Réseau indisponible');
+    }
+    if (!res.ok) {
+      clearTimeout(timer); stopEstim(); finCharge();
+      throw new NetworkError('Serveur indisponible (HTTP ' + res.status + ')');
     }
     let data;
     try {

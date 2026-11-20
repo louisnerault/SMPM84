@@ -1126,6 +1126,7 @@ body:not(.mode-intervention) .only-intervention { display: none; }
 .is-loading.is-failed::after, .is-loading.is-failed::before { display: none; }
 .load-retry { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .8rem; margin: .4rem 0 .8rem; color: var(--danger); }
 .load-retry span { flex: 1 1 100%; }
+.load-retry-cause { color: var(--muted, #9aa7bd); font-size: .8rem; }
 
 /* fenêtre de validation : titre et boutons toujours visibles, seul le contenu défile */
 .mdl-title, .mdl-actions { flex: none; }
