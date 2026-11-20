@@ -3,6 +3,9 @@
 //   les chefs d'unité (IMP 3) se positionnent pour encadrer, le CT valide le ou les chefs d'unité,
 //   puis les inscriptions s'ouvrent à tous (6 participants par chef d'unité validé, au-delà liste d'attente).
 //   Les chefs d'unité validés complètent le rendez-vous et le programme, transmis aux inscrits.
+// Règles d'inscription (Orga.gs, R1 à R10) : heures fixées par le CT, CU RP + CU sécurité, 3e IMP 3 (participant ou
+//   nouvelle FMPA), quotas annuel et du 1er semestre, liste d'attente par retard sur le quota, FMPA départementales
+//   (affectations sur 2 jours), annulation proposée faute de participants, encadrements attendus des IMP 3.
 // Trois espaces dans le menu, un par rôle (app.js : ORGA_PAGES) :
 //   « CT · Organiser » (orga-ct), « CU · Encadrer » (orga-cu), « IMP 2 / IMP 1 · S'inscrire » (orga-insc).
 // Les boutons affichés sont ceux que le serveur autorise (f.actions) : c'est lui qui contrôle les droits.
@@ -15,7 +18,10 @@
   const SECTEURS_DEF = [
     { code: 'NORD', nom: 'Nord' }, { code: 'SUD', nom: 'Sud' }, { code: 'CENTRE', nom: 'Centre' },
     { code: 'NEIGE', nom: 'Neige', restreint: true }, { code: 'ISS', nom: 'ISS', restreint: true }, { code: 'SSH', nom: 'SSH', restreint: true },
+    { code: 'DEPT', nom: 'Départementale', dept: true },
   ];
+  const JOURS_DEPT = { '1': 'Jour 1', '2': 'Jour 2', '12': 'Les deux jours' };
+  const nb = n => String(Math.round(n * 10) / 10).replace('.', ',');
   const $ = (sel, root = document) => root.querySelector(sel);
   const app = () => window.SMPM_APP;
   const store = {
@@ -30,6 +36,7 @@
   const actif = f => f.phase !== 'annulee' && f.phase !== 'passee';
   const aExaminer = f => actif(f) && f.actions.decider && f.candidats.length > 0;
   const aCompleter = f => actif(f) && f.moi.encadrant === 'VALIDE' && !(f.infos.lieu && f.infos.heure);
+  const aDecider = f => actif(f) && !!f.actions.decisionAnnulation;
   const jEncadre = f => f.moi.encadrant === 'VALIDE' || f.moi.encadrant === 'CANDIDAT';
 
   // Espaces : titre, présentation, onglets (filtre de la liste, message si vide)
@@ -37,7 +44,7 @@
     ct: {
       nom: 'CT · Organiser',
       titre: 'Organiser les FMPA',
-      intro: 'Créez les dates, validez les chefs d’unité qui se positionnent : les inscriptions s’ouvrent dès le premier validé.',
+      intro: 'Créez les dates et leurs heures, validez le CU RP puis le CU sécurité : les inscriptions s’ouvrent dès le CU RP validé. Les FMPA départementales se créent ici aussi.',
       vues: [
         { code: 'traiter', nom: 'À traiter', compte: aExaminer,
           filtre: f => actif(f) && (f.candidats.length > 0 || f.phase === 'encadrant'),
@@ -49,9 +56,9 @@
     cu: {
       nom: 'CU · Encadrer',
       titre: 'Encadrer une FMPA',
-      intro: 'Positionnez-vous sur les dates proposées par le CT. Une fois validé, complétez le rendez-vous et le programme pour les inscrits.',
+      intro: 'Positionnez-vous sur les dates proposées par le CT : le 1er validé est CU RP, le 2e CU sécurité. Une fois validé, complétez le rendez-vous et le programme. FMPA pleine : proposez-en une nouvelle.',
       vues: [
-        { code: 'proposees', nom: 'Proposées', filtre: f => actif(f) && (f.actions.candidater || f.moi.encadrant === 'CANDIDAT'),
+        { code: 'proposees', nom: 'Proposées', filtre: f => actif(f) && (f.actions.candidater || f.actions.proposer || f.moi.encadrant === 'CANDIDAT'),
           vide: 'Aucune FMPA à encadrer pour le moment. Vous serez prévenu des nouvelles dates.' },
         { code: 'miennes', nom: 'Mes encadrements', compte: aCompleter, filtre: f => !f.passee && jEncadre(f),
           vide: 'Vous n’êtes positionné sur aucune FMPA à venir.' },
@@ -62,7 +69,7 @@
     insc: {
       nom: 'IMP 2 / IMP 1 · S’inscrire',
       titre: 'S’inscrire à une FMPA',
-      intro: 'Inscrivez-vous aux FMPA ouvertes (6 places par chef d’unité). Vous êtes prévenu de leur ouverture et des informations du chef d’unité.',
+      intro: 'Inscrivez-vous aux FMPA ouvertes (6 places par chef d’unité). Votre quota d’heures, FMPA départementales comprises, est à répartir sur l’année : au 1er semestre, pas plus de la moitié (+ 10 %).',
       vues: [
         { code: 'ouvertes', nom: 'Ouvertes', filtre: f => (f.phase === 'inscriptions' || f.phase === 'complet') && !jEncadre(f),
           vide: 'Aucune FMPA ouverte aux inscriptions pour le moment. Vous serez prévenu de l’ouverture.' },
@@ -147,14 +154,16 @@
   }
 
   function recevoir(res) {
-    S.data = { fmpa: res.fmpa || [], moi: res.moi || {}, secteurs: res.secteurs || SECTEURS_DEF, ratio: res.ratio || 6, aFaire: res.aFaire || 0, imp3: res.imp3 || null, maj: res.maj };
+    S.data = { fmpa: res.fmpa || [], moi: res.moi || {}, secteurs: res.secteurs || SECTEURS_DEF, ratio: res.ratio || 6, aFaire: res.aFaire || 0,
+      imp3: res.imp3 || null, personnel: res.personnel || null, heures: res.heures || { defaut: 7, dept: 8 }, maj: res.maj };
     S.fresh = true;
     store.set(KEY, JSON.stringify(S.data));
     // fiche ouverte depuis une notification : espace selon le rôle de chacun sur cette FMPA
     if (S.ouvrirDepuisNotif && S.id) {
       const f = S.data.fmpa.find(x => x.id === S.id);
       if (f) {
-        S.espace = f.actions.decider && (f.candidats.length || f.phase === 'encadrant') ? 'ct' : jEncadre(f) ? 'cu' : 'insc';
+        S.espace = (f.actions.decider && (f.candidats.length || f.phase === 'encadrant')) || (f.actions.decisionAnnulation && S.data.moi.gerer) ? 'ct'
+          : jEncadre(f) ? 'cu' : 'insc';
         S.mois = f.date.slice(0, 7);
       }
       S.vue = null;
@@ -167,7 +176,7 @@
   // Compteurs du menu : candidatures à examiner (CT), informations à compléter (chef d'unité validé), total sur le groupe
   function badge() {
     const l = (S.data && S.data.fmpa) || [];
-    const ct = l.filter(aExaminer).length;
+    const ct = l.filter(f => aExaminer(f) || aDecider(f)).length;
     const cu = l.filter(aCompleter).length;
     const set = (sel, n) => document.querySelectorAll(sel).forEach(b => { b.textContent = n ? String(n) : ''; b.hidden = !n; });
     set('[data-orga-count-ct]', ct);
@@ -183,9 +192,10 @@
     try {
       const res = await app().api('orga', Object.assign({ token: app().token(), op }, payload));
       S.edit = null;
+      if (res.nouvelle) S.id = res.nouvelle;
       recevoir(res);
       setState(okMsg || 'Enregistré.', false, true);
-      return true;
+      return res;
     } catch (err) {
       if (app().AUTH_ERRORS.includes(err.message)) { app().logout(); return false; }
       setState(err instanceof app().NetworkError ? app().netLabel() + ' : action impossible pour le moment, réessayez avec du réseau.' : err.message, true);
@@ -221,6 +231,7 @@
     $('#orga-espace').textContent = 'Planning des FMPA · ' + E.nom;
     $('#orga-titre').textContent = E.titre;
     $('#orga-intro').textContent = E.intro;
+    $('#orga-moi-quota').replaceChildren(...encartMoi(moi));
     const creer = S.espace === 'ct' && moi.gerer;
     if (!creer && !$('#orga-new').hidden) fermerCreation(true);
     $('#orga-new-btn').hidden = !creer || !$('#orga-new').hidden;
@@ -230,7 +241,7 @@
     ssel.value = S.secteur;
 
     const auj = today();
-    const all = ((S.data && S.data.fmpa) || []).map(f => Object.assign(f, { passee: f.date < auj }));
+    const all = ((S.data && S.data.fmpa) || []).map(f => Object.assign(f, { passee: (f.date2 || f.date) < auj }));
     const parSecteur = all.filter(f => !S.secteur || f.secteur === S.secteur);
     $('#orga-tabs').replaceChildren(...E.vues.map(v => {
       const n = v.compte ? parSecteur.filter(v.compte).length : 0;
@@ -260,6 +271,45 @@
     $('#orga-list').replaceChildren(...list.map(carte));
   }
 
+  // ---------- mon quota (R4 à R6) et mes encadrements (R10) ----------
+  function ligneQuota(libelle, h, max, limite) {
+    const pct = max ? Math.min(100, Math.round(100 * h / max)) : 0;
+    return el('div', { class: 'orga-quota-l' },
+      el('span', { text: libelle }),
+      el('div', { class: 'orga-jauge', role: 'img', 'aria-label': nb(h) + ' h sur ' + nb(max) + ' h' },
+        el('div', { class: 'orga-jauge-fill' + (h >= max ? (limite ? ' limite' : ' plein') : ''), style: 'width:' + pct + '%' })),
+      el('span', { text: nb(h) + ' / ' + nb(max) + ' h' }));
+  }
+  function encartMoi(moi) {
+    const out = [];
+    const an = String(new Date().getFullYear());
+    const mois = new Date().getMonth() + 1;
+    if (S.espace === 'insc' && moi.quota) {
+      const Q = moi.quota;
+      const ans = Object.keys(Q.annees || {}).filter(y => y === an || (Q.annees[y].tot > 0) ||
+        ((S.data && S.data.fmpa) || []).some(f => f.date.slice(0, 4) === y && f.phase !== 'annulee'));
+      ans.forEach(y => {
+        const h = Q.annees[y];
+        const box = el('div', { class: 'orga-encart' }, el('strong', { text: 'Mon quota ' + y + ' (' + (moi.niveau || '') + ')' }),
+          ligneQuota('Année', h.tot, Q.quota, false));
+        if (y > an || mois <= 6) box.append(ligneQuota('1er semestre', h.s1, Q.seuilS1, true));
+        if (h.tot >= Q.quota) box.append(el('p', { text: 'Quota atteint : plus d’inscription possible aux FMPA libres de ' + y + '.' }));
+        else if ((y > an || mois <= 6) && h.s1 >= Q.seuilS1) box.append(el('p', { text: 'Limite du 1er semestre dépassée : vous pourrez vous inscrire aux FMPA du 2e semestre.' }));
+        box.append(el('p', { class: 'muted small', text: 'FMPA réalisées et à venir (inscriptions, FMPA départementales, encadrements). Neige, ISS et SSH ont leurs propres quotas.' }));
+        out.push(box);
+      });
+    }
+    if (S.espace === 'cu' && moi.encadrements) {
+      const a = moi.encadrements.annees[an] || { faites: 0, prevues: 0 };
+      const tot = a.faites + a.prevues;
+      const att = moi.encadrements.attendu;
+      out.push(el('div', { class: 'orga-encart' + (tot < att ? ' attention' : '') },
+        el('strong', { text: 'Mes encadrements ' + an + ' : ' + a.faites + ' réalisé' + (a.faites > 1 ? 's' : '') + (a.prevues ? ' · ' + a.prevues + ' prévu' + (a.prevues > 1 ? 's' : '') : '') }),
+        el('p', { text: tot < att ? 'Au moins ' + att + ' encadrements sont attendus dans l’année : positionnez-vous sur les dates proposées.' : 'Objectif annuel de ' + att + ' encadrements atteint.' })));
+    }
+    return out;
+  }
+
   // ---------- calendrier mensuel (CT · Organiser) ----------
   const ICO = {
     question: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01"/>',
@@ -283,6 +333,9 @@
   // État d'affichage d'une FMPA dans le calendrier
   function etatCal(f) {
     if (f.phase === 'annulee') return { cls: 'st-annulee', libelle: 'Annulée' };
+    if (f.departementale) return { cls: 'st-dept', libelle: 'Départementale · ' + f.inscrits.length + ' affecté' + (f.inscrits.length > 1 ? 's' : '') };
+    if (f.phase === 'proposee') return { cls: 'st-proposee', libelle: 'Nouvelle FMPA proposée, à valider' };
+    if (f.alerteAnnulation) return { cls: 'st-urgent', libelle: 'Annulation proposée : ' + f.alerteAnnulation.effectif + ' personne(s)' };
     const urgent = !f.encadrants.length && f.phase !== 'passee' && joursAvant(f.date) < 7;
     if (f.encadrants.length) {
       return f.inscrits.length >= f.capacite
@@ -301,14 +354,15 @@
     const haut = el('span', { class: 'cal-l1' });
     if (E.cls === 'st-attente') haut.append(ico('question'));
     if (E.cls === 'st-urgent') haut.append(ico('danger'));
-    if (E.cls === 'st-urgent' || E.cls === 'st-candidat') {
+    if (E.cls === 'st-urgent' || E.cls === 'st-candidat' || E.cls === 'st-proposee') {
       if (f.candidats.length) haut.append(ico(f.candidats.length > 1 ? 'personnes' : 'personne'));
     }
     if (E.cls === 'st-complet') haut.append(ico('ok'));
     if (E.cls === 'st-annulee') haut.append(ico('croix'));
     haut.append(el('span', { class: 'cal-sec', text: secNom(f.secteur) }));
     t.append(haut);
-    if (f.encadrants.length) {
+    if (f.departementale) t.append(el('span', { class: 'cal-n', text: f.inscrits.length + ' affecté' + (f.inscrits.length > 1 ? 's' : '') }));
+    else if (f.encadrants.length) {
       t.append(el('span', { class: 'cal-cu', text: f.encadrants[0].nom + (f.encadrants.length > 1 ? ' +' + (f.encadrants.length - 1) : '') }));
       t.append(el('span', { class: 'cal-n', text: f.inscrits.length + '/' + f.capacite }));
     }
@@ -327,7 +381,10 @@
     const nb = new Date(y, m, 0).getDate();
     const auj = today();
     const parJour = {};
-    list.forEach(f => { (parJour[f.date] = parJour[f.date] || []).push(f); });
+    list.forEach(f => {
+      (parJour[f.date] = parJour[f.date] || []).push(f);
+      if (f.date2 && f.date2 !== f.date) (parJour[f.date2] = parJour[f.date2] || []).push(f);   // 2e jour d'une départementale
+    });
     const titre = premier.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 
     const tete = el('div', { class: 'cal-head' },
@@ -359,7 +416,8 @@
     const leg = el('ul', { class: 'cal-legende' },
       ...[['st-attente', 'question', 'Attente d’un IMP 3'], ['st-urgent', 'danger', 'Moins de 7 jours sans encadrant'],
         ['st-candidat', 'personne', 'Candidat(s) à valider'], ['st-ouvert', null, 'Inscriptions ouvertes'],
-        ['st-complet', 'ok', 'Complet'], ['st-annulee', 'croix', 'Annulée']]
+        ['st-complet', 'ok', 'Complet'], ['st-proposee', 'personne', 'Nouvelle FMPA proposée'], ['st-dept', null, 'Départementale'],
+        ['st-annulee', 'croix', 'Annulée']]
         .map(([c, i, t]) => el('li', null, el('span', { class: 'cal-pastille ' + c }, i ? ico(i) : null), t)));
 
     const nbMois = list.filter(f => f.date.slice(0, 7) === S.mois && f.phase !== 'annulee').length;
@@ -416,9 +474,12 @@
     const an = f.date.slice(0, 4);
     const lignes = [el('strong', { text: dateLongue(f.date) }), el('span', { class: 'cal-b-etat ' + E.cls, text: secNom(f.secteur) + ' · ' + E.libelle })];
     if (f.note) lignes.push(el('span', { class: 'cal-b-note', text: f.note }));
-    if (f.encadrants.length) lignes.push(el('span', { text: 'Encadrement : ' + f.encadrants.map(e => e.nomComplet + (e.responsable ? ' (resp.)' : '')).join(', ') }));
+    if (f.date2) lignes.push(el('span', { text: '2e jour : ' + dateLongue(f.date2) }));
+    lignes.push(el('span', { text: nb(f.heures) + ' h' + (f.departementale ? ' par jour' : '') + ' comptées dans les quotas' }));
+    if (f.encadrants.length) lignes.push(el('span', { text: 'Encadrement : ' + f.encadrants.map(e => e.nomComplet + (e.role === 'RP' ? ' (CU RP)' : ' (CU sécu.)')).join(', ') }));
     if (f.candidats.length) lignes.push(el('span', { text: 'Candidats : ' + trierParCompteur(f.candidats, an).map(e => e.nomComplet + ' (' + compteurTxt(e.nom, an, true) + ')').join(', ') }));
     if (f.capacite) lignes.push(el('span', { text: 'Inscrits : ' + f.inscrits.length + '/' + f.capacite + (f.attente.length ? ' · ' + f.attente.length + ' en attente' : '') }));
+    if (f.departementale) lignes.push(el('span', { text: 'Affectés : ' + f.inscrits.length }));
     if (f.infos.lieu || f.infos.heure) lignes.push(el('span', { text: 'RDV : ' + [heureTxt(f.infos.heure), f.infos.lieu].filter(Boolean).join(' – ') }));
     if (f.phase === 'annulee' && f.motif) lignes.push(el('span', { text: 'Motif : ' + f.motif }));
     bulle = el('div', { class: 'cal-bulle', role: 'tooltip' }, ...lignes);
@@ -454,15 +515,18 @@
     const n = f.inscrits.length;
     if (f.phase === 'annulee') return el('span', { class: 'chip orga-chip-annulee', text: 'Annulée' });
     if (f.phase === 'passee') return el('span', { class: 'chip chip-ro', text: n ? n + ' participant' + (n > 1 ? 's' : '') : 'Passée' });
-    if (f.phase === 'encadrant') return el('span', { class: 'chip orga-chip-cu', text: f.candidats.length ? 'Encadrant à valider (' + f.candidats.length + ')' : 'Recherche un encadrant' });
+    if (f.phase === 'departementale') return el('span', { class: 'chip orga-chip-dept', text: 'Départementale · présence obligatoire · ' + n + ' affecté' + (n > 1 ? 's' : '') });
+    if (f.phase === 'proposee') return el('span', { class: 'chip orga-chip-cu', text: 'Nouvelle FMPA proposée · à valider par le CT' });
+    if (f.phase === 'encadrant') return el('span', { class: 'chip orga-chip-cu', text: f.candidats.length ? 'CU RP à valider (' + f.candidats.length + ')' : 'Recherche un CU RP' });
     if (f.phase === 'complet') return el('span', { class: 'chip orga-chip-complet', text: 'Complet' + (f.attente.length ? ' · ' + f.attente.length + ' en attente' : '') });
     return el('span', { class: 'chip chip-edit', text: 'Inscriptions ouvertes · ' + (f.capacite - n) + ' place' + (f.capacite - n > 1 ? 's' : '') });
   }
 
   function monStatut(f) {
     const m = f.moi;
-    if (m.encadrant === 'VALIDE') return m.responsable ? 'Vous êtes responsable' : 'Vous êtes co-encadrant';
-    if (m.encadrant === 'CANDIDAT') return 'Candidature en attente de validation';
+    if (m.encadrant === 'VALIDE') return m.responsable ? 'Vous êtes CU RP (responsable pédagogique)' : 'Vous êtes CU sécurité';
+    if (m.encadrant === 'CANDIDAT') return f.phase === 'proposee' ? 'Votre proposition attend la validation du CT' : 'Candidature en attente de validation';
+    if (f.departementale && m.inscrit === 'INSCRIT') return 'Vous êtes affecté : ' + (m.jour === '12' ? 'les deux jours' : dateLongue(m.jour === '2' ? f.date2 : f.date));
     if (m.inscrit === 'INSCRIT') return 'Vous êtes inscrit';
     if (m.inscrit === 'ATTENTE') return 'Liste d’attente (' + m.rangAttente + (m.rangAttente === 1 ? 'er' : 'e') + ')';
     if (m.encadrant === 'REFUSE') return 'Candidature non retenue';
@@ -477,15 +541,16 @@
       el('strong', { text: d ? String(d) : '–' }), el('span', { text: MOIS[(m || 1) - 1] || '' }));
     const body = el('div', { class: 'fmpa-body' });
     const resp = f.encadrants[0];
-    body.append(el('p', { class: 'fmpa-lieu', text: f.infos.lieu || (resp ? 'CU ' + resp.nomComplet : f.note || 'Lieu à préciser') }));
+    body.append(el('p', { class: 'fmpa-lieu', text: f.infos.lieu || (resp ? 'CU RP ' + resp.nomComplet : f.departementale ? 'FMPA départementale' : f.note || 'Lieu à préciser') }));
     const meta = el('p', { class: 'fmpa-meta' }, tagSecteur(f.secteur),
-      ' ' + [jourSemaine(f.date), f.infos.heure ? 'RDV ' + heureTxt(f.infos.heure) : '', f.encadrants.length > 1 ? f.encadrants.length + ' encadrants' : ''].filter(Boolean).join(' · '));
+      ' ' + [jourSemaine(f.date) + (f.date2 ? ' et ' + jourSemaine(f.date2) + ' ' + Number(f.date2.slice(8)) : ''), nb(f.heures) + ' h' + (f.date2 ? '/jour' : ''),
+        f.infos.heure ? 'RDV ' + heureTxt(f.infos.heure) : '', f.encadrants.length > 1 ? 'CU RP + CU sécurité' : ''].filter(Boolean).join(' · '));
     body.append(meta, phaseChip(f));
     const st = monStatut(f);
     if (st) body.append(el('span', { class: 'orga-moi', text: st }));
     const fig = el('div', { class: 'fmpa-fig' },
-      el('strong', { text: f.capacite ? f.inscrits.length + '/' + f.capacite : '' }),
-      f.capacite ? el('span', { text: 'inscrits' }) : null);
+      el('strong', { text: f.capacite ? f.inscrits.length + '/' + f.capacite : f.departementale ? String(f.inscrits.length) : '' }),
+      f.capacite ? el('span', { text: 'inscrits' }) : f.departementale ? el('span', { text: 'affectés' }) : null);
     btn.append(date, body, fig);
     li.append(btn);
     return li;
@@ -521,83 +586,197 @@
     const A = f.actions;
     const out = [];
     out.push(el('div', { class: 'sub-head' }, el('button', { type: 'button', class: 'link', text: '← ' + ESPACES[S.espace].titre, onclick: retourListe })));
-    out.push(el('h1', { class: 'orga-titre', text: dateLongue(f.date) }));
-    out.push(el('p', { class: 'fmpa-meta' }, tagSecteur(f.secteur), f.restreint ? ' Réservée aux qualifiés ' + secNom(f.secteur) : ''));
+    out.push(el('h1', { class: 'orga-titre', text: dateLongue(f.date) + (f.date2 ? ' et ' + dateLongue(f.date2) : '') }));
+    out.push(el('p', { class: 'fmpa-meta' }, tagSecteur(f.secteur),
+      ' ' + nb(f.heures) + ' h' + (f.departementale ? ' par jour' : '') + ' comptées dans les quotas' +
+      (f.restreint ? ' · réservée aux qualifiés ' + secNom(f.secteur) + ' (hors quota SMPM)' : '')));
     out.push(phaseChip(f));
     const st = monStatut(f);
     if (st) out.push(el('p', { class: 'orga-moi orga-moi-fiche', text: st }));
     if (f.phase === 'annulee') out.push(el('p', { class: 'error', text: 'FMPA annulée' + (f.motif ? ' : ' + f.motif : '.') }));
     if (f.note) out.push(el('p', { class: 'orga-note', text: f.note }));
 
+    // Annulation proposée faute de participants (R9)
+    if (f.alerteAnnulation && A.decisionAnnulation) {
+      const n = f.alerteAnnulation.effectif;
+      out.push(el('div', { class: 'orga-encart alerte' },
+        el('strong', { text: 'Annulation proposée' }),
+        el('p', { text: (n ? n + ' personne' + (n > 1 ? 's' : '') + ', CU compris' : 'Aucun participant') + ' : la FMPA peut être annulée. Le CT ou le chef de section du secteur décide ; la première décision s’applique.' }),
+        el('div', { class: 'orga-actions' },
+          bouton('Annuler la FMPA', () => {
+            const motif = prompt('Annuler cette FMPA ? Encadrants et inscrits seront prévenus.\nMotif (facultatif) :', 'Pas assez de participants');
+            if (motif !== null) action('annuler', { id: f.id, motif }, 'FMPA annulée.');
+          }, 'pill danger-pill'),
+          bouton('Maintenir la FMPA', () => {
+            if (confirm('Maintenir cette FMPA ? Il n’y aura plus de rappel.')) action('maintenir', { id: f.id }, 'FMPA maintenue.');
+          }, 'pill orga-ok'))));
+    }
+    if (f.decisionAnnulation && f.decisionAnnulation.decision === 'MAINTENUE' && (A.gerer || A.decider)) {
+      out.push(el('p', { class: 'muted small', text: 'Maintenue malgré le faible nombre de participants (' + f.decisionAnnulation.par + ').' }));
+    }
+
     // Action principale de l'utilisateur
     const act = el('div', { class: 'orga-actions' });
     if (A.inscrire) act.append(bouton(f.phase === 'complet' ? 'M’inscrire en liste d’attente' : 'M’inscrire', () => action('inscrire', { id: f.id }, f.phase === 'complet' ? 'Inscrit en liste d’attente.' : 'Inscription enregistrée.'), 'primary'));
     if (A.desinscrire) act.append(bouton(f.moi.inscrit === 'ATTENTE' ? 'Quitter la liste d’attente' : 'Me désinscrire', () => {
-      if (confirm(f.moi.inscrit === 'ATTENTE' ? 'Quitter la liste d’attente ?' : 'Vous désinscrire de cette FMPA ?')) action('inscrire', { id: f.id, desinscrire: true }, 'Désinscription enregistrée.');
+      const q = f.moi.inscrit === 'ATTENTE' ? 'Quitter la liste d’attente ?'
+        : f.departementale ? 'Vous désinscrire de cette FMPA départementale (présence obligatoire) ? L’organisateur sera prévenu ; vos heures redeviennent disponibles pour une FMPA libre.'
+          : 'Vous désinscrire de cette FMPA ?';
+      if (confirm(q)) action('inscrire', { id: f.id, desinscrire: true }, 'Désinscription enregistrée.');
     }, 'primary orga-secondaire'));
-    if (A.candidater) act.append(bouton(f.moi.encadrant === 'REFUSE' ? 'Me positionner à nouveau pour encadrer' : 'Me positionner pour encadrer', () => action('candidater', { id: f.id }, 'Candidature envoyée au conseiller technique.'), 'primary'));
-    if (A.retirerCandidature) act.append(bouton(f.moi.encadrant === 'VALIDE' ? 'Je ne peux plus encadrer' : 'Retirer ma candidature', () => {
-      const q = f.moi.encadrant === 'VALIDE' ? 'Vous désister de l’encadrement ? Le conseiller technique sera prévenu' + (f.encadrants.length === 1 ? ' et les inscrits passeront en liste d’attente.' : '.') : 'Retirer votre candidature ?';
+    if (A.candidater) act.append(bouton((f.moi.encadrant === 'REFUSE' ? 'Me positionner à nouveau' : 'Me positionner') + (f.encadrants.length ? ' comme CU sécurité' : ' pour encadrer'),
+      () => action('candidater', { id: f.id }, 'Candidature envoyée au conseiller technique.'), 'primary'));
+    if (A.proposer && S.edit !== 'proposer') act.append(bouton('Proposer une nouvelle FMPA', () => { S.edit = 'proposer'; render(); }, 'primary'));
+    if (A.retirerCandidature) act.append(bouton(f.moi.encadrant === 'VALIDE' ? 'Je ne peux plus encadrer' : f.phase === 'proposee' ? 'Retirer ma proposition' : 'Retirer ma candidature', () => {
+      const q = f.moi.encadrant === 'VALIDE' ? 'Vous désister de l’encadrement ? Le conseiller technique sera prévenu' + (f.encadrants.length === 1 ? ' et les inscrits passeront en liste d’attente.' : '.')
+        : f.phase === 'proposee' ? 'Retirer votre proposition ? La FMPA proposée sera annulée.' : 'Retirer votre candidature ?';
       if (confirm(q)) action('candidater', { id: f.id, retirer: true }, 'C’est noté.');
     }, 'primary orga-secondaire'));
     if (act.childNodes.length) out.push(act);
+    if (S.edit === 'proposer' && A.proposer) out.push(formProposer(f));
     if (f.raison) out.push(el('p', { class: 'muted small', text: f.raison }));
     if (f.phase === 'encadrant' && !A.candidater && !f.moi.encadrant) {
-      out.push(el('p', { class: 'muted small', text: 'Les inscriptions ouvriront dès qu’un chef d’unité aura été validé par le conseiller technique. Vous serez prévenu.' }));
+      out.push(el('p', { class: 'muted small', text: 'Les inscriptions ouvriront dès qu’un CU RP aura été validé par le conseiller technique. Vous serez prévenu.' }));
     }
 
-    // Rendez-vous et programme
-    out.push(section('Rendez-vous et programme', ...renderInfos(f)));
+    if (f.departementale) {
+      out.push(section('Agents affectés · ' + f.inscrits.length, ...renderAffectes(f)));
+    } else {
+      // Rendez-vous et programme
+      out.push(section('Rendez-vous et programme', ...renderInfos(f)));
 
-    // Encadrement
-    const enc = el('ul', { class: 'orga-people' });
-    f.encadrants.forEach(e => enc.append(el('li', null,
-      el('span', { class: 'orga-name', text: e.nomComplet }),
-      el('span', { class: 'tag', text: e.responsable ? 'Responsable' : 'Co-encadrant' }),
-      A.decider ? bouton('Retirer', () => decider(f, e, 'retirer'), 'link danger-link') : null)));
-    const an = f.date.slice(0, 4);
-    const voirCompteur = !!(S.data && S.data.imp3);
-    f.encadrants.forEach((e, k) => { if (voirCompteur) enc.children[k].append(el('span', { class: 'orga-cpt', text: compteurTxt(e.nom, an) })); });
-    trierParCompteur(f.candidats, an).forEach(e => enc.append(el('li', { class: 'orga-candidat' },
-      el('span', { class: 'orga-name', text: e.nomComplet }),
-      el('span', { class: 'chip orga-chip-cu', text: 'Candidat' }),
-      voirCompteur ? el('span', { class: 'orga-cpt', text: compteurTxt(e.nom, an) }) : null,
-      A.decider ? el('span', { class: 'orga-btns' },
-        bouton('Valider', () => decider(f, e, 'valider'), 'pill orga-ok'),
-        bouton('Refuser', () => decider(f, e, 'refuser'), 'pill danger-pill')) : null)));
-    if (!enc.childNodes.length) enc.append(el('li', { class: 'muted' }, 'Aucun chef d’unité positionné pour le moment.'));
-    out.push(section('Encadrement',
-      enc,
-      A.decider && voirCompteur ? designer(f, an) : null,
-      el('p', { class: 'muted small', text: f.ratio + ' participants par chef d’unité validé : un deuxième encadrant porte la FMPA à ' + (2 * f.ratio) + ' places.' })));
+      // Encadrement : CU RP puis CU sécurité (R2)
+      const enc = el('ul', { class: 'orga-people' });
+      f.encadrants.forEach(e => enc.append(el('li', null,
+        el('span', { class: 'orga-name', text: e.nomComplet }),
+        el('span', { class: 'tag', text: e.role === 'RP' ? 'CU RP' : 'CU sécurité' }),
+        A.decider ? bouton('Retirer', () => decider(f, e, 'retirer'), 'link danger-link') : null)));
+      const an = f.date.slice(0, 4);
+      const voirCompteur = !!(S.data && S.data.imp3);
+      f.encadrants.forEach((e, k) => { if (voirCompteur) enc.children[k].append(el('span', { class: 'orga-cpt', text: compteurTxt(e.nom, an) })); });
+      const plein = f.encadrants.length >= (f.maxCu || 2);
+      trierParCompteur(f.candidats, an).forEach(e => enc.append(el('li', { class: 'orga-candidat' },
+        el('span', { class: 'orga-name', text: e.nomComplet }),
+        el('span', { class: 'chip orga-chip-cu', text: f.phase === 'proposee' ? 'Propose cette FMPA (CU RP)' : 'Candidat ' + (f.encadrants.length ? 'CU sécurité' : 'CU RP') }),
+        voirCompteur ? el('span', { class: 'orga-cpt', text: compteurTxt(e.nom, an) }) : null,
+        A.decider ? el('span', { class: 'orga-btns' },
+          plein ? null : bouton('Valider', () => decider(f, e, 'valider'), 'pill orga-ok'),
+          bouton('Refuser', () => decider(f, e, 'refuser'), 'pill danger-pill')) : null)));
+      if (!enc.childNodes.length) enc.append(el('li', { class: 'muted' }, 'Aucun chef d’unité positionné pour le moment.'));
+      out.push(section('Encadrement',
+        enc,
+        A.decider && voirCompteur && !plein && f.phase !== 'proposee' ? designer(f, an) : null,
+        el('p', { class: 'muted small', text: f.ratio + ' participants par chef d’unité : le CU RP ouvre ' + f.ratio + ' places, le CU sécurité ' + f.ratio +
+          ' de plus (au plus ' + (2 * f.ratio) + ' IMP 2 et 2 IMP 3). Un 3e IMP 3 s’inscrit comme participant s’il reste une place, sinon il propose une nouvelle FMPA.' })));
 
-    // Participants
-    if (f.encadrants.length || f.inscrits.length || f.attente.length) {
-      const pct = f.capacite ? Math.min(100, Math.round(100 * f.inscrits.length / f.capacite)) : 0;
-      const ins = el('ol', { class: 'orga-people' });
-      const ligne = (p, k) => el('li', null,
-        el('span', { class: 'orga-name', text: p.nomComplet }),
-        el('span', { class: 'muted small', text: [p.niveau, p.secteur ? secNom(p.secteur) : ''].filter(Boolean).join(' · ') }),
-        A.retirerInscrit ? bouton('Retirer', () => retirerInscrit(f, p), 'link danger-link') : null);
-      f.inscrits.forEach(p => ins.append(ligne(p)));
-      if (!f.inscrits.length) ins.append(el('li', { class: 'muted' }, 'Aucun inscrit pour le moment.'));
-      const kids = [
-        el('div', { class: 'orga-jauge', role: 'img', 'aria-label': f.inscrits.length + ' inscrits sur ' + f.capacite },
-          el('div', { class: 'orga-jauge-fill' + (pct >= 100 ? ' plein' : ''), style: 'width:' + pct + '%' })),
-        ins,
-      ];
-      if (f.attente.length) {
-        const att = el('ol', { class: 'orga-people' });
-        f.attente.forEach(p => att.append(ligne(p)));
-        kids.push(el('h3', { class: 'orga-h3', text: 'Liste d’attente (' + f.attente.length + ')' }), att);
+      // Participants
+      if (f.encadrants.length || f.inscrits.length || f.attente.length) {
+        const pct = f.capacite ? Math.min(100, Math.round(100 * f.inscrits.length / f.capacite)) : 0;
+        const ins = el('ol', { class: 'orga-people' });
+        const ligne = (p, att) => el('li', null,
+          el('span', { class: 'orga-name', text: p.nomComplet }),
+          el('span', { class: 'muted small', text: [p.niveau, p.secteur ? secNom(p.secteur) : '', att && p.quota !== null && p.quota !== undefined ? p.quota + ' % du quota' : ''].filter(Boolean).join(' · ') }),
+          A.retirerInscrit ? bouton('Retirer', () => retirerInscrit(f, p), 'link danger-link') : null);
+        f.inscrits.forEach(p => ins.append(ligne(p)));
+        if (!f.inscrits.length) ins.append(el('li', { class: 'muted' }, 'Aucun inscrit pour le moment.'));
+        const kids = [
+          el('div', { class: 'orga-jauge', role: 'img', 'aria-label': f.inscrits.length + ' inscrits sur ' + f.capacite },
+            el('div', { class: 'orga-jauge-fill' + (pct >= 100 ? ' plein' : ''), style: 'width:' + pct + '%' })),
+          ins,
+        ];
+        if (f.attente.length) {
+          const att = el('ol', { class: 'orga-people' });
+          f.attente.forEach(p => att.append(ligne(p, true)));
+          kids.push(el('h3', { class: 'orga-h3', text: 'Liste d’attente (' + f.attente.length + ')' }), att,
+            el('p', { class: 'muted small', text: 'Une place libérée revient d’abord aux IMP 2, puis à celui qui a le moins avancé dans son quota ; un agent qui a atteint son quota ou la limite du 1er semestre est passé.' }));
+        }
+        out.push(section('Participants · ' + f.inscrits.length + '/' + f.capacite, ...kids));
       }
-      out.push(section('Participants · ' + f.inscrits.length + '/' + f.capacite, ...kids));
     }
 
     // Gestion de la date (CT)
-    if (A.gerer && f.phase !== 'annulee') out.push(section('Gestion de la date', ...renderGestion(f)));
+    if (A.gerer && f.phase !== 'annulee' && f.phase !== 'proposee') out.push(section('Gestion de la date', ...renderGestion(f)));
 
     box.replaceChildren(...out);
+  }
+
+  // 3e IMP 3 sur une FMPA pleine (R3) : proposer une nouvelle FMPA dont il sera CU RP
+  function formProposer(f) {
+    const form = el('form', { class: 'orga-form orga-encart', onsubmit: async e => {
+      e.preventDefault();
+      const v = form.elements;
+      const res = await action('proposer', { id: f.id, proposition: { date: v.date.value, lieu: v.lieu.value, note: v.note.value } },
+        'Proposition envoyée au conseiller technique.');
+      if (res) window.scrollTo(0, 0);
+    } },
+    el('strong', { text: 'Nouvelle FMPA ' + secNom(f.secteur) }),
+    el('p', { class: 'muted small', text: 'Vous en serez CU RP. Le conseiller technique valide la proposition ; la liste d’attente de cette FMPA y passe alors automatiquement.' }),
+    el('label', null, 'Date', el('input', { name: 'date', type: 'date', required: true, min: today(), value: f.date })),
+    el('label', null, 'Lieu', el('input', { name: 'lieu', required: true, maxlength: '200', placeholder: 'Site, falaise, caserne…' })),
+    el('label', null, 'Remarque (facultatif)', el('input', { name: 'note', maxlength: '200' })),
+    el('div', { class: 'orga-actions' },
+      el('button', { type: 'submit', class: 'primary', text: 'Envoyer la proposition' }),
+      bouton('Annuler', () => { S.edit = null; render(); }, 'link')));
+    return form;
+  }
+
+  // FMPA départementale (R8) : agents affectés, par jour ; affectation par le CT ou un chef de section
+  function renderAffectes(f) {
+    const A = f.actions;
+    const pers = (S.data && S.data.personnel) || [];
+    if (S.edit === 'affecter' && A.affecter) {
+      const actuel = {};
+      f.inscrits.forEach(p => { actuel[p.nom] = p.jour || '1'; });
+      const choix = Object.assign({}, actuel);
+      const liste = el('ul', { class: 'orga-affect' });
+      const filtre = el('input', { type: 'search', class: 'orga-affect-filtre', placeholder: 'Filtrer par nom ou secteur…', 'aria-label': 'Filtrer' });
+      const lignes = pers.map(p => {
+        const sel = el('select', { 'aria-label': 'Affectation de ' + p.nomComplet },
+          new Option('—', ''), new Option('Jour 1 · ' + jourSemaine(f.date), '1'), new Option('Jour 2 · ' + jourSemaine(f.date2), '2'), new Option('Les deux (organisateur)', '12'));
+        sel.value = choix[p.nom] || '';
+        const li = el('li', { class: sel.value ? 'on' : '' },
+          el('span', { class: 'orga-name', text: p.nomComplet }),
+          el('span', { class: 'muted small', text: [p.niveau, p.secteur ? secNom(p.secteur) : ''].filter(Boolean).join(' · ') }), sel);
+        sel.addEventListener('change', () => { choix[p.nom] = sel.value; li.classList.toggle('on', !!sel.value); });
+        li.dataset.q = (p.nomComplet + ' ' + (p.secteur || '') + ' ' + (p.niveau || '')).toLowerCase();
+        return li;
+      });
+      liste.append(...lignes);
+      filtre.addEventListener('input', () => {
+        const q = filtre.value.trim().toLowerCase();
+        lignes.forEach(li => { li.hidden = !!q && !li.dataset.q.includes(q); });
+      });
+      const repartir = () => {
+        const sansJour = pers.filter(p => !choix[p.nom]);
+        sansJour.forEach((p, k) => { choix[p.nom] = k % 2 ? '2' : '1'; });
+        lignes.forEach((li, k) => { const s2 = li.querySelector('select'); s2.value = choix[pers[k].nom] || ''; li.classList.toggle('on', !!s2.value); });
+      };
+      return [
+        el('p', { class: 'muted small', text: 'Choisissez le jour de chacun (les organisateurs : les deux jours). Les agents sont prévenus ; ' + nb(f.heures) + ' h par jour comptent dans leur quota.' }),
+        el('div', { class: 'orga-actions' }, bouton('Répartir les autres sur les deux jours', repartir, 'pill')),
+        filtre, liste,
+        el('div', { class: 'orga-actions' },
+          bouton('Enregistrer les affectations', () => {
+            const aff = pers.filter(p => (choix[p.nom] || '') !== (actuel[p.nom] || '')).map(p => ({ nom: p.nom, jour: choix[p.nom] || '' }));
+            if (!aff.length) { S.edit = null; render(); return; }
+            action('affecter', { id: f.id, affectations: aff }, aff.length + ' affectation' + (aff.length > 1 ? 's' : '') + ' enregistrée' + (aff.length > 1 ? 's' : '') + ' : les agents sont prévenus.');
+          }, 'primary'),
+          bouton('Annuler', () => { S.edit = null; render(); }, 'link')),
+      ];
+    }
+    const out = [];
+    ['1', '2', '12'].forEach(j => {
+      const l = f.inscrits.filter(p => (p.jour || '1') === j);
+      if (!l.length) return;
+      out.push(el('h3', { class: 'orga-h3', text: (j === '12' ? 'Les deux jours (organisateurs)' : JOURS_DEPT[j] + ' · ' + dateLongue(j === '2' ? f.date2 : f.date)) + ' · ' + l.length }));
+      out.push(el('ol', { class: 'orga-people' }, ...l.map(p => el('li', null,
+        el('span', { class: 'orga-name', text: p.nomComplet }),
+        el('span', { class: 'muted small', text: [p.niveau, p.secteur ? secNom(p.secteur) : ''].filter(Boolean).join(' · ') })))));
+    });
+    if (!out.length) out.push(el('p', { class: 'muted', text: 'Aucun agent affecté pour le moment.' }));
+    out.push(el('p', { class: 'muted small', text: 'Présence obligatoire. Les heures comptent dans le quota ; elles sont libérées en cas de désinscription, ou d’absence (agent non déclaré présent par le CU RP).' }));
+    if (A.affecter && pers.length) out.push(bouton('Affecter des agents', () => { S.edit = 'affecter'; render(); }, 'pill'));
+    return out;
   }
 
   function renderInfos(f) {
@@ -636,8 +815,9 @@
     return out;
   }
 
-  function selectSecteur(name, value) {
-    const s = el('select', { name, required: true }, new Option('— Secteur —', ''), ...secteurs().map(x => new Option(x.nom, x.code)));
+  function selectSecteur(name, value, sansDept) {
+    const s = el('select', { name, required: true }, new Option('— Secteur —', ''),
+      ...secteurs().filter(x => !(sansDept && x.dept)).map(x => new Option(x.nom, x.code)));
     s.value = value || '';
     return s;
   }
@@ -647,13 +827,18 @@
       const form = el('form', { class: 'orga-form', onsubmit: e => {
         e.preventDefault();
         const v = form.elements;
-        const change = v.date.value !== f.date || v.secteur.value !== f.secteur;
+        const change = v.date.value !== f.date || v.secteur.value !== f.secteur || (f.departementale && v.date2.value !== f.date2);
         const qui = f.encadrants.length + f.candidats.length + f.inscrits.length + f.attente.length;
         if (change && qui && !confirm('Les encadrants et inscrits seront prévenus du changement. Continuer ?')) return;
-        action('modifier', { id: f.id, champs: { date: v.date.value, secteur: v.secteur.value, note: v.note.value } }, 'FMPA modifiée.');
+        const champs = { date: v.date.value, secteur: v.secteur.value, note: v.note.value, heures: v.heures.value };
+        if (f.departementale) champs.date2 = v.date2.value;
+        action('modifier', { id: f.id, champs }, 'FMPA modifiée.');
       } },
-      el('label', null, 'Date', el('input', { name: 'date', type: 'date', required: true, min: today(), value: f.date })),
-      el('label', null, 'Secteur', selectSecteur('secteur', f.secteur)),
+      el('label', null, f.departementale ? 'Jour 1' : 'Date', el('input', { name: 'date', type: 'date', required: true, min: today(), value: f.date })),
+      f.departementale ? el('label', null, 'Jour 2', el('input', { name: 'date2', type: 'date', required: true, min: today(), value: f.date2 })) : null,
+      f.departementale ? null : el('label', null, 'Secteur', selectSecteur('secteur', f.secteur, true)),
+      f.departementale ? el('input', { type: 'hidden', name: 'secteur', value: f.secteur }) : null,
+      el('label', null, 'Heures comptées' + (f.departementale ? ' par jour' : ''), el('input', { name: 'heures', type: 'number', min: '0.5', max: '24', step: '0.5', required: true, value: String(f.heures) })),
       el('label', null, 'Remarque (facultatif)', el('input', { name: 'note', maxlength: '300', value: f.note, placeholder: 'Thème, site pressenti…' })),
       el('div', { class: 'orga-actions' },
         el('button', { type: 'submit', class: 'primary', text: 'Enregistrer' }),
@@ -661,9 +846,10 @@
       return [form];
     }
     return [el('div', { class: 'orga-actions' },
-      bouton('Modifier la date ou le secteur', () => { S.edit = 'date'; render(); }, 'pill'),
+      bouton(f.departementale ? 'Modifier les dates ou les heures' : 'Modifier la date, le secteur ou les heures', () => { S.edit = 'date'; render(); }, 'pill'),
       bouton('Annuler la FMPA', () => {
-        const motif = prompt('Annuler cette FMPA ? Encadrants et inscrits seront prévenus.\nMotif (facultatif) :', '');
+        const motif = prompt((f.departementale ? 'Annuler cette FMPA départementale (force majeure uniquement) ? Les agents affectés seront prévenus.'
+          : 'Annuler cette FMPA ? Encadrants et inscrits seront prévenus.') + '\nMotif (facultatif) :', '');
         if (motif !== null) action('annuler', { id: f.id, motif }, 'FMPA annulée.');
       }, 'pill danger-pill'))];
   }
@@ -676,22 +862,24 @@
     const sel = el('select', { 'aria-label': 'IMP 3 à désigner' }, new Option('— Choisir un IMP 3 —', ''),
       ...ok.map(p => new Option(p.nomComplet + ' · ' + compteurTxt(p.nom, an, true) + (p.secteur ? ' · ' + secNom(p.secteur) : ''), p.nom)));
     return el('div', { class: 'orga-designer' },
-      el('label', { class: 'small' }, 'Désigner un IMP 3 (les moins sollicités en ' + an + ' en premier)', sel),
+      el('label', { class: 'small' }, 'Désigner un IMP 3 comme ' + (f.encadrants.length ? 'CU sécurité' : 'CU RP') + ' (les moins sollicités en ' + an + ' en premier)', sel),
       bouton('Désigner', () => {
         const p = ok.find(x => x.nom === sel.value);
         if (!p) { sel.focus(); return; }
         const q = `Désigner ${p.nomComplet} pour encadrer la FMPA du ${dateLongue(f.date)} (${compteurTxt(p.nom, an)}) ?` +
-          (f.encadrants.length ? ` La FMPA passera à ${(f.encadrants.length + 1) * f.ratio} places.` : ' Les inscriptions seront ouvertes et tous les membres prévenus.');
+          (f.encadrants.length ? ` Il sera CU sécurité ; la FMPA passera à ${(f.encadrants.length + 1) * f.ratio} places.` : ' Il sera CU RP ; les inscriptions seront ouvertes et tous les membres prévenus.');
         if (confirm(q)) action('decider', { id: f.id, nom: p.nom, decision: 'designer' }, p.nomComplet + ' est désigné.');
       }, 'pill orga-ok'));
   }
 
   function decider(f, e, decision) {
     const q = {
-      valider: `Valider ${e.nomComplet} pour encadrer la FMPA du ${dateLongue(f.date)}` +
-        (S.data && S.data.imp3 ? ` (${compteurTxt(e.nom, f.date.slice(0, 4))})` : '') + ' ?' +
-        (f.encadrants.length ? ` La FMPA passera à ${(f.encadrants.length + 1) * f.ratio} places.` : ' Les inscriptions seront ouvertes et tous les membres prévenus.'),
-      refuser: `Refuser la candidature de ${e.nomComplet} ?\nMessage pour lui (facultatif) :`,
+      valider: (f.phase === 'proposee' ? `Valider la nouvelle FMPA du ${dateLongue(f.date)} proposée par ${e.nomComplet}, qui en sera CU RP ?` +
+          ' Les inscriptions seront ouvertes et la liste d’attente de la FMPA complète y passera.'
+        : `Valider ${e.nomComplet} comme ${f.encadrants.length ? 'CU sécurité' : 'CU RP'} de la FMPA du ${dateLongue(f.date)}` +
+          (S.data && S.data.imp3 ? ` (${compteurTxt(e.nom, f.date.slice(0, 4))})` : '') + ' ?' +
+          (f.encadrants.length ? ` La FMPA passera à ${(f.encadrants.length + 1) * f.ratio} places.` : ' Les inscriptions seront ouvertes et tous les membres prévenus.')),
+      refuser: (f.phase === 'proposee' ? `Refuser la FMPA proposée par ${e.nomComplet} ? Elle sera annulée.` : `Refuser la candidature de ${e.nomComplet} ?`) + '\nMessage pour lui (facultatif) :',
       retirer: `Retirer ${e.nomComplet} de l’encadrement ?` + (f.encadrants.length === 1 ? ' Les inscrits passeront en liste d’attente.' : ` La FMPA passera à ${(f.encadrants.length - 1) * f.ratio} places.`) + '\nMessage pour lui (facultatif) :',
     }[decision];
     let message = '';
@@ -708,15 +896,33 @@
   }
 
   // ---------- création de dates (CT) ----------
-  function ligneDate(date, secteur) {
+  function ligneDate(date, secteur, heures, date2) {
+    const H = (S.data && S.data.heures) || { defaut: 7, dept: 8 };
+    const sel = selectSecteur('secteur', secteur);
+    const h = el('input', { type: 'number', name: 'heures', min: '0.5', max: '24', step: '0.5', required: true, 'aria-label': 'Heures comptées',
+      value: String(heures || (secteur === 'DEPT' ? H.dept : H.defaut)) });
+    const d2 = el('input', { type: 'date', name: 'date2', min: today(), value: date2 || '', 'aria-label': 'Jour 2 (départementale)', title: 'Jour 2 (départementale)' });
+    const majDept = () => {
+      const dept = sel.value === 'DEPT';
+      d2.classList.toggle('orga-cache', !dept);
+      d2.required = dept;
+      d2.disabled = !dept;
+    };
+    sel.addEventListener('change', () => {
+      h.value = String(sel.value === 'DEPT' ? H.dept : H.defaut);
+      majDept();
+    });
     const li = el('li', { class: 'orga-new-row' },
       el('input', { type: 'date', name: 'date', required: true, min: today(), value: date || '', 'aria-label': 'Date' }),
-      selectSecteur('secteur', secteur),
+      sel,
+      el('label', { class: 'orga-h' }, h, 'h'),
+      d2,
       el('input', { name: 'note', maxlength: '300', placeholder: 'Remarque (facultatif)', 'aria-label': 'Remarque' }),
       el('button', { type: 'button', class: 'orga-del', 'aria-label': 'Retirer cette date', text: '×', onclick: () => {
         li.remove();
         majCompteur();
       } }));
+    majDept();
     return li;
   }
 
@@ -738,7 +944,9 @@
     const last = rows[rows.length - 1];
     const d = last && last.querySelector('[name="date"]').value;
     const s = last && last.querySelector('[name="secteur"]').value;
-    const li = ligneDate(d ? addDays(d, 7) : '', s);
+    const h = last && last.querySelector('[name="heures"]').value;
+    const d2 = last && last.querySelector('[name="date2"]').value;
+    const li = ligneDate(d ? addDays(d, 7) : '', s, h, s === 'DEPT' && d2 ? addDays(d2, 7) : '');
     $('#orga-new-rows').append(li);
     majCompteur();
     li.querySelector('[name="date"]').focus();
@@ -758,6 +966,8 @@
     const dates = Array.from($('#orga-new-rows').children).map(li => ({
       date: li.querySelector('[name="date"]').value,
       secteur: li.querySelector('[name="secteur"]').value,
+      heures: li.querySelector('[name="heures"]').value,
+      date2: li.querySelector('[name="secteur"]').value === 'DEPT' ? li.querySelector('[name="date2"]').value : '',
       note: li.querySelector('[name="note"]').value,
     }));
     if (!dates.length) return;
