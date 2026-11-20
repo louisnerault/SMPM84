@@ -2,10 +2,13 @@
 // - Liste les notifications reçues ces 60 derniers jours (historique serveur, backend/Push.gs : notif_list),
 //   y compris pour les membres qui n'ont pas activé les notifications push sur leur téléphone.
 // - Pastille rouge : nombre de notifications non lues.
-// - Chaque notification non lue peut être « marquée comme lue » ; « Tout marquer comme lu » pour toutes.
-// - « Supprimer les lues » retire de la clochette, pour cette personne seulement, les notifications déjà lues.
-// - Chaque notification peut être cochée pour être supprimée avec « Supprimer la sélection ».
-//   « Tout cocher » / « Tout décocher » sélectionne ou désélectionne toute la liste.
+// - Actions en icônes (libellé en infobulle et pour les lecteurs d'écran) :
+//   ✓ sur une notification non lue : la marquer comme lue ; ✓✓ en tête : tout marquer comme lu.
+// - Corbeille cochée : retire de la clochette, pour cette personne seulement, les notifications déjà lues.
+// - Chaque notification peut être cochée ; corbeille rouge (avec le nombre) : supprimer la sélection.
+//   Case en tête : tout cocher / tout décocher.
+// - Suppression : sans réponse lisible du serveur, la liste est relue pour vérifier si elle a été faite,
+//   puis un nouvel essai est fait (3 s, puis toutes les 30 s tant qu'elle reste en attente).
 //   Toucher une notification ouvre la page concernée (si elle en a une) et la marque comme lue.
 // - Rafraîchie à l'ouverture de l'application, au retour sur l'application, à la réception
 //   d'une notification push (message du service worker) et toutes les 10 minutes.
@@ -27,7 +30,7 @@
   };
   const app = () => window.SMPM_APP;
   // gen : incrémenté à chaque action locale (lecture, suppression) ; une liste demandée avant l'action est ignorée
-  const S = { on: false, items: [], sel: new Set(), loading: false, error: '', last: 0, timer: 0, gen: 0, envoi: false };
+  const S = { on: false, items: [], sel: new Set(), loading: false, error: '', last: 0, timer: 0, relance: 0, gen: 0, envoi: false };
 
   // Suppressions pas encore confirmées par le serveur (identifiants), gardées sur l'appareil
   const supp = {
@@ -53,6 +56,9 @@
     return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + ' ' + h;
   };
   const nonLues = () => S.items.filter(x => !x.lu).length;
+  // Boutons en icônes : libellé dans l'infobulle et pour les lecteurs d'écran
+  const etiquette = (el, txt) => { el.title = txt; el.setAttribute('aria-label', txt); };
+  const ICO_LU = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>';
 
   function renderCount() {
     const n = nonLues(), c = $('#notif-count'), b = $('#btn-notif');
@@ -71,12 +77,15 @@
     $('#notif-supp').hidden = !S.items.some(x => x.lu);
     const nSel = S.sel.size;
     const toutCoche = !!S.items.length && S.items.every(x => S.sel.has(x.id));
-    $('#notif-sel-all').hidden = S.items.length < 2;
-    $('#notif-sel-all').textContent = toutCoche ? 'Tout décocher' : 'Tout cocher';
-    $('#notif-del-sel').hidden = !nSel;
-    $('#notif-del-sel').textContent = `Supprimer la sélection (${nSel})`;
+    const selAll = $('#notif-sel-all'), delSel = $('#notif-del-sel');
+    selAll.hidden = S.items.length < 2;
+    selAll.classList.toggle('on', toutCoche);
+    etiquette(selAll, toutCoche ? 'Tout décocher' : 'Tout cocher');
+    delSel.hidden = !nSel;
+    $('#notif-del-n').textContent = nSel ? String(nSel) : '';
+    etiquette(delSel, `Supprimer la sélection (${nSel})`);
     status.textContent = S.error || (S.loading && !S.items.length ? 'Chargement…' : (!S.items.length ? 'Aucune notification.' : ''));
-    status.classList.toggle('error', !!S.error);
+    status.classList.toggle('error', !!S.error && !supp.get().length);   // attente du serveur : message discret
     list.textContent = '';
     S.items.forEach(x => {
       const li = document.createElement('li');
@@ -95,7 +104,9 @@
       li.append(ck, body);
       if (!x.lu) {
         const m = document.createElement('button');
-        m.type = 'button'; m.className = 'link notif-mark'; m.textContent = 'Marquer comme lue';
+        m.type = 'button'; m.className = 'notif-ico notif-mark';
+        etiquette(m, 'Marquer comme lue');
+        m.innerHTML = ICO_LU;
         m.addEventListener('click', () => marquer([x.id], 'clochette'));
         li.append(m);
       }
@@ -115,9 +126,9 @@
       // une lecture ou une suppression a eu lieu pendant l'appel : cette liste est déjà périmée
       if (gen !== S.gen) { relancer = true; return; }
       poser(r.items);
-      S.error = '';
+      if (!supp.get().length) S.error = '';
       S.last = Date.now();
-      envoyerSupp();
+      envoyerSupp().then(m => { if (!m && !supp.get().length && S.error) { S.error = ''; render(); } });
     } catch (e) {
       if (a.AUTH_ERRORS && a.AUTH_ERRORS.includes(e.message)) return a.logout();
       // serveur pas encore à jour (action inconnue) : clochette discrète, pas d'erreur affichée
@@ -136,17 +147,36 @@
     if (!navigator.onLine) return 'hors ligne';
     S.envoi = true;
     const gen = S.gen;
+    // Bilan d'une liste renvoyée par le serveur : les identifiants absents sont enregistrés comme supprimés
+    const bilan = items => {
+      const reste = (items || []).filter(x => ids.includes(x.id)).map(x => x.id);
+      supp.del(ids.filter(id => !reste.includes(id)));
+      if (gen === S.gen) { poser(items); render(); }
+      return reste.length;
+    };
     try {
-      const r = await a.api('notif_delete', { token: a.token(), ids });
-      const reste = (r.items || []).filter(x => ids.includes(x.id)).map(x => x.id);
-      supp.del(ids.filter(id => !reste.includes(id)));      // enregistrées par le serveur
-      if (gen === S.gen) { poser(r.items); render(); }
-      return reste.length ? 'le serveur ne les a pas retirées' : '';
-    } catch (e) {
-      if (a.AUTH_ERRORS && a.AUTH_ERRORS.includes(e.message)) { a.logout(); return ''; }
-      return e.message || 'erreur';
+      // suppression sans risque à renvoyer : un nouvel essai ne crée pas de doublon côté serveur
+      for (let essai = 0; ; essai++) {
+        try {
+          const r = await a.api('notif_delete', { token: a.token(), ids }, { noRetry: true });
+          return bilan(r.items) ? 'le serveur ne les a pas retirées' : '';
+        } catch (e) {
+          if (a.AUTH_ERRORS && a.AUTH_ERRORS.includes(e.message)) { a.logout(); return ''; }
+          // Réponse illisible (page d'erreur Google, coupure) : la suppression a souvent été faite quand même.
+          // On relit la liste pour le vérifier avant de conclure.
+          try {
+            const l = await a.api('notif_list', { token: a.token() }, { noRetry: true });
+            if (!bilan(l.items)) return '';
+          } catch (e2) { /* vérification impossible : nouvel essai ci-dessous */ }
+          if (essai >= 1 || !navigator.onLine) return e.message || 'erreur';
+          await new Promise(res => setTimeout(res, 3000));
+        }
+      }
     } finally {
       S.envoi = false;
+      // encore en attente : nouvel essai dans 30 s (en plus du rafraîchissement habituel)
+      clearTimeout(S.relance);
+      if (supp.get().length && S.on) S.relance = setTimeout(() => envoyerSupp().then(m => { if (!m && S.error) { S.error = ''; render(); } }), 30e3);
     }
   }
 
@@ -187,7 +217,7 @@
     if (motif && supp.get().length) {
       S.error = motif === 'hors ligne'
         ? 'Hors ligne : la suppression sera enregistrée au retour du réseau.'
-        : `Suppression pas encore enregistrée sur le serveur (${motif}) : nouvel essai automatique.`;
+        : 'Suppression faite sur cet appareil, en attente du serveur : nouvel essai automatique.';
       render();
     }
   }
@@ -233,7 +263,7 @@
     close: fermer,
     reset() {
       S.on = false; S.items = []; S.last = 0; S.error = ''; S.gen++; S.sel = new Set();
-      clearInterval(S.timer);
+      clearInterval(S.timer); clearTimeout(S.relance);
       store.del();
       supp.set([]);
       fermer();

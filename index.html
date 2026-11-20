@@ -156,10 +156,10 @@
 <section id="notif-panel" class="notif-panel" role="dialog" aria-label="Notifications" hidden>
   <div class="notif-head">
     <strong>Notifications</strong>
-    <button type="button" id="notif-all" class="link" hidden>Tout marquer comme lu</button>
-    <button type="button" id="notif-supp" class="link" hidden>Supprimer les lues</button>
-    <button type="button" id="notif-sel-all" class="link" hidden>Tout cocher</button>
-    <button type="button" id="notif-del-sel" class="link" hidden>Supprimer la sélection</button>
+    <button type="button" id="notif-all" class="notif-ico" title="Tout marquer comme lu" aria-label="Tout marquer comme lu" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12.5l4.5 4.5L15 8"/><path d="M11.5 16.5l.5.5L20.5 8"/></svg></button>
+    <button type="button" id="notif-supp" class="notif-ico" title="Supprimer les notifications lues" aria-label="Supprimer les notifications lues" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4.5h6V7"/><path d="M6 7l1 13h10l1-13"/><path d="M9.5 13.5l2 2 3.5-4"/></svg></button>
+    <button type="button" id="notif-sel-all" class="notif-ico" title="Tout cocher" aria-label="Tout cocher" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path class="ico-coche" d="M8 12.5l3 3 5-6"/></svg></button>
+    <button type="button" id="notif-del-sel" class="notif-ico notif-ico-danger" title="Supprimer la sélection" aria-label="Supprimer la sélection" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4.5h6V7"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/></svg><span class="notif-ico-n" id="notif-del-n"></span></button>
     <button type="button" id="notif-close" class="close" aria-label="Fermer les notifications">×</button>
   </div>
   <p id="notif-status" class="muted notif-status"></p>
