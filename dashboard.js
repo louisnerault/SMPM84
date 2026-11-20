@@ -34,11 +34,13 @@
     { id: 'neige', nom: 'Neige', sets: ['personnel', 'fmpa', 'itv', 'livrets', 'inv'], ico: ico('<path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7"/><path d="M9.5 3.5L12 6l2.5-2.5M9.5 20.5L12 18l2.5 2.5"/>') },
     { id: 'speleo', nom: 'Spéléo', sets: ['personnel', 'fmpa', 'itv', 'livrets', 'inv'], ico: ico('<path d="M3 20h18"/><path d="M5 20c0-6 3-11 7-11s7 5 7 11"/><path d="M12 9V4M9.5 5.5L12 4l2.5 1.5"/>') },
     { id: 'inv', nom: 'Inventaires', sets: ['inv'], ico: ico('<path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9"/>') },
-    { id: 'eff', nom: 'Effectifs', sets: ['personnel'], instant: true, ico: ico('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c2.9.3 5 2.5 5 5.8"/>') },
+    { id: 'eff', nom: 'Effectifs', sets: ['personnel'], instant: true, // CT et administrateurs (voir themesVisibles)
+      ico: ico('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c2.9.3 5 2.5 5 5.8"/>') },
   ];
   // Données d'intervention : CT et administrateurs seulement (le serveur refuse aussi le jeu « itv » aux autres)
   const voitItv = () => !!(app() && app().allInterv && app().allInterv());
-  const themesVisibles = () => THEMES.filter(t => t.id !== 'itv' || voitItv());
+  // Effectifs : CT et administrateurs seulement
+  const themesVisibles = () => THEMES.filter(t => !['itv', 'eff'].includes(t.id) || voitItv());
   const jeux = t => t.sets.filter(s => s !== 'itv' || voitItv());
   const KEY_PREF = 'smpm_dash_pref';        // thème et mode préférés (aucune donnée personnelle)
   const FRAIS_MS = 10 * 60000;              // données rechargées au-delà de 10 min
