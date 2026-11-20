@@ -1334,6 +1334,15 @@ button.ann-btn { width: 100%; padding: 0; cursor: pointer; font: inherit; }
 .ann-dialog textarea { width: 100%; box-sizing: border-box; }
 .ann-dialog-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
 .ann-dialog-btns button { margin: 0; width: auto; min-height: 44px; padding: 0 18px; border-radius: 10px; }
+/* Invitation à activer les notifications (push.js) */
+.push-invite { width: min(92vw, 440px); max-height: 88vh; overflow-y: auto; }
+.push-invite p { margin: 8px 0 0; }
+.push-invite-list { margin: 6px 0 0; padding-left: 20px; }
+.push-invite-list li { margin: 4px 0; }
+.push-invite-consigne { padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--primary) 10%, transparent); }
+.push-invite-btns { flex-wrap: wrap; }
+.push-invite .push-invite-later { background: none; border: 1px solid var(--line); color: var(--ink); }
+.push-invite-never { display: block; margin: 6px auto 0; font-size: .85rem; }
 #ann-push-cancel { background: none; border: 1px solid var(--line); color: var(--ink); }
 
 /* ---------- Mes heures : répartition Repos / temps de travail ---------- */

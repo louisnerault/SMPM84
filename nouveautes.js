@@ -22,6 +22,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 180, titre: 'Invitation aux notifications', texte: 'Si les notifications ne sont pas activées sur votre téléphone, une fenêtre vous le propose à l’ouverture de l’application et explique ce qu’elles vous apportent. Touchez « Activer les notifications », « Plus tard », ou « Ne plus me le proposer ».', pour: ['tous'] },
     { v: 179, titre: 'Détail des heures d’un spécialiste', texte: 'Tableau de bord › Livrets : touchez le nom d’un spécialiste dans « Tous les livrets » pour voir ses FMPA de la période (date, compteur, lieu, IMP3, repos ou TT, heures) et ses totaux par compteur.', pour: ['chef_section', 'ctd', 'admin'] },
     { v: 178, titre: 'Total des formations', texte: 'Dans Mon livret, sous « Formations effectuées », le total d’heures de l’année s’affiche avec sa répartition par compteur : les FMPA Neige, ISS, SSH ou Canyon comptent dans leur propre compteur, pas dans SMPM.', pour: ['tous'] },
     { v: 177, titre: 'Alertes d’inventaire plus lisibles', texte: 'Dans les alertes d’inventaire, le matériel manquant s’affiche en grand et en gras, sous la forme « Il manque … dans … », et le nom du contenant concerné est en gras.', pour: ['tous'] },

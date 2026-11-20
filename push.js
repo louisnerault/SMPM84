@@ -7,6 +7,7 @@
 // - iPhone/iPad : iOS 16.4 minimum et application ajoutée à l'écran d'accueil.
 // - Désactivé tant que la configuration Firebase (config.js > FIREBASE) n'est pas renseignée.
 // - Déconnexion : l'appareil est désabonné (appareil partagé).
+// - À l'ouverture : fenêtre d'invitation tant que ce téléphone n'est pas abonné (« Ne plus me le proposer » possible).
 (() => {
   'use strict';
 
@@ -133,28 +134,111 @@
     renderEnvoi();
   }
 
-  async function activer() {
-    if (S.busy) return;
+  /** Activation ; ui (facultatif) : bouton et zone de messages de la fenêtre d'invitation. Renvoie l'état final. */
+  async function activer(ui) {
+    if (S.busy) return null;
     S.busy = true;
-    const btn = $('#btn-push-on');
+    const parInvite = ui && ui.btn;
+    const btn = parInvite ? ui.btn : $('#btn-push-on');
+    const say = parInvite ? ui.msg : msg;
     const libelle = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = 'Activation en cours…'; }
-    msg('Demande d\'autorisation…');
+    say('Demande d\'autorisation…');
+    let resultat = 'erreur';
     try {
       const p = await avecDelai(Promise.resolve(Notification.requestPermission()), DELAI.permission, ERR.permission);
-      if (p === 'denied') { msg(''); return; }               // l'encart explique comment rétablir l'autorisation
+      if (p === 'denied') { say(''); resultat = 'denied'; return resultat; }   // l'encart explique comment rétablir l'autorisation
       if (p !== 'granted') throw new Error(ERR.refus);
       if (!navigator.onLine) throw new Error('Connexion nécessaire pour terminer l\'activation');
-      await enregistrer(true, t => msg(t));
-      msg('Notifications activées.');
+      await enregistrer(true, t => say(t));
+      say('Notifications activées.');
+      resultat = 'ok';
     } catch (err) {
-      if (app() && app().AUTH_ERRORS.includes(err.message)) return app().logout();
-      msg(err.message || 'Activation impossible', true);
+      if (app() && app().AUTH_ERRORS.includes(err.message)) { app().logout(); return null; }
+      say(err.message || 'Activation impossible', true);
     } finally {
       S.busy = false;
       if (btn) { btn.disabled = false; btn.textContent = libelle; }
       render();
     }
+    return resultat;
+  }
+
+  // ---------- fenêtre d'invitation à l'ouverture ----------
+  // Proposée à chaque ouverture de l'application tant que ce téléphone n'est pas abonné,
+  // sauf si l'utilisateur a choisi « Ne plus me le proposer » (mémorisé sur l'appareil).
+  const KEY_INVITE_OFF = 'smpm_push_invite_off';
+  let inviteVue = false;                                   // une seule fois par ouverture
+
+  /** Situation de l'appareil qui justifie l'invitation, ou null. */
+  function besoinInvite() {
+    const e = etat();
+    if (e === 'default' || e === 'ios-install' || e === 'denied') return e;
+    if (e === 'granted' && !store.get(KEY_FCM)) return 'default';
+    return null;
+  }
+
+  function inviter() {
+    if (inviteVue || !S.session || store.get(KEY_INVITE_OFF)) return;
+    const cas = besoinInvite();
+    if (!cas || (cas === 'default' && !navigator.onLine)) return;   // hors ligne : activation impossible, on proposera plus tard
+    // Laisser passer la fenêtre « Nouveautés » ou toute autre fenêtre ouverte
+    if (document.querySelector('dialog[open]')) { setTimeout(inviter, 800); return; }
+    inviteVue = true;
+
+    const dlg = document.createElement('dialog');
+    dlg.className = 'ann-dialog push-invite';
+    dlg.setAttribute('aria-labelledby', 'push-invite-title');
+    const el = (tag, cls, txt) => { const n = document.createElement(tag); if (cls) n.className = cls; if (txt) n.textContent = txt; return n; };
+    const h = el('h2', '', '🔔 Activez les notifications');
+    h.id = 'push-invite-title';
+    const intro = el('p', '', 'Vous n\'avez pas encore activé les notifications sur ce téléphone. Elles vous préviennent immédiatement, même application fermée :');
+    const ul = el('ul', 'push-invite-list');
+    [
+      'la réponse à vos demandes (FMPA validée ou refusée, point d\'intérêt accepté…) ;',
+      'les FMPA proposées au planning, les inscriptions et les informations de rendez-vous ;',
+      'les messages de l\'encadrement et les alertes de la spécialité ;',
+      'les demandes à traiter si vous encadrez (validations, propositions).',
+    ].forEach(t => ul.append(el('li', '', t)));
+    const fin = el('p', 'muted small', 'Vous ne recevez que ce qui vous concerne. Vous pouvez les désactiver à tout moment dans « Mon profil ».');
+    const consigne = el('p', 'push-invite-consigne');
+    if (cas === 'ios-install') consigne.textContent = 'Sur iPhone et iPad, ajoutez d\'abord l\'application à l\'écran d\'accueil (bouton Partager, puis « Sur l\'écran d\'accueil »), ouvrez-la depuis son icône, puis activez les notifications.';
+    else if (cas === 'denied') consigne.textContent = 'Les notifications sont actuellement bloquées pour l\'application : autorisez-les dans les réglages du téléphone (Notifications > SMPM 84 ou Chrome), puis rouvrez l\'application.';
+    else consigne.hidden = true;
+    const ok = el('p', 'ok small'); ok.setAttribute('role', 'status');
+    const err = el('p', 'error small'); err.setAttribute('role', 'alert');
+    const say = (t, isErr) => { ok.textContent = isErr ? '' : (t || ''); err.textContent = isErr ? (t || '') : ''; };
+
+    const btns = el('div', 'ann-dialog-btns push-invite-btns');
+    const plusTard = el('button', 'push-invite-later', cas === 'default' ? 'Plus tard' : 'Fermer');
+    plusTard.type = 'button';
+    plusTard.addEventListener('click', () => dlg.close());
+    btns.append(plusTard);
+    if (cas === 'default') {
+      const go = el('button', 'primary', 'Activer les notifications');
+      go.type = 'button';
+      go.addEventListener('click', async () => {
+        plusTard.disabled = true;
+        const r = await activer({ btn: go, msg: say });
+        plusTard.disabled = false;
+        if (r === 'ok') { go.hidden = true; plusTard.textContent = 'Fermer'; setTimeout(() => { if (dlg.open) dlg.close(); }, 1500); }
+        else if (r === 'denied') {
+          go.hidden = true; plusTard.textContent = 'Fermer';
+          consigne.hidden = false;
+          consigne.textContent = 'Autorisation refusée. Pour la rétablir : réglages du téléphone > Notifications > SMPM 84 (ou Chrome), puis rouvrez l\'application.';
+        }
+      });
+      btns.append(go);
+    }
+    const jamais = el('button', 'link push-invite-never', 'Ne plus me le proposer');
+    jamais.type = 'button';
+    jamais.addEventListener('click', () => { store.set(KEY_INVITE_OFF, '1'); dlg.close(); });
+
+    dlg.append(h, intro, ul, fin, consigne, ok, err, btns, jamais);
+    dlg.addEventListener('cancel', e => { if (S.busy) e.preventDefault(); });
+    dlg.addEventListener('close', () => dlg.remove());
+    document.body.append(dlg);
+    if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
   }
 
   async function desactiver() {
@@ -246,6 +330,7 @@
       S.session = session || null;
       if (changed) { const sel = $('#push-cible'); if (sel) delete sel.dataset.done; }
       render();
+      if (session) setTimeout(inviter, 1200);   // après l'affichage de l'accueil (et des Nouveautés)
       if (session && etat() === 'granted') enregistrer(!store.get(KEY_FCM)).then(render).catch(err => { if (!store.get(KEY_FCM)) msg(err.message || 'Abonnement impossible', true); });
     },
     /** Déconnexion : désabonne l'appareil (appel avant la suppression du jeton de session). */
@@ -254,6 +339,7 @@
       store.del(KEY_FCM);
       store.del(KEY_SYNC);
       S.session = null;
+      inviteVue = false;
       render();
       if (fcm && sessionToken && app()) app().api('push_unregister', { token: sessionToken, fcm }).catch(() => {});
       if (fcm && S.messaging) S.messaging.m.deleteToken(S.messaging.inst).catch(() => {});
@@ -262,7 +348,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     const on = $('#btn-push-on'), off = $('#btn-push-off'), test = $('#btn-push-test'), form = $('#push-send-form');
-    if (on) on.addEventListener('click', activer);
+    if (on) on.addEventListener('click', () => activer());
     if (off) off.addEventListener('click', desactiver);
     if (test) test.addEventListener('click', tester);
     if (form) form.addEventListener('submit', envoyer);
