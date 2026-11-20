@@ -1298,6 +1298,26 @@
     const empty = $('#livret-empty');
     empty.hidden = !L || list.length > 0;
     empty.textContent = `Aucune formation enregistrée en ${year}.`;
+    // Total de la liste et répartition par compteur : le compteur SMPM ne compte que Nord, Centre et Sud,
+    // les FMPA Neige, ISS, SSH, Canyon vont dans leur propre compteur (comme le livret papier).
+    const sum = $('#livret-list-sum');
+    const parCat = {};
+    let total = 0;
+    list.forEach(f => {
+      const h = Number(f.heures) || 0;
+      total += h;
+      const c = catOf(f.secteur || '');
+      parCat[c] = (parCat[c] || 0) + h;
+    });
+    const cats = Object.keys(parCat).filter(c => parCat[c] > 0);
+    sum.hidden = !list.length;
+    if (list.length) {
+      const nom = c => (CATS.find(x => x.key === c) || { label: c || 'Sans secteur' }).label;
+      const ordre = c => { const i = CATS.findIndex(x => x.key === c); return i < 0 ? 99 : i; };
+      const det = cats.sort((a, b) => ordre(a) - ordre(b)).map(c => `${nom(c)} ${fmtH(parCat[c])}`).join(' + ');
+      sum.textContent = `${list.length} formation${list.length > 1 ? 's' : ''} · ${fmtH(total)} au total` +
+        (cats.length > 1 ? ` (${det}) : chaque FMPA est comptée dans le compteur de son secteur, Nord, Centre et Sud dans SMPM.` : '');
+    }
     ol.replaceChildren(...list.map(f => {
       const li = document.createElement('li');
       const [y, m, d] = f.date.split('-').map(Number);
