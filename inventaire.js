@@ -299,6 +299,32 @@
   // qui serait notifié dans un secteur (chef de section, contrôleurs EPI, CTD si pas de chef de section)
   const encadrementDe = sec => ((S.data && S.data.encadrement) || {})[sec] || [];
 
+  // Anomalie d'une alerte d'inventaire, en gros et en gras : « Il manque 2 × Mousqueton dans Sac B1 ».
+  // Chaque ligne du détail est lue (« Article : 1 / 3 », « Article : 1/3 (théorique 3) », « Article : manque 2 »…) ;
+  // une ligne qui ne se lit pas est affichée telle quelle, avec la même mise en avant.
+  function phraseManque(ligneTxt, lieu) {
+    const t = ligneTxt.replace(/^[\s•\-–*]+/, '').trim();
+    if (!t) return '';
+    if (/^il manque/i.test(t)) return t;
+    const dans = lieu ? ` dans ${lieu}` : '';
+    let m = t.match(/^(.+?)\s*[:=]\s*(?:manque|manquant[s]?)\s*:?\s*(\d+)/i) || t.match(/^(.+?)\s*\(\s*(?:manque|manquant[s]?)\s*:?\s*(\d+)\s*\)/i);
+    if (m) return `Il manque ${m[2]} × ${m[1].trim()}${dans}`;
+    m = t.match(/^(.+?)\s*[:=]\s*(\d+)\s*(?:\/|sur)\s*(\d+)/i) || t.match(/^(.+?)\s*[:=]\s*(\d+)\s*\(\s*(?:théorique|attendu|prévu)[^\d]*(\d+)\s*\)/i);
+    if (m) {
+      const r = Number(m[2]), th = Number(m[3]);
+      if (r < th) return `Il manque ${th - r} × ${m[1].trim()}${dans}`;
+      if (r > th) return `${r - th} × ${m[1].trim()} en trop${dans}`;
+    }
+    m = t.match(/^(.+?)\s*[:=]\s*-\s*(\d+)\s*$/);
+    if (m) return `Il manque ${m[2]} × ${m[1].trim()}${dans}`;
+    return t;
+  }
+  function anomalieAlerte(x) {
+    const lignes = String(x.detail || '').split(/\n+/).map(l => phraseManque(l, x.libelle)).filter(Boolean);
+    if (!lignes.length) return el('pre', { class: 'inv-anom', text: x.detail || '' });
+    return el('div', { class: 'inv-anom inv-anom-fort' }, lignes.map(l => el('p', { text: l })));
+  }
+
   function carteAlerte(x) {
     const e = x.etapes || {};
     const avecCu = x.type === 'inventaire' && (x.contexte === 'fmpa_fin' || x.contexte === 'intervention');
@@ -314,8 +340,8 @@
     // 1. Signalement
     etapes.push(etape(1, 'fait', 'Signalement',
       el('div', { class: 'inv-qq-grid' },
-        ligne('Quoi', el('pre', { class: 'inv-anom', text: x.detail })),
-        ligne('Où', x.libelle + (x.secteur ? ` · secteur ${SECT[x.secteur] || x.secteur}` : '')),
+        ligne('Quoi', x.type === 'inventaire' ? anomalieAlerte(x) : el('pre', { class: 'inv-anom', text: x.detail })),
+        ligne('Où', el('span', null, el('strong', { class: 'inv-al-lieu', text: x.libelle || '' }), x.secteur ? ` · secteur ${SECT[x.secteur] || x.secteur}` : '')),
         ligne('Quand', `${dateCourte(x.date)} · ${occasion}`),
         ligne('Qui', [e.par ? `Inventaire : ${e.par}` : '', x.cu ? `Chef d’unité : ${nomDe(x.cu)}` : ''].filter(Boolean).join(' · '))),
       notifEtape(x, 'signalement') ? notifies(notifEtape(x, 'signalement').qui, 'Notifiés', notifEtape(x, 'signalement').le) : null));

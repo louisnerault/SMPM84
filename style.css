@@ -1887,6 +1887,10 @@ label.inv-edit-dest select { margin: 0; padding: 8px 10px; font-size: .85rem; fl
 .inv-qq { display: grid; grid-template-columns: 58px 1fr; gap: 6px; align-items: start; font-size: .88rem; }
 .inv-qq-k { font-weight: 800; color: var(--muted); text-transform: uppercase; font-size: .7rem; letter-spacing: .04em; padding-top: 3px; }
 .inv-qq .inv-anom { margin: 0; }
+.inv-anom-fort { font-size: 1.05rem; font-weight: 800; line-height: 1.35; }
+.inv-anom-fort p { margin: 0; }
+.inv-anom-fort p + p { margin-top: 4px; }
+.inv-al-lieu { font-weight: 800; }
 .inv-cd { margin: 8px 0; padding: 10px 12px; border-radius: 10px; background: #fff3cd; color: #5c4400; }
 .inv-cd-track { height: 8px; border-radius: 4px; background: rgba(0,0,0,.12); overflow: hidden; }
 .inv-cd-fill { height: 100%; width: 0; background: #d97706; transition: width .6s; }

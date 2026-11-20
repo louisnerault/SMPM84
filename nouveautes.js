@@ -22,6 +22,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 177, titre: 'Alertes d’inventaire plus lisibles', texte: 'Dans les alertes d’inventaire, le matériel manquant s’affiche en grand et en gras, sous la forme « Il manque … dans … », et le nom du contenant concerné est en gras.', pour: ['tous'] },
     { v: 176, titre: 'Clochette : actions en icônes', texte: 'Dans la clochette, les actions sont maintenant des icônes (laissez le doigt ou la souris dessus pour voir leur nom) : ✓ marquer comme lue, ✓✓ tout marquer comme lu, case pour tout cocher, corbeille pour supprimer les lues ou la sélection. La suppression est aussi plus fiable : elle est vérifiée et renvoyée automatiquement si le serveur répond mal.', pour: ['tous'] },
     { v: 175, titre: 'Chargements plus fiables', texte: 'Quand un chargement échoue à cause d’un raté passager du réseau ou du serveur, l’application réessaie d’elle-même plusieurs fois avant d’afficher « Chargement des données impossible ». Si le message apparaît quand même, sa cause est indiquée dessous.', pour: ['tous'] },
     { v: 174, titre: 'Fiche d’un point d’intérêt', texte: 'Points d’intérêt : en mode Liste, touchez un point pour ouvrir sa fiche (photos affichées directement). Sur la carte, le bouton « Consulter » de la bulle ouvre la même fiche sans quitter la carte ; les actions de la bulle sont maintenant de vrais boutons.', pour: ['tous'] },
