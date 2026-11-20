@@ -379,13 +379,65 @@
       crit.length ? carteHtml(`Validations annuelles ${y}`, val.map(x => `<div class="val-crit"><p>${esc(x.c)}</p>${segments([{ l: 'Validé', v: x.v, c: BON }, { l: 'Non validé', v: x.n, c: MAUV }, { l: 'Non effectué', v: x.x, c: NEUTRE }])}</div>`).join(''), { large: true, sous: 'Parmi les spécialistes pour qui le critère est requis (selon leur niveau)' }) : '',
     ]));
     const cols = [
-      { t: 'Spécialiste', f: x => esc(`${x.a.n} ${x.a.p}`) }, { t: 'Secteur', f: x => esc(NOM_SECTEUR[x.a.s] || x.a.s || '—') },
+      { t: 'Spécialiste', f: x => `<button type="button" class="dash-agent" data-agent="${LV.agents.indexOf(x.a)}" title="Détail des heures">${esc(`${x.a.n} ${x.a.p}`)}</button>` }, { t: 'Secteur', f: x => esc(NOM_SECTEUR[x.a.s] || x.a.s || '—') },
       { t: 'Heures SMPM', f: x => fmtH(x.h), cls: 'num' }, { t: 'Quota', f: x => (x.q ? fmtH(x.q) : '—'), cls: 'num' },
       { t: 'Avancement', f: x => `<span class="pastille ${x.p >= 100 ? 'bon' : x.p >= 50 ? 'moyen' : 'faible'}">${pct(x.p)}</span>`, cls: 'num' },
     ];
     html.push(tableau('Spécialistes sous 50 % du quota', cols, avecQ.filter(x => x.p < 50).sort((a, b) => a.p - b.p), { ouvert: false }));
     html.push(tableau('Tous les livrets', cols, lignes.slice().sort((a, b) => (a.p ?? 999) - (b.p ?? 999))));
     return html.join('');
+  }
+
+  // Détail des heures d'un agent (thème Livrets) : ses FMPA de la période, comptées par compteur
+  const COMPTEURS = [['SMPM', 'SMPM (Nord · Centre · Sud)'], ['NEIGE', 'Neige'], ['ISS', 'ISS'], ['SSH', 'SSH'], ['CAN', 'Canyon']];
+  const compteurDe = s => (SMPM_SECT.includes(s) ? 'SMPM' : s || '?');
+  function ouvrirAgent(i) {
+    const LV = (cache.livrets || {}).d;
+    const a = LV && LV.agents && LV.agents[i];
+    if (!a) return;
+    const r = periode(), f = facteurQuota(r);
+    let d = $('#dash-agent-dlg');
+    if (!d) {
+      d = document.createElement('dialog');
+      d.id = 'dash-agent-dlg';
+      d.className = 'ann-dialog dash-agent-dlg';
+      d.setAttribute('aria-label', 'Détail des heures');
+      d.addEventListener('click', e => { if (e.target === d || e.target.closest('[data-fermer]')) d.close(); });
+      $('#tab-cs-tableau').append(d);
+    }
+    const tete = `<div class="dash-agent-tete"><div><h2>${esc(`${a.p} ${a.n}`)}</h2><p class="muted small">${esc(NOM_SECTEUR[a.s] || a.s || '—')} · ${esc(r.lib)}</p></div>
+      <button type="button" class="dash-agent-x" data-fermer aria-label="Fermer">×</button></div>`;
+    let corps;
+    if (!LV.fm || !a.f) {
+      // Serveur pas encore à jour, ou agent absent de la base FMPA : heures par mois et secteur seulement
+      const lignes = Object.keys(a.h || {}).filter(k => { const m = k.split('|')[0]; return m >= r.du.slice(0, 7) && m <= r.au.slice(0, 7); }).sort()
+        .map(k => { const [m, s] = k.split('|'); return { m, s, h: a.h[k] }; });
+      corps = `<p class="dash-err">${LV.fm ? 'Cet agent n’apparaît dans aucune FMPA de la base : heures reprises de son livret, par mois.' : 'Détail par FMPA indisponible : Dashboard.gs doit être mis à jour sur le serveur. Heures par mois :'}</p>` +
+        (lignes.length ? `<table class="dash-tbl"><thead><tr><th>Mois</th><th>Secteur</th><th class="num">Heures</th></tr></thead><tbody>${lignes.map(x => `<tr><td>${esc(x.m)}</td><td>${esc(NOM_SECTEUR[x.s] || x.s)}</td><td class="num">${fmtH(x.h)}</td></tr>`).join('')}</tbody></table>` : vide('Aucune heure sur la période.'));
+    } else {
+      const L = a.f.map(([n, pos]) => { const x = LV.fm[n] || []; return { d: x[0], h: Number(x[1]) || 0, s: x[2], l: x[3], cu: x[4], pos }; })
+        .filter(x => x.d && x.d >= r.du && x.d <= r.au).sort((x, y) => (x.d < y.d ? 1 : -1));
+      const parC = {};
+      L.forEach(x => { const c = compteurDe(x.s); parC[c] = (parC[c] || 0) + x.h; });
+      const total = sum(L, x => x.h);
+      const cles = COMPTEURS.map(c => c[0]).filter(c => parC[c] || (a.quotas && a.quotas[c] && (!a.quotas[c].depuis || a.quotas[c].depuis <= r.annee)))
+        .concat(Object.keys(parC).filter(c => !COMPTEURS.some(k => k[0] === c)));
+      const cartes = cles.map(c => {
+        const q = a.quotas && a.quotas[c] && (!a.quotas[c].depuis || a.quotas[c].depuis <= r.annee) ? (Number(a.quotas[c].quota) || 0) * f : 0;
+        const h = parC[c] || 0, p = q ? h / q * 100 : null;
+        const nom = (COMPTEURS.find(k => k[0] === c) || [c, NOM_SECTEUR[c] || c])[1];
+        return `<div class="dash-agent-c"><span>${esc(nom)}</span><strong>${fmtH(h)}${q ? ` <small>/ ${fmtH(q)}</small>` : ''}</strong>${p != null ? `<span class="pastille ${p >= 100 ? 'bon' : p >= 50 ? 'moyen' : 'faible'}">${pct(p)}</span>` : '<small class="muted">hors quota</small>'}</div>`;
+      }).join('');
+      const repos = sum(L.filter(x => x.pos === 'R'), x => x.h);
+      corps = `<p class="dash-agent-total"><strong>${L.length} FMPA · ${fmtH(total)}</strong> sur la période${L.length ? ` · repos ${fmtH(repos)}, temps de travail ${fmtH(total - repos)}` : ''}</p>
+        <div class="dash-agent-cs">${cartes}</div>
+        <p class="muted small">Chaque FMPA compte dans le compteur de son secteur : Nord, Centre et Sud dans SMPM, les autres dans leur spécialité.${f < 1 ? ' Quotas proratisés à la période.' : ''}</p>` +
+        (L.length ? `<div class="dash-tbl-wrap"><table class="dash-tbl"><thead><tr><th>Date</th><th>Compteur</th><th>Lieu</th><th>IMP3</th><th>Position</th><th class="num">Heures</th></tr></thead>
+          <tbody>${L.map(x => `<tr><td>${esc(fmtDate(x.d))}</td><td>${esc(compteurDe(x.s) === 'SMPM' ? `SMPM ${NOM_SECTEUR[x.s] || x.s}` : (NOM_SECTEUR[x.s] || x.s || '—'))}</td><td>${esc(x.l || '—')}</td><td>${esc(x.cu || '—')}</td><td>${x.pos === 'R' ? 'Repos' : 'TT'}</td><td class="num">${fmtH(x.h)}</td></tr>`).join('')}
+          <tr class="dash-agent-somme"><td colspan="5">Total</td><td class="num">${fmtH(total)}</td></tr></tbody></table></div>` : vide('Aucune FMPA sur la période.'));
+    }
+    d.innerHTML = tete + corps;
+    if (!d.open) { if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', ''); }
   }
 
   // ====================== Neige / Spéléo ======================
@@ -623,6 +675,10 @@
     $('#dash-au').addEventListener('change', e => { st.au = e.target.value; rendre(); });
     $('#dash-secteur').innerHTML = SECTEURS.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
     $('#dash-secteur').addEventListener('change', e => { st.secteur = e.target.value; rendre(); });
+    $('#dash-body').addEventListener('click', e => {
+      const b = e.target.closest('.dash-agent');
+      if (b) ouvrirAgent(Number(b.dataset.agent));
+    });
     $('#dash-refresh').addEventListener('click', () => charger(true));
     $('#dash-rotation').addEventListener('click', passerPaysage);
     $('#dash-portrait').addEventListener('click', () => { portraitIgnore = true; majPaysage(); });

@@ -2337,3 +2337,17 @@ body.doc-ouvert { overflow: hidden; }
   .cal-day { padding: 2px; }
   .cal-fmpa { font-size: .6rem; padding: 2px 3px; letter-spacing: -.01em; }
 }
+
+/* ---------- Tableau de bord › Livrets : détail des heures d'un agent ---------- */
+button.dash-agent { background: none; border: 0; padding: 0; margin: 0; width: auto; min-height: 0; font: inherit; color: var(--primary); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; text-align: left; }
+.dash-agent-dlg { width: min(96vw, 780px); max-height: 90vh; overflow-y: auto; }
+.dash-agent-tete { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.dash-agent-tete h2 { margin: 0; }
+.dash-agent-tete p { margin: 2px 0 0; }
+.dash-agent-x { width: 40px; min-height: 40px; padding: 0; margin: 0; border-radius: 10px; background: none; border: 1px solid var(--line); color: var(--ink); font-size: 1.4rem; line-height: 1; }
+.dash-agent-total { margin: 12px 0 8px; }
+.dash-agent-cs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 6px; }
+.dash-agent-c { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+.dash-agent-c > span:first-child { color: var(--muted); font-size: .8rem; }
+.dash-agent-c .pastille { align-self: flex-start; }
+.dash-agent-somme td { font-weight: 700; border-top: 1px solid var(--line); }
