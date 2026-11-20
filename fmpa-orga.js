@@ -113,8 +113,9 @@
     return d ? new Date(y, m - 1, d).toLocaleDateString('fr-FR', { weekday: 'short' }) : '';
   };
   const secteurs = () => (S.data && S.data.secteurs) || SECTEURS_DEF;
-  const secNom = c => (secteurs().find(s => s.code === c) || {}).nom || c || '—';
+  const secNom = c => (secteurs().find(s => s.code === c) || {}).nom || c || 'À définir';
   const tagSecteur = c => {
+    if (!c) return el('span', { class: 'tag', text: 'Secteur à définir' });
     const cat = ['NORD', 'SUD', 'CENTRE'].includes(c) ? 'smpm' : String(c || '').toLowerCase();
     return el('span', { class: 'tag tag-' + cat, text: cat === 'smpm' ? 'SMPM ' + secNom(c) : secNom(c) });
   };
@@ -559,6 +560,7 @@
   function ouvrir(id) {
     S.id = id;
     S.edit = null;
+    S.secteurValid = '';
     setState('');
     render();
     window.scrollTo(0, 0);
@@ -663,7 +665,17 @@
           plein ? null : bouton('Valider', () => decider(f, e, 'valider'), 'pill orga-ok'),
           bouton('Refuser', () => decider(f, e, 'refuser'), 'pill danger-pill')) : null)));
       if (!enc.childNodes.length) enc.append(el('li', { class: 'muted' }, 'Aucun chef d’unité positionné pour le moment.'));
+      // Secteur à définir : choisi à la validation du CU RP (par défaut, celui du CU RP)
+      let choixSecteur = null;
+      if (!f.secteur && A.decider) {
+        const sel = el('select', { 'aria-label': 'Secteur de la FMPA' }, new Option('Celui du CU RP validé', ''),
+          ...secteurs().filter(x => !x.dept).map(x => new Option(x.nom, x.code)));
+        sel.value = S.secteurValid || '';
+        sel.addEventListener('change', () => { S.secteurValid = sel.value; });
+        choixSecteur = el('label', { class: 'small orga-designer' }, 'Secteur de la FMPA, fixé à la validation du CU RP', sel);
+      }
       out.push(section('Encadrement',
+        choixSecteur,
         enc,
         A.decider && voirCompteur && !plein && f.phase !== 'proposee' ? designer(f, an) : null,
         el('p', { class: 'muted small', text: f.ratio + ' participants par chef d’unité : le CU RP ouvre ' + f.ratio + ' places, le CU sécurité ' + f.ratio +
@@ -815,8 +827,9 @@
     return out;
   }
 
-  function selectSecteur(name, value, sansDept) {
-    const s = el('select', { name, required: true }, new Option('— Secteur —', ''),
+  // facultatif : « Secteur à définir » (fixé à la validation du CU RP)
+  function selectSecteur(name, value, sansDept, facultatif) {
+    const s = el('select', { name, required: !facultatif }, new Option(facultatif ? 'Secteur à définir' : '— Secteur —', ''),
       ...secteurs().filter(x => !(sansDept && x.dept)).map(x => new Option(x.nom, x.code)));
     s.value = value || '';
     return s;
@@ -836,7 +849,7 @@
       } },
       el('label', null, f.departementale ? 'Jour 1' : 'Date', el('input', { name: 'date', type: 'date', required: true, min: today(), value: f.date })),
       f.departementale ? el('label', null, 'Jour 2', el('input', { name: 'date2', type: 'date', required: true, min: today(), value: f.date2 })) : null,
-      f.departementale ? null : el('label', null, 'Secteur', selectSecteur('secteur', f.secteur, true)),
+      f.departementale ? null : el('label', null, 'Secteur', selectSecteur('secteur', f.secteur, true, !f.encadrants.length)),
       f.departementale ? el('input', { type: 'hidden', name: 'secteur', value: f.secteur }) : null,
       el('label', null, 'Heures comptées' + (f.departementale ? ' par jour' : ''), el('input', { name: 'heures', type: 'number', min: '0.5', max: '24', step: '0.5', required: true, value: String(f.heures) })),
       el('label', null, 'Remarque (facultatif)', el('input', { name: 'note', maxlength: '300', value: f.note, placeholder: 'Thème, site pressenti…' })),
@@ -868,7 +881,7 @@
         if (!p) { sel.focus(); return; }
         const q = `Désigner ${p.nomComplet} pour encadrer la FMPA du ${dateLongue(f.date)} (${compteurTxt(p.nom, an)}) ?` +
           (f.encadrants.length ? ` Il sera CU sécurité ; la FMPA passera à ${(f.encadrants.length + 1) * f.ratio} places.` : ' Il sera CU RP ; les inscriptions seront ouvertes et tous les membres prévenus.');
-        if (confirm(q)) action('decider', { id: f.id, nom: p.nom, decision: 'designer' }, p.nomComplet + ' est désigné.');
+        if (confirm(q + secteurValidation(f, p))) action('decider', { id: f.id, nom: p.nom, decision: 'designer', secteur: f.secteur ? '' : (S.secteurValid || '') }, p.nomComplet + ' est désigné.');
       }, 'pill orga-ok'));
   }
 
@@ -883,10 +896,17 @@
       retirer: `Retirer ${e.nomComplet} de l’encadrement ?` + (f.encadrants.length === 1 ? ' Les inscrits passeront en liste d’attente.' : ` La FMPA passera à ${(f.encadrants.length - 1) * f.ratio} places.`) + '\nMessage pour lui (facultatif) :',
     }[decision];
     let message = '';
-    if (decision === 'valider') { if (!confirm(q)) return; }
+    if (decision === 'valider') { if (!confirm(q + secteurValidation(f, e))) return; }
     else { message = prompt(q, ''); if (message === null) return; }
-    action('decider', { id: f.id, nom: e.nom, decision, message },
+    action('decider', { id: f.id, nom: e.nom, decision, message, secteur: decision === 'valider' && !f.secteur ? (S.secteurValid || '') : '' },
       decision === 'valider' ? e.nomComplet + ' est validé.' : decision === 'refuser' ? 'Candidature refusée.' : 'Encadrant retiré.');
+  }
+
+  // Texte ajouté à la confirmation quand le secteur est fixé à la validation du CU RP
+  function secteurValidation(f, p) {
+    if (f.secteur) return '';
+    const sec = S.secteurValid || p.secteur || '';
+    return sec ? `\nSecteur de la FMPA : ${secNom(sec)}.` : '\nLe secteur du CU RP n’est pas un secteur de FMPA : choisissez-le au-dessus de la liste.';
   }
 
   function retirerInscrit(f, p) {
@@ -898,7 +918,7 @@
   // ---------- création de dates (CT) ----------
   function ligneDate(date, secteur, heures, date2) {
     const H = (S.data && S.data.heures) || { defaut: 7, dept: 8 };
-    const sel = selectSecteur('secteur', secteur);
+    const sel = selectSecteur('secteur', secteur, false, true);
     const h = el('input', { type: 'number', name: 'heures', min: '0.5', max: '24', step: '0.5', required: true, 'aria-label': 'Heures comptées',
       value: String(heures || (secteur === 'DEPT' ? H.dept : H.defaut)) });
     const d2 = el('input', { type: 'date', name: 'date2', min: today(), value: date2 || '', 'aria-label': 'Jour 2 (départementale)', title: 'Jour 2 (départementale)' });

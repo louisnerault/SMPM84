@@ -22,6 +22,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 185, titre: 'Planning des FMPA : secteur à définir', texte: 'Le secteur n’est plus obligatoire à la création d’une date : laissez « Secteur à définir ». Il est fixé quand vous validez le CU RP, par défaut celui du CU RP, ou celui que vous choisissez au-dessus de la liste des candidats.', pour: ['ctd', 'admin'] },
     { v: 184, titre: 'Planning des FMPA : quotas', texte: 'Votre quota d’heures de l’année (FMPA départementales comprises) s’affiche dans « S’inscrire ». Au 1er semestre, vous ne pouvez pas dépasser la moitié du quota (+ 10 %) ; une fois le quota atteint, l’inscription est bloquée. En liste d’attente, la place libérée va à celui qui a le moins avancé dans son quota.', pour: ['tous'] },
     { v: 184, titre: 'Planning des FMPA : CU RP et CU sécurité', texte: 'Le premier chef d’unité validé est CU RP, le second CU sécurité. Si la FMPA est pleine, un 3e IMP 3 peut proposer une nouvelle FMPA dont il sera CU RP. Votre nombre d’encadrements de l’année (4 attendus) s’affiche dans « CU · Encadrer ».', pour: ['chef_unite', 'chef_section', 'ctd', 'admin'] },
     { v: 184, titre: 'Planning des FMPA : heures, départementales, annulations', texte: 'Le CT fixe les heures de chaque FMPA à sa création et peut créer les FMPA départementales (2 jours) ; le CT et les chefs de section y affectent les agents. Une FMPA à 3 personnes ou moins est proposée à l’annulation à J-7 (rappel à J-3).', pour: ['chef_section', 'ctd', 'admin'] },
