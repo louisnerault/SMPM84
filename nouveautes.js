@@ -22,6 +22,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 174, titre: 'Fiche d’un point d’intérêt', texte: 'Points d’intérêt : en mode Liste, touchez un point pour ouvrir sa fiche (photos affichées directement). Sur la carte, le bouton « Consulter » de la bulle ouvre la même fiche sans quitter la carte ; les actions de la bulle sont maintenant de vrais boutons.', pour: ['tous'] },
     { v: 173, titre: 'Évaluation GNR dans l’application', texte: 'Chefs de section › Évaluation GNR : l’évaluation annuelle se remplit maintenant directement dans l’application, avec les mêmes questions que le formulaire, même hors ligne (envoi automatique au retour du réseau). Le PDF et la validation annuelle du livret de l’agent sont créés automatiquement.', pour: ['chef_section', 'ctd', 'admin'] },
     { v: 172, titre: 'Planning des FMPA', texte: 'Nouvelle rubrique « Planning des FMPA » dans le menu : le CT propose les dates, les chefs d’unité se positionnent pour encadrer, puis chacun s’inscrit (6 places par chef d’unité, liste d’attente au-delà). Vous êtes prévenu à chaque étape et des informations de rendez-vous.', pour: ['tous'] },
     { v: 172, titre: 'Calendrier des FMPA', texte: 'Dans « Planning des FMPA › CT · Organiser », les dates s’affichent sur un calendrier mensuel coloré selon leur état. Pour valider ou désigner un IMP 3, son nombre de FMPA encadrées dans l’année est affiché, les moins sollicités en premier.', pour: ['ctd', 'admin'] },

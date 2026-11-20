@@ -628,7 +628,9 @@
   }
   renderNavProfil();
 
-  function card(p) {
+  // enFiche : carte affichée dans la fenêtre « fiche » (les actions qui mènent ailleurs la ferment d'abord)
+  function card(p, enFiche) {
+    const ff = fn => enFiche ? (...a) => { fermerFiche(); fn(...a); } : fn;
     const dist = S.pos ? distanceKm(S.pos, [p.lat, p.lng]) : null;
     const photoBox = el('div', { class: 'poi-photo-box' });
     const nf = fichiersDe(p).length;
@@ -639,7 +641,7 @@
     const gps = fmtLL(p.lat, p.lng);
     const auteur = [p.cree_par ? `Ajouté par ${p.cree_par}` : 'Ajouté', p.cree_le ? `le ${fmtDate(p.cree_le)}` : ''].filter(Boolean).join(' ');
     const modif = p.modifie_le ? ` · modifié${p.modifie_par ? ' par ' + p.modifie_par : ''} le ${fmtDate(p.modifie_le)}` : '';
-    return el('li', { class: 'ann-card poi-card', 'data-id': p.id },
+    const li = el('li', { class: 'ann-card poi-card', 'data-id': enFiche ? null : p.id },
       el('div', { class: 'ann-head' },
         el('p', { class: 'ann-name poi-name' }, el('span', { class: 'poi-pin-mini', html: pinPoint(p) }), el('strong', { text: p.nom })),
         dist !== null ? el('span', { class: 'ann-fct', text: fmtKm(dist) }) : null),
@@ -647,27 +649,49 @@
       p.propose ? el('div', { class: 'poi-prop' },
         el('p', { class: 'poi-prop-badge', text: p.peut_valider ? 'Proposition à valider' : 'Proposition en attente de validation' }),
         p.peut_valider ? el('div', { class: 'poi-prop-btns' },
-          el('button', { type: 'button', class: 'pill poi-add', text: 'Valider', onclick: e => valider(p, true, e.currentTarget) }),
-          el('button', { type: 'button', class: 'pill', text: 'Refuser', onclick: e => valider(p, false, e.currentTarget) })) : null) : null,
+          el('button', { type: 'button', class: 'pill poi-add', text: 'Valider', onclick: ff(e => valider(p, true, e.currentTarget)) }),
+          el('button', { type: 'button', class: 'pill', text: 'Refuser', onclick: ff(e => valider(p, false, e.currentTarget)) })) : null) : null,
       p.ephemere ? el('p', { class: 'poi-eph-badge', text: `Point éphémère · disparaît ${fmtHeure(p.expire_le)}` }) : null,
       p.caracs.length ? el('ul', { class: 'chips ann-chips poi-types' }, ...p.caracs.map(c => el('li', { html: icoSvg(caracIcone(c), 14) }, c))) : null,
       (p.groupes || []).length ? el('div', { class: 'poi-liens' }, el('span', { class: 'muted small', text: 'Groupes : ' }),
         ...p.groupes.map(g => el('button', { type: 'button', class: 'poi-lien poi-grp-chip', text: g, title: 'Afficher ce groupe',
-          onclick: () => { S.f.groupe = g; buildFilters(); changed(); } }))) : null,
+          onclick: ff(() => { S.f.groupe = g; buildFilters(); changed(); }) }))) : null,
       liensDe(p).length ? el('div', { class: 'poi-liens' }, el('span', { class: 'muted small', text: 'Points liés : ' }),
-        ...liensDe(p).map(q => el('button', { type: 'button', class: 'poi-lien', html: `<span class="poi-pin-mini">${pinPoint(q)}</span>`, title: 'Voir la fiche', onclick: () => voirLie(q) }, q.nom))) : null,
+        ...liensDe(p).map(q => el('button', { type: 'button', class: 'poi-lien', html: `<span class="poi-pin-mini">${pinPoint(q)}</span>`, title: 'Voir la fiche', onclick: () => enFiche ? ouvrirFiche(q) : voirLie(q) }, q.nom))) : null,
       p.commentaire ? el('p', { class: 'poi-comment', text: p.commentaire }) : null,
       el('p', { class: 'ann-num poi-gps', text: gps }),
       photoBox,
       el('div', { class: 'ann-actions' },
-        el('button', { type: 'button', class: 'ann-btn', title: 'Itinéraire (application GPS)', 'aria-label': `Itinéraire vers ${p.nom} dans une application GPS`, html: ICONS.route, onclick: () => openRoute(p) }),
-        el('button', { type: 'button', class: 'ann-btn', title: 'Itinéraire sur la carte (tracé et profil)', 'aria-label': `Tracer l’itinéraire vers ${p.nom} sur la carte, avec le profil altimétrique`, html: ICONS.trace, onclick: () => tracerVers(p) }),
-        el('button', { type: 'button', class: 'ann-btn', title: 'Voir sur la carte', 'aria-label': `Voir ${p.nom} sur la carte`, html: ICONS.map, onclick: () => showOnMap(p) }),
+        el('button', { type: 'button', class: 'ann-btn', title: 'Itinéraire (application GPS)', 'aria-label': `Itinéraire vers ${p.nom} dans une application GPS`, html: ICONS.route, onclick: ff(() => openRoute(p)) }),
+        el('button', { type: 'button', class: 'ann-btn', title: 'Itinéraire sur la carte (tracé et profil)', 'aria-label': `Tracer l’itinéraire vers ${p.nom} sur la carte, avec le profil altimétrique`, html: ICONS.trace, onclick: ff(() => tracerVers(p)) }),
+        el('button', { type: 'button', class: 'ann-btn', title: 'Voir sur la carte', 'aria-label': `Voir ${p.nom} sur la carte`, html: ICONS.map, onclick: ff(() => showOnMap(p)) }),
         el('button', { type: 'button', class: 'ann-btn', title: 'Copier les coordonnées', 'aria-label': `Copier les coordonnées de ${p.nom}`, html: ICONS.copy, onclick: e => copyGps(gps, e.currentTarget) }),
         btnPhoto),
       el('p', { class: 'poi-foot' },
         el('span', { class: 'muted small', text: auteur + modif }),
-        peutModifier(p) ? el('button', { type: 'button', class: 'link', text: 'Modifier', onclick: () => openForm(p) }) : null));
+        peutModifier(p) ? el('button', { type: 'button', class: 'link', text: 'Modifier', onclick: ff(() => openForm(p)) }) : null));
+    if (enFiche) { if (nf) togglePhoto(p, photoBox, btnPhoto); return li; }
+    // En liste : toucher la carte (hors boutons, liens, photos) ouvre la fiche
+    li.classList.add('poi-card-ouvrable');
+    li.addEventListener('click', e => {
+      if (e.target.closest('button, a, input, label, select, textarea, summary, img, .poi-photo-box')) return;
+      if (String(window.getSelection ? window.getSelection() : '').trim()) return;
+      ouvrirFiche(p);
+    });
+    return li;
+  }
+  // ---------- fiche d'un point (fenêtre) ----------
+  function ouvrirFiche(p) {
+    const d = $('#poi-fiche');
+    $('#poi-fiche-corps').replaceChildren(card(p, true));
+    if (!d.open) { if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', ''); }
+    d.scrollTop = 0;
+  }
+  function fermerFiche() {
+    const d = $('#poi-fiche');
+    if (!d.open) return;
+    d.close ? d.close() : d.removeAttribute('open');
+    $('#poi-fiche-corps').replaceChildren();
   }
   // Proposition d'un équipier : validation ou refus (administrateurs, CTD, chefs de section concernés)
   async function valider(p, ok, btn) {
@@ -960,7 +984,7 @@
       L.polyline(segs, { color: '#fff', weight: 7, opacity: 0.8, interactive: false }).addTo(M.traces);
       L.polyline(segs, { color: coul, weight: 4, opacity: 0.95 })
         .bindPopup(el('div', { class: 'poi-pop' }, el('strong', { text: p.nom }), el('div', { class: 'small', text: 'Trace GPX' }),
-          el('div', { class: 'small' }, el('button', { type: 'button', class: 'link', text: 'Fiche', onclick: () => showInList(p) }))))
+          el('div', { class: 'poi-pop-btns' }, el('button', { type: 'button', class: 'pill poi-pop-ok', text: 'Consulter', onclick: () => ouvrirFiche(p) }))))
         .addTo(M.traces);
     });
     if (manquantes) M.tracesNote = `${manquantes} trace${manquantes > 1 ? 's' : ''} GPX non disponible${manquantes > 1 ? 's' : ''} (${navigator.onLine ? 'erreur de chargement' : 'jamais ouverte sur cet appareil'}).`;
@@ -1101,9 +1125,10 @@
         el('div', { class: 'small', text: (p.ephemere ? 'Éphémère' : p.secteurs.map(c => '#' + c).join(' ')) + (p.caracs.length ? ' · ' + p.caracs.join(', ') : '') }),
         liensDe(p).length ? el('div', { class: 'small' }, 'Liés : ', ...liensDe(p).flatMap((q, i) => [i ? ', ' : '', el('button', { type: 'button', class: 'link', text: q.nom, onclick: () => showOnMap(q) })])) : null,
         p.commentaire ? el('div', { class: 'small poi-comment', text: p.commentaire }) : null,
-        el('div', { class: 'small' }, el('button', { type: 'button', class: 'link', text: 'Itinéraire sur la carte', onclick: () => tracerVers(p) }), ' · ',
-          el('button', { type: 'button', class: 'link', text: 'Appli GPS', onclick: () => openRoute(p) }), ' · ',
-          el('button', { type: 'button', class: 'link', text: 'Fiche', onclick: () => showInList(p) })));
+        el('div', { class: 'poi-pop-btns' },
+          el('button', { type: 'button', class: 'pill poi-pop-ok', text: 'Consulter', onclick: () => ouvrirFiche(p) }),
+          el('button', { type: 'button', class: 'pill', text: 'Itinéraire sur la carte', onclick: () => tracerVers(p) }),
+          el('button', { type: 'button', class: 'pill', text: 'Appli GPS', onclick: () => openRoute(p) })));
       const icon = L.divIcon({ className: 'poi-pin', html: pinPoint(p), iconSize: [25, 34], iconAnchor: [12.5, 34], popupAnchor: [0, -30] });
       const m = L.marker([p.lat, p.lng], { title: p.nom, icon, draggable: peutModifier(p) && plein() }).bindPopup(pop);
       m.on('dragend', () => deplacer(p, m));
@@ -1697,6 +1722,9 @@
     e.target.value = '';
     if (f) scanPhoto(f);
   }));
+  $('#poi-fiche-close').addEventListener('click', fermerFiche);
+  $('#poi-fiche').addEventListener('click', e => { if (e.target === e.currentTarget) fermerFiche(); });   // toucher le fond
+  $('#poi-fiche').addEventListener('close', () => $('#poi-fiche-corps').replaceChildren());
   $('#poi-scan-go').addEventListener('click', () => afficherScan(window.SMPM_COORD.analyser($('#poi-scan-texte').value), 'texte'));
   $('#poi-nav-cancel').addEventListener('click', () => { const d = $('#poi-nav'); d.close ? d.close() : d.removeAttribute('open'); });
   $('#poi-adm-cancel').addEventListener('click', closeAdmin);
