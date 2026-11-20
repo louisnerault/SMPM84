@@ -22,6 +22,9 @@
   ];
   const JOURS_DEPT = { '1': 'Jour 1', '2': 'Jour 2', '12': 'Les deux jours' };
   const nb = n => String(Math.round(n * 10) / 10).replace('.', ',');
+  // Heures de la FMPA ('' si le serveur ne les renvoie pas encore : ancien Orga.gs)
+  const aHeures = f => typeof f.heures === 'number' && f.heures > 0;
+  const hTxt = (f, suffixe) => (aHeures(f) ? nb(f.heures) + ' h' + (suffixe || '') : '');
   const $ = (sel, root = document) => root.querySelector(sel);
   const app = () => window.SMPM_APP;
   const store = {
@@ -476,7 +479,7 @@
     const lignes = [el('strong', { text: dateLongue(f.date) }), el('span', { class: 'cal-b-etat ' + E.cls, text: secNom(f.secteur) + ' · ' + E.libelle })];
     if (f.note) lignes.push(el('span', { class: 'cal-b-note', text: f.note }));
     if (f.date2) lignes.push(el('span', { text: '2e jour : ' + dateLongue(f.date2) }));
-    lignes.push(el('span', { text: nb(f.heures) + ' h' + (f.departementale ? ' par jour' : '') + ' comptées dans les quotas' }));
+    if (aHeures(f)) lignes.push(el('span', { text: hTxt(f, f.departementale ? ' par jour' : '') + ' comptées dans les quotas' }));
     if (f.encadrants.length) lignes.push(el('span', { text: 'Encadrement : ' + f.encadrants.map(e => e.nomComplet + (e.role === 'RP' ? ' (CU RP)' : ' (CU sécu.)')).join(', ') }));
     if (f.candidats.length) lignes.push(el('span', { text: 'Candidats : ' + trierParCompteur(f.candidats, an).map(e => e.nomComplet + ' (' + compteurTxt(e.nom, an, true) + ')').join(', ') }));
     if (f.capacite) lignes.push(el('span', { text: 'Inscrits : ' + f.inscrits.length + '/' + f.capacite + (f.attente.length ? ' · ' + f.attente.length + ' en attente' : '') }));
@@ -544,7 +547,7 @@
     const resp = f.encadrants[0];
     body.append(el('p', { class: 'fmpa-lieu', text: f.infos.lieu || (resp ? 'CU RP ' + resp.nomComplet : f.departementale ? 'FMPA départementale' : f.note || 'Lieu à préciser') }));
     const meta = el('p', { class: 'fmpa-meta' }, tagSecteur(f.secteur),
-      ' ' + [jourSemaine(f.date) + (f.date2 ? ' et ' + jourSemaine(f.date2) + ' ' + Number(f.date2.slice(8)) : ''), nb(f.heures) + ' h' + (f.date2 ? '/jour' : ''),
+      ' ' + [jourSemaine(f.date) + (f.date2 ? ' et ' + jourSemaine(f.date2) + ' ' + Number(f.date2.slice(8)) : ''), hTxt(f, f.date2 ? '/jour' : ''),
         f.infos.heure ? 'RDV ' + heureTxt(f.infos.heure) : '', f.encadrants.length > 1 ? 'CU RP + CU sécurité' : ''].filter(Boolean).join(' · '));
     body.append(meta, phaseChip(f));
     const st = monStatut(f);
@@ -590,7 +593,7 @@
     out.push(el('div', { class: 'sub-head' }, el('button', { type: 'button', class: 'link', text: '← ' + ESPACES[S.espace].titre, onclick: retourListe })));
     out.push(el('h1', { class: 'orga-titre', text: dateLongue(f.date) + (f.date2 ? ' et ' + dateLongue(f.date2) : '') }));
     out.push(el('p', { class: 'fmpa-meta' }, tagSecteur(f.secteur),
-      ' ' + nb(f.heures) + ' h' + (f.departementale ? ' par jour' : '') + ' comptées dans les quotas' +
+      (aHeures(f) ? ' ' + hTxt(f, f.departementale ? ' par jour' : '') + ' comptées dans les quotas' : '') +
       (f.restreint ? ' · réservée aux qualifiés ' + secNom(f.secteur) + ' (hors quota SMPM)' : '')));
     out.push(phaseChip(f));
     const st = monStatut(f);
@@ -764,7 +767,7 @@
         lignes.forEach((li, k) => { const s2 = li.querySelector('select'); s2.value = choix[pers[k].nom] || ''; li.classList.toggle('on', !!s2.value); });
       };
       return [
-        el('p', { class: 'muted small', text: 'Choisissez le jour de chacun (les organisateurs : les deux jours). Les agents sont prévenus ; ' + nb(f.heures) + ' h par jour comptent dans leur quota.' }),
+        el('p', { class: 'muted small', text: 'Choisissez le jour de chacun (les organisateurs : les deux jours). Les agents sont prévenus ; ' + (hTxt(f) || 'les heures') + ' par jour comptent dans leur quota.' }),
         el('div', { class: 'orga-actions' }, bouton('Répartir les autres sur les deux jours', repartir, 'pill')),
         filtre, liste,
         el('div', { class: 'orga-actions' },
@@ -851,7 +854,7 @@
       f.departementale ? el('label', null, 'Jour 2', el('input', { name: 'date2', type: 'date', required: true, min: today(), value: f.date2 })) : null,
       f.departementale ? null : el('label', null, 'Secteur', selectSecteur('secteur', f.secteur, true, !f.encadrants.length)),
       f.departementale ? el('input', { type: 'hidden', name: 'secteur', value: f.secteur }) : null,
-      el('label', null, 'Heures comptées' + (f.departementale ? ' par jour' : ''), el('input', { name: 'heures', type: 'number', min: '0.5', max: '24', step: '0.5', required: true, value: String(f.heures) })),
+      el('label', null, 'Heures comptées' + (f.departementale ? ' par jour' : ''), el('input', { name: 'heures', type: 'number', min: '0.5', max: '24', step: '0.5', required: true, value: aHeures(f) ? String(f.heures) : String(((S.data && S.data.heures) || {}).defaut || 7) })),
       el('label', null, 'Remarque (facultatif)', el('input', { name: 'note', maxlength: '300', value: f.note, placeholder: 'Thème, site pressenti…' })),
       el('div', { class: 'orga-actions' },
         el('button', { type: 'submit', class: 'primary', text: 'Enregistrer' }),
