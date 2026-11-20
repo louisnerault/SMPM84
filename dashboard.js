@@ -1,5 +1,5 @@
 // Tableaux de bord (menu « Chefs de section › Tableau de bord ») : vision d'ensemble de l'unité à un instant T.
-// Thèmes : Interventions, FMPA, Livrets, Neige, Spéléo, Inventaires. Filtre par année ou par période, et par secteur.
+// Thèmes : Interventions, FMPA, Livrets, Neige, Spéléo, Inventaires, Effectifs. Filtre par année ou par période, et par secteur.
 // Le serveur (Dashboard.gs, action dash_data) renvoie des données compactes ; toutes les statistiques sont calculées
 // ici : changer de filtre ne redemande rien au serveur. Données gardées en mémoire seulement (jamais sur l'appareil).
 // Conçu pour l'ordinateur ; sur smartphone en portrait, le mode paysage est proposé.
@@ -34,6 +34,7 @@
     { id: 'neige', nom: 'Neige', sets: ['personnel', 'fmpa', 'itv', 'livrets', 'inv'], ico: ico('<path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7"/><path d="M9.5 3.5L12 6l2.5-2.5M9.5 20.5L12 18l2.5 2.5"/>') },
     { id: 'speleo', nom: 'Spéléo', sets: ['personnel', 'fmpa', 'itv', 'livrets', 'inv'], ico: ico('<path d="M3 20h18"/><path d="M5 20c0-6 3-11 7-11s7 5 7 11"/><path d="M12 9V4M9.5 5.5L12 4l2.5 1.5"/>') },
     { id: 'inv', nom: 'Inventaires', sets: ['inv'], ico: ico('<path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9"/>') },
+    { id: 'eff', nom: 'Effectifs', sets: ['personnel'], instant: true, ico: ico('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c2.9.3 5 2.5 5 5.8"/>') },
   ];
   // Données d'intervention : CT et administrateurs seulement (le serveur refuse aussi le jeu « itv » aux autres)
   const voitItv = () => !!(app() && app().allInterv && app().allInterv());
@@ -509,6 +510,54 @@
     return html.join('');
   }
 
+  // ====================== Effectifs ======================
+  // Photographie du personnel actif (liste du personnel), sans notion de période : par secteur et par fonction.
+  // Chaque spécialiste est compté une seule fois, à sa fonction la plus élevée (IMP3, sinon IMP2, sinon autre).
+  const FONCTIONS = [
+    { id: 'IMP3', nom: 'IMP3 – chefs d’unité', court: 'IMP3', c: S1 },
+    { id: 'IMP2', nom: 'IMP2 – équipiers', court: 'IMP2', c: S2 },
+    { id: 'AUTRE', nom: 'Ni IMP2 ni IMP3', court: 'Autres', c: NEUTRE },
+  ];
+  const fonctionDe = a => (a.q && a.q.IMP3 ? 'IMP3' : a.q && a.q.IMP2 ? 'IMP2' : 'AUTRE');
+  function vueEffectifs(D) {
+    const P = D.personnel;
+    const e = erreurJeu('Personnel', P); if (e) return e;
+    const A = actifsSecteur(P, st.secteur);
+    const parF = f => A.filter(a => fonctionDe(a) === f).length;
+    const autres = [...new Set(A.map(a => a.s).filter(s => s && !SMPM_SECT.includes(s)))].sort();
+    const secteurs = [...SMPM_SECT.filter(s => !st.secteur || s === st.secteur), ...autres];
+    if (A.some(a => !a.s)) secteurs.push('');
+    const nomS = s => (s ? NOM_SECTEUR[s] || s : 'Sans secteur');
+    const lignes = secteurs.map(s => {
+      const L = A.filter(a => (a.s || '') === s);
+      const o = { s, nom: nomS(s), tot: L.length, L };
+      FONCTIONS.forEach(f => { o[f.id] = L.filter(a => fonctionDe(a) === f.id).length; });
+      return o;
+    });
+    const tous = A.length;
+    const part = v => (tous ? ` · ${pct(v / tous * 100)}` : '');
+    const kp = [
+      kpi('Personnel actif', n0(tous), st.secteur ? `secteur ${esc(NOM_SECTEUR[st.secteur])}` : 'toute l’unité'),
+      ...FONCTIONS.map(f => kpi(f.nom, n0(parF(f.id)), (f.id === 'IMP2' ? 'titulaires de l’IMP2 sans l’IMP3' : f.id === 'IMP3' ? 'titulaires de l’IMP3' : 'IMP1 ou en formation') + part(parF(f.id)))),
+    ];
+    const ratio = l => (l.IMP3 ? n1(l.IMP2 / l.IMP3) : '—');
+    const cartes = [
+      carteHtml('Effectifs par secteur et par fonction', colonnes(lignes.map(l => l.nom), FONCTIONS.map(f => ({ nom: f.court, c: f.c, vals: lignes.map(l => l[f.id]) }))), { large: true, sous: 'Personnel actif, chacun compté à sa fonction la plus élevée' }),
+      carteHtml('Répartition par fonction', segments(FONCTIONS.map(f => ({ l: f.court, v: parF(f.id), c: f.c })))),
+      carteHtml('Chefs d’unité (IMP3) par secteur', barres(lignes.map(l => ({ l: l.nom, v: l.IMP3, s: `${n0(l.tot)} actifs` })), { tri: false, zero: true, autres: false })),
+    ];
+    const tot = { nom: 'Total', tot: tous }; FONCTIONS.forEach(f => { tot[f.id] = parF(f.id); });
+    const tbl = `<section class="dash-card full"><h2>Tableau des effectifs</h2><div class="dash-tbl-wrap"><table class="dash-tbl"><thead><tr><th>Secteur</th><th class="num">Actifs</th>${FONCTIONS.map(f => `<th class="num">${esc(f.court)}</th>`).join('')}<th class="num">IMP2 par IMP3</th></tr></thead>
+      <tbody>${lignes.map(l => `<tr><td>${esc(l.nom)}</td><td class="num">${n0(l.tot)}</td>${FONCTIONS.map(f => `<td class="num">${n0(l[f.id])}</td>`).join('')}<td class="num">${ratio(l)}</td></tr>`).join('')}
+      ${lignes.length > 1 ? `<tr class="dash-tot"><td><strong>Total</strong></td><td class="num"><strong>${n0(tot.tot)}</strong></td>${FONCTIONS.map(f => `<td class="num"><strong>${n0(tot[f.id])}</strong></td>`).join('')}<td class="num"><strong>${ratio(tot)}</strong></td></tr>` : ''}</tbody></table></div></section>`;
+    const ordreF = { IMP3: 0, IMP2: 1, AUTRE: 2 };
+    const libF = id => FONCTIONS.find(f => f.id === id).court;
+    const listes = lignes.filter(l => l.tot).map(l => tableau(`Personnel actif – ${l.nom}`, [
+      { t: 'Spécialiste', f: a => esc(`${a.n} ${a.p || ''}`.trim()) }, { t: 'Fonction', f: a => esc(libF(fonctionDe(a))) },
+    ], l.L.slice().sort((a, b) => ordreF[fonctionDe(a)] - ordreF[fonctionDe(b)] || String(a.n).localeCompare(String(b.n), 'fr')), { cacheVide: true }));
+    return kpis(kp) + grille(cartes) + grille([tbl]) + (listes.length ? titreGroupe('Liste par secteur') + listes.join('') : '');
+  }
+
   // ====================== Inventaires ======================
   function vueInv(D, r, rp) {
     const V = D.inv;
@@ -714,8 +763,10 @@
     const sel = $('#dash-annee');
     sel.innerHTML = ys.map(y => `<option value="${y}">${y}</option>`).join('');
     sel.value = String(st.annee);
-    $('#dash-f-annee').hidden = st.mode !== 'annee';
-    $('#dash-f-du').hidden = $('#dash-f-au').hidden = st.mode !== 'periode';
+    const instant = !!theme().instant;   // Effectifs : photographie du jour, sans période
+    $('#dash-mode').hidden = instant;
+    $('#dash-f-annee').hidden = instant || st.mode !== 'annee';
+    $('#dash-f-du').hidden = $('#dash-f-au').hidden = instant || st.mode !== 'periode';
     const avecSecteur = !['neige', 'speleo'].includes(st.theme);
     $('#dash-f-secteur').hidden = !avecSecteur;
     $('#dash-secteur').value = st.secteur;
@@ -740,12 +791,13 @@
       else if (t.id === 'livrets') html = vueLivrets(D, r, rp);
       else if (t.id === 'neige') html = vueSpecialite(D, r, rp, 'NEIGE');
       else if (t.id === 'speleo') html = vueSpecialite(D, r, rp, 'ISS');
+      else if (t.id === 'eff') html = vueEffectifs(D);
       else html = vueInv(D, r, rp);
     } catch (e) {
       console.error(e);
       html = `<p class="dash-err">Erreur d’affichage : ${esc(e.message)}</p>`;
     }
-    body.innerHTML = `<p class="dash-titre">${t.ico}<strong>${esc(t.nom)}</strong><span>${esc(r.lib)}${st.secteur && !['neige', 'speleo'].includes(t.id) ? ' · secteur ' + esc(NOM_SECTEUR[st.secteur]) : ''}</span></p>${html}`;
+    body.innerHTML = `<p class="dash-titre">${t.ico}<strong>${esc(t.nom)}</strong><span>${esc(t.instant ? 'au ' + fmtDate(auj()) : r.lib)}${st.secteur && !['neige', 'speleo'].includes(t.id) ? ' · secteur ' + esc(NOM_SECTEUR[st.secteur]) : ''}</span></p>${html}`;
     monterCarte();
     const plus = Math.min(...jeux(t).map(s => (cache[s] ? cache[s].t : Date.now())));
     $('#dash-maj').textContent = 'Données du ' + new Date(plus).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
