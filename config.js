@@ -1,5 +1,5 @@
 // URL de déploiement de la Web App Google Apps Script (se termine par /exec)
-// https://script.google.com/macros/s/AKfycbzOoejS1S1AZjHTa8Vw6iUFD4naaDHY51QtB-gNhFEg4AXqtouLvQ8owEbw-Z3dGj7-/exec
+// https://script.google.com/macros/s/AKfycbxrDH-33zuU3Emdr6nlgipsmc_ItjJrI4QAOn6QL4S8kYoEEOy5TOq8XwExG7tVuj_Y/exec
 window.SMPM_CONFIG = {
   // Maintenance : true = application fermée à tous sauf aux administrateurs (écran « Maintenance en cours »).
   // Remettre à false (et incrémenter CACHE dans sw.js) pour rouvrir l'application.
@@ -9,7 +9,7 @@ window.SMPM_CONFIG = {
   // « ign_scan_ws » est la clé générique communiquée par IGN (transitoire) : la remplacer par la clé du SDIS 84
   // créée sur cartes.gouv.fr dès qu'elle existe. Clé visible dans le navigateur : ce n'est pas un secret.
   IGN_SCAN_KEY: 'ign_scan_ws',
-  API_URL: 'https://script.google.com/macros/s/AKfycbzOoejS1S1AZjHTa8Vw6iUFD4naaDHY51QtB-gNhFEg4AXqtouLvQ8owEbw-Z3dGj7-/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbxrDH-33zuU3Emdr6nlgipsmc_ItjJrI4QAOn6QL4S8kYoEEOy5TOq8XwExG7tVuj_Y/exec',
   // Notifications push (Firebase Cloud Messaging) : valeurs publiques de l'application web Firebase
   // (Paramètres du projet > Général > Vos applications) et clé VAPID publique (Cloud Messaging >
   // Certificats Web Push). Laisser vide : les notifications push restent masquées dans l'application.
