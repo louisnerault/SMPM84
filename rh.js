@@ -13,6 +13,10 @@
   const KEY_TOKEN = 'smpm_rh_token';
   const KEY_EMAIL = 'smpm_rh_email';
   const AUTH_ERRORS = ['Session invalide', 'Session expirée', 'Accès révoqué'];
+  // Vue RH du CTD et des administrateurs (menu Administration › Vue RH) : rh.html?vue=admin, avec le jeton de l'application,
+  // tous les centres ; pas de connexion RH ni de déconnexion ici (retour à l'application).
+  const VUE_ADMIN = new URLSearchParams(location.search).get('vue') === 'admin';
+  const KEY_APP_TOKEN = 'smpm_token';
   const MARGE = 0.25;            // zone au-delà du quota : 25 % de la longueur du quota
   const $ = s => document.querySelector(s);
   const store = {
@@ -64,7 +68,8 @@
   function show(v) {
     VIEWS.forEach(x => { $('#rh-view-' + x).hidden = x !== v; });
     document.body.classList.toggle('rh-connecte', v === 'app');
-    $('#rh-logout').hidden = v !== 'app';
+    $('#rh-logout').hidden = v !== 'app' || VUE_ADMIN;
+    $('#rh-retour').hidden = !VUE_ADMIN;
     document.querySelectorAll('.error').forEach(p => { p.textContent = ''; });
     if (v !== 'app') { $('#rh-title').textContent = 'SMPM 84'; $('#rh-sub').textContent = 'Espace RH'; }
     const last = store.get(KEY_EMAIL);
@@ -169,7 +174,7 @@
 
   // ---------- chargement ----------
   async function charger() {
-    const token = store.get(KEY_TOKEN);
+    const token = store.get(VUE_ADMIN ? KEY_APP_TOKEN : KEY_TOKEN);
     const f = $('#rh-filtres');
     $('#rh-state').textContent = S.data ? 'Mise à jour…' : 'Chargement des heures… (cela peut prendre quelques secondes)';
     $('#rh-state').classList.remove('error');
@@ -177,11 +182,13 @@
     try {
       const r = await api('rh_fmpa', { token, du: f.elements.du.value, au: f.elements.au.value });
       S.data = r;
+      if (r.vue_admin) { $('#rh-title').textContent = r.qui || 'Vue RH'; $('#rh-sub').textContent = 'Vue RH · tous les centres'; }
       fixerPeriode(r.du, r.au);
       $('#rh-state').textContent = '';
       remplirCentres();
       rendre();
     } catch (x) {
+      if (VUE_ADMIN) { $('#rh-state').textContent = AUTH_ERRORS.includes(x.message) ? 'Session de l’application terminée : reconnectez-vous à l’application SMPM 84.' : x.message; $('#rh-state').classList.add('error'); return; }
       if (AUTH_ERRORS.includes(x.message)) { deconnecter(); $('#rh-form-login .error').textContent = x.message === 'Accès révoqué' ? 'Votre accès a été révoqué.' : 'Session terminée : reconnectez-vous.'; return; }
       $('#rh-state').textContent = x.message;
       $('#rh-state').classList.add('error');
@@ -190,11 +197,11 @@
 
   function remplirCentres() {
     const d = S.data;
-    $('#rh-centres').textContent = (d.centres.length > 1 ? 'Centres : ' : 'Centre : ') + d.centres.join(', ')
+    $('#rh-centres').textContent = (d.vue_admin ? `Vue RH du CTD et des administrateurs : ${d.centres.length} centres` : (d.centres.length > 1 ? 'Centres : ' : 'Centre : ') + d.centres.join(', '))
       + ` · période du ${fmtD(d.du)} au ${fmtD(d.au)}` + (d.annees > 1 ? ` (${d.annees} années civiles : quotas annuels additionnés)` : '');
     const sc = $('#rh-centre'), avant = sc.value;
     sc.hidden = d.centres.length < 2;
-    sc.replaceChildren(new Option('Tous mes centres', ''), ...d.centres.map(c => new Option(c, c)));
+    sc.replaceChildren(new Option(d.vue_admin ? 'Tous les centres' : 'Tous mes centres', ''), ...d.centres.map(c => new Option(c, c)));
     if (d.centres.includes(avant)) sc.value = avant;
   }
 
@@ -357,6 +364,17 @@
 
   // ---------- démarrage ----------
   (async () => {
+    if (VUE_ADMIN) {
+      show('app');
+      $('#rh-title').textContent = 'Vue RH';
+      $('#rh-sub').textContent = 'Tous les centres';
+      if (!store.get(KEY_APP_TOKEN)) {
+        $('#rh-state').textContent = 'Connectez-vous d’abord à l’application SMPM 84 (CTD ou administrateur).';
+        $('#rh-state').classList.add('error');
+        return;
+      }
+      return charger();
+    }
     const token = store.get(KEY_TOKEN);
     if (!token) return show('login');
     show('loading');

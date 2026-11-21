@@ -1550,6 +1550,8 @@
   $('#nav-admin .nav-group-btn').addEventListener('click', e => {
     setAdminGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
   });
+  // Vue RH (CTD, administrateurs) : l'espace RH dans la même fenêtre (même stockage, y compris application installée)
+  $('#nav-vue-rh').addEventListener('click', () => { location.href = 'rh.html?vue=admin'; });
 
   $('#form-login').addEventListener('submit', async e => {
     e.preventDefault();

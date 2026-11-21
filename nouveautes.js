@@ -22,6 +22,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 191, titre: 'Vue RH', texte: 'Menu « Administration › Vue RH » : vous voyez l’espace RH comme un responsable RH, pour tous les centres — barres de quota FMPA et heures chef de section, filtre par période, détail des dates.', pour: ['ctd', 'admin'] },
     { v: 190, titre: 'Administration › RH', texte: 'Les responsables RH se gèrent désormais dans le nouveau menu « Administration › RH » : nom, prénom, e-mail et centres gérés. Ils se connectent sur un espace séparé (adresse dans leur invitation) où chaque agent a une barre de progression sur son quota, repos et temps de travail distingués, dépassement en rouge, et une seconde barre pour les heures des chefs de section.', pour: ['ctd', 'admin'] },
     { v: 189, titre: 'Accès RH', texte: 'Nouvelle rubrique « Accès RH » (Chefs de section) : créez un accès pour le service RH d’un centre. Il reçoit une invitation par e-mail et consulte, en lecture seule, les FMPA suivies par les agents SMPM de ses centres (date, durée, lieu, repos ou temps de travail).', pour: ['ctd', 'admin'] },
     { v: 185, titre: 'Planning des FMPA : secteur à définir', texte: 'Le secteur n’est plus obligatoire à la création d’une date : laissez « Secteur à définir ». Il est fixé quand vous validez le CU RP, par défaut celui du CU RP, ou celui que vous choisissez au-dessus de la liste des candidats.', pour: ['ctd', 'admin'] },
