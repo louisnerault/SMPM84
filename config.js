@@ -3,7 +3,7 @@
 window.SMPM_CONFIG = {
   // Maintenance : true = application fermée à tous sauf aux administrateurs (écran « Maintenance en cours »).
   // Remettre à false (et incrémenter CACHE dans sw.js) pour rouvrir l'application.
-  MAINTENANCE: true,
+  MAINTENANCE: false,
   MAINTENANCE_MESSAGE: 'L’application est en maintenance. Elle sera de nouveau disponible très prochainement.',
   // Carte IGN SCAN 25 (1:25 000) : diffusée par la Géoplateforme sur un accès « privé » qui demande une clé.
   // « ign_scan_ws » est la clé générique communiquée par IGN (transitoire) : la remplacer par la clé du SDIS 84
