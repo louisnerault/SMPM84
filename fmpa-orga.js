@@ -294,12 +294,12 @@
         ((S.data && S.data.fmpa) || []).some(f => f.date.slice(0, 4) === y && f.phase !== 'annulee'));
       ans.forEach(y => {
         const h = Q.annees[y];
-        const box = el('div', { class: 'orga-encart' }, el('strong', { text: 'Mon quota ' + y + ' (' + (moi.niveau || '') + ')' }),
+        const box = el('div', { class: 'orga-encart' }, el('strong', { text: 'Mon quota SMPM ' + y + ' (' + [moi.niveau, moi.sssm ? 'SSSM' : ''].filter(Boolean).join(' · ') + ')' }),
           ligneQuota('Année', h.tot, Q.quota, false));
         if (y > an || mois <= 6) box.append(ligneQuota('1er semestre', h.s1, Q.seuilS1, true));
         if (h.tot >= Q.quota) box.append(el('p', { text: 'Quota atteint : plus d’inscription possible aux FMPA libres de ' + y + '.' }));
         else if ((y > an || mois <= 6) && h.s1 >= Q.seuilS1) box.append(el('p', { text: 'Limite du 1er semestre dépassée : vous pourrez vous inscrire aux FMPA du 2e semestre.' }));
-        box.append(el('p', { class: 'muted small', text: 'FMPA réalisées et à venir (inscriptions, FMPA départementales, encadrements). Neige, ISS et SSH ont leurs propres quotas.' }));
+        box.append(el('p', { class: 'muted small', text: 'Même quota que dans « Mon livret »' + (moi.sssm ? ' (SSSM compris)' : '') + '. FMPA réalisées et à venir (inscriptions, FMPA départementales, encadrements). Neige, ISS et SSH ont leurs propres quotas.' }));
         out.push(box);
       });
     }
