@@ -28,6 +28,7 @@
   const nf = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 });
   const fmtH = n => nf.format(n || 0) + ' h';
   const fmtD = d => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); return m ? `${m[3]}/${m[2]}/${m[1]}` : d; };
+  const CAT = { SMPM: 'SMPM', NEIGE: 'Neige', ISS: 'ISS' };
   const SECT = { NORD: 'Nord', SUD: 'Sud', CENTRE: 'Centre', NEIGE: 'Neige', ISS: 'ISS', SSH: 'SSH', CAN: 'Canyon', DEPT: 'Départementale' };
   const S = { data: null, email: '', ouverts: new Set() };
 
@@ -209,6 +210,7 @@
   const totalB = b => (b ? b.repos + b.travail : 0);
   const depasse = b => !!b && b.quota > 0 && totalB(b) > b.quota;
   const part = b => (b && b.quota > 0 ? totalB(b) / b.quota : 0);
+  const barresDe = a => [a.fmpa, a.neige, a.iss, a.cds].filter(Boolean);
 
   function seg(cls, frac, titre) {
     const s = el('span', { class: 'rh-seg ' + cls, title: titre });
@@ -238,7 +240,7 @@
       txt = [
         el('strong', { text: `${fmtH(tot)} / ${fmtH(b.quota)}` }),
         el('span', { class: 'muted', text: ` (${Math.round(100 * tot / b.quota)} %)` }),
-        over > 0 ? el('span', { class: 'rh-over-txt', text: ` · dépassement +${fmtH(over)}` + (over > overVu ? ' ▶' : '') }) : null,
+        over > 0 ? el('span', { class: 'rh-over-txt', title: 'Dépassement du quota', text: ` +${fmtH(over)}` + (over > overVu ? ' ▶' : '') }) : null,
       ];
     } else {
       const echelle = Math.max(tot, 1) / 0.8;
@@ -251,15 +253,15 @@
         'aria-label': `${libelle} : ${fmtH(tot)} sur ${b.quota ? fmtH(b.quota) : 'aucun quota'}, dont ${fmtH(b.repos)} en repos et ${fmtH(b.travail)} en temps de travail` },
         ...enfants),
       el('span', { class: 'rh-barre-txt' }, ...txt,
-        el('span', { class: 'rh-barre-split muted', text: `repos ${fmtH(b.repos)} · TT ${fmtH(b.travail)}` })));
+        el('span', { class: 'rh-barre-split muted', text: ` · R ${fmtH(b.repos)} · TT ${fmtH(b.travail)}` })));
   }
 
   // ---------- liste ----------
   function filtres() {
     const q = fold($('#rh-search').value), c = $('#rh-centre').value, tri = $('#rh-tri').value;
     const l = S.data.agents.filter(a => (!c || fold(a.affectation) === fold(c)) && (!q || fold(a.nom + ' ' + a.prenom).includes(q)));
-    const maxPart = a => Math.max(part(a.fmpa), part(a.cds));
-    const dep = a => Number(depasse(a.fmpa) || depasse(a.cds));
+    const maxPart = a => Math.max(...barresDe(a).map(part));
+    const dep = a => Number(barresDe(a).some(depasse));
     if (tri === 'quota') l.sort((a, b) => maxPart(b) - maxPart(a));
     if (tri === 'depasse') l.sort((a, b) => (dep(b) - dep(a)) || maxPart(b) - maxPart(a));
     return l;
@@ -270,9 +272,9 @@
   function rendre() {
     const list = filtres();
     const t = list.reduce((s, a) => {
-      s.r += a.fmpa.repos + a.fmpa.horsQuota.repos; s.t += a.fmpa.travail + a.fmpa.horsQuota.travail;
+      [a.fmpa, a.fmpa.horsQuota, a.neige, a.iss].filter(Boolean).forEach(b => { s.r += b.repos; s.t += b.travail; });
       if (a.cds) { s.cr += a.cds.repos; s.ct += a.cds.travail; s.c = true; }
-      if (depasse(a.fmpa) || depasse(a.cds)) s.d++;
+      if (barresDe(a).some(depasse)) s.d++;
       return s;
     }, { r: 0, t: 0, cr: 0, ct: 0, d: 0, c: false });
     $('#rh-totaux').replaceChildren(...[
@@ -302,7 +304,7 @@
         el('tbody', null, f.details.map(d => el('tr', null,
           el('td', { text: fmtD(d.date) }), el('td', { text: fmtH(d.heures) }), el('td', null, chip(d.position)),
           el('td', { text: d.lieu || '—' }), el('td', { text: SECT[d.secteur] || d.secteur || '—' }),
-          el('td', { text: d.quota ? 'compté' : 'hors quota', class: d.quota ? '' : 'muted' }))))))
+          el('td', { text: CAT[d.cat] || (d.quota ? 'SMPM' : 'hors quota'), class: d.quota ? '' : 'muted' }))))))
       : el('p', { class: 'muted small', text: 'Aucune FMPA sur la période.' }));
     if (a.cds) {
       const n = a.cds.details.length;
@@ -327,9 +329,11 @@
       el('div', { class: 'rh-agent-id' },
         el('strong', { text: `${a.nom} ${a.prenom}` }),
         el('span', { class: 'muted small', text: [a.grade, a.niveau, a.affectation].filter(Boolean).join(' · ') }),
-        hq ? el('span', { class: 'muted small', text: `+ ${fmtH(hq)} de FMPA hors quota (repos ${fmtH(a.fmpa.horsQuota.repos)}, TT ${fmtH(a.fmpa.horsQuota.travail)})` }) : null),
+        hq ? el('span', { class: 'muted small', text: `+ ${fmtH(hq)} de FMPA hors quota (SSH, Canyon…)` }) : null),
       el('div', { class: 'rh-agent-barres' },
-        barre('FMPA', a.fmpa),
+        barre('FMPA SMPM', a.fmpa),
+        a.neige ? barre('FMPA Neige', a.neige) : null,
+        a.iss ? barre('FMPA ISS', a.iss) : null,
         a.cds ? barre('Chef de section', a.cds) : null),
       el('span', { class: 'rh-chev', 'aria-hidden': 'true', text: '›' }));
     btn.addEventListener('click', () => {
@@ -338,16 +342,16 @@
       btn.setAttribute('aria-expanded', String(o));
       if (o) S.ouverts.add(cle); else S.ouverts.delete(cle);
     });
-    return el('li', { class: 'rh-agent' + (depasse(a.fmpa) || depasse(a.cds) ? ' rh-agent-over' : '') }, btn, corps);
+    return el('li', { class: 'rh-agent' + (barresDe(a).some(depasse) ? ' rh-agent-over' : '') }, btn, corps);
   }
 
   function csv() {
     const esc = v => { const s = String(v === null || v === undefined ? '' : v); return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
     const h = n => String(n).replace('.', ',');
-    const lignes = [['Nom', 'Prénom', 'Grade', 'Niveau', 'Centre', 'Type', 'Date', 'Durée (h)', 'Position', 'Lieu', 'Secteur', 'Compté dans le quota']];
+    const lignes = [['Nom', 'Prénom', 'Grade', 'Niveau', 'Centre', 'Type', 'Date', 'Durée (h)', 'Position', 'Lieu', 'Secteur', 'Quota']];
     filtres().forEach(a => {
       const base = [a.nom, a.prenom, a.grade, a.niveau, a.affectation];
-      a.fmpa.details.forEach(d => lignes.push(base.concat(['FMPA', fmtD(d.date), h(d.heures), d.position, d.lieu, SECT[d.secteur] || d.secteur, d.quota ? 'oui' : 'non'])));
+      a.fmpa.details.forEach(d => lignes.push(base.concat(['FMPA', fmtD(d.date), h(d.heures), d.position, d.lieu, SECT[d.secteur] || d.secteur, CAT[d.cat] || (d.quota ? 'SMPM' : 'hors quota')])));
       if (a.cds) a.cds.details.forEach(d => lignes.push(base.concat(['Chef de section', fmtD(d.date), h(d.heures), d.position, '', '', ''])));
     });
     // point-virgule et BOM : ouverture directe dans Excel en français
