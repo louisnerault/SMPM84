@@ -1,7 +1,8 @@
 // URL de déploiement de la Web App Google Apps Script (se termine par /exec)
 // https://script.google.com/macros/s/AKfycbxrDH-33zuU3Emdr6nlgipsmc_ItjJrI4QAOn6QL4S8kYoEEOy5TOq8XwExG7tVuj_Y/exec
 window.SMPM_CONFIG = {
-  // Maintenance : true = application fermée à tous sauf aux administrateurs (écran « Maintenance en cours »).
+  // Maintenance de SECOURS (sans serveur) : la voie normale est Administration › Maintenance dans l'application.
+  // true = application fermée à tous sauf aux administrateurs (écran « Maintenance en cours »).
   // Remettre à false (et incrémenter CACHE dans sw.js) pour rouvrir l'application.
   MAINTENANCE: false,
   MAINTENANCE_MESSAGE: 'L’application est en maintenance. Elle sera de nouveau disponible très prochainement.',

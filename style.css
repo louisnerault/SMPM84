@@ -2471,3 +2471,52 @@ a.rh-logout { text-decoration: none; }
 .rha-centres { display: flex; flex-direction: column; max-height: 40vh; overflow-y: auto; margin-top: 6px; }
 .rha-centre { min-height: 40px; }
 .rha-centre[hidden] { display: none; }
+
+/* ---------- Maintenance : écran des membres (view-maintenance) ---------- */
+.maint { text-align: center; padding: 8px 4px 4px; }
+.maint h1 { margin: 6px 0 8px; }
+.maint-msg { font-weight: 600; margin: 0 0 6px; white-space: pre-line; }
+.maint-anim { position: relative; width: 200px; height: 170px; margin: 4px auto 0; }
+.maint-logo { position: absolute; left: 44px; top: 30px; width: 112px; height: 112px; z-index: 2;
+  filter: drop-shadow(0 6px 10px rgba(19,34,56,.18)); animation: maint-bob 3.2s ease-in-out infinite; }
+.maint-gear { position: absolute; color: var(--primary); opacity: .9; }
+.maint-hole { fill: var(--card); }
+.maint-gear-a { width: 74px; height: 74px; left: 2px; top: 4px; animation: maint-spin 6s linear infinite; }
+.maint-gear-b { width: 54px; height: 54px; right: 6px; bottom: 6px; color: var(--muted); animation: maint-spin 4.4s linear infinite reverse; }
+.maint-wrench { position: absolute; width: 58px; height: 58px; right: 8px; top: 2px; z-index: 3; color: #e2a400;
+  transform-origin: 18% 82%; animation: maint-turn 1.6s ease-in-out infinite; filter: drop-shadow(0 2px 3px rgba(0,0,0,.25)); }
+.maint-spark { position: absolute; z-index: 3; width: 7px; height: 7px; border-radius: 50%; background: #ffcc33;
+  right: 64px; top: 52px; opacity: 0; animation: maint-spark 1.6s ease-out infinite; }
+.maint-spark.s2 { animation-delay: .12s; background: #ff9f1a; }
+.maint-spark.s3 { animation-delay: .24s; width: 5px; height: 5px; }
+.maint-ruban { height: 10px; max-width: 220px; margin: 2px auto 10px; border-radius: 5px;
+  background: repeating-linear-gradient(-45deg, #f2b705 0 12px, #1b1b1b 12px 24px); background-size: 34px 100%;
+  animation: maint-ruban 1.2s linear infinite; opacity: .85; }
+.maint .primary { margin-top: 10px; }
+@keyframes maint-spin { to { transform: rotate(360deg); } }
+@keyframes maint-bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-6px) rotate(2deg); } }
+@keyframes maint-turn { 0%, 100% { transform: rotate(0); } 45% { transform: rotate(-38deg); } 60% { transform: rotate(-30deg); } }
+@keyframes maint-spark {
+  0%, 40% { opacity: 0; transform: translate(0, 0) scale(1); }
+  50% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-22px, 18px) scale(.3); }
+}
+@keyframes maint-ruban { to { background-position: 34px 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .maint-logo, .maint-gear, .maint-wrench, .maint-spark, .maint-ruban { animation: none; }
+}
+
+/* Bandeau des administrateurs et page Administration › Maintenance */
+.maint-banner { border-color: #e2a400; background: #fff6d6; color: #5a4300; }
+.maint-banner .link { color: inherit; white-space: nowrap; }
+.mnt-carte { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; margin: 12px 0 4px; }
+.mnt-carte p { margin: 0; }
+.mnt-carte-titre { font-weight: 700; font-size: 1.05rem; margin-bottom: 4px !important; }
+.mnt-carte.is-on { border-color: #e2a400; background: #fff6d6; color: #5a4300; }
+.mnt-carte.is-off { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 8%, var(--card)); }
+.mnt-check { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.mnt-check input { width: auto; margin: 0; }
+#mnt-form textarea { display: block; width: 100%; box-sizing: border-box; margin-top: 6px; padding: 12px; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; resize: vertical; }
+#mnt-go.mnt-danger { background: #b45309; border-color: #b45309; }
+#mnt-msg-maj { display: block; margin: 10px auto 0; }
+#mnt-msg-maj[hidden] { display: none; }

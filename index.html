@@ -151,6 +151,7 @@
           <button type="button" id="nav-vue-rh"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V10M10 19V5M16 19v-7M21 19H3"/></svg>Vue RH</button>
         </div>
       </div>
+      <button data-page="admin-maintenance" id="nav-maint" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Maintenance<span class="pending-dot maint-dot" title="Maintenance en cours" hidden></span></button>
     </div>
   </nav>
   <div class="drawer-foot">
@@ -264,20 +265,30 @@
     <p class="center"><button class="link" data-goto="resend">Renvoyer un code</button></p>
   </section>
 
-  <!-- Maintenance (config.js : MAINTENANCE) : tous sauf les administrateurs -->
+  <!-- Maintenance : tous sauf les administrateurs (Administration › Maintenance, Maintenance.gs ; secours : config.js MAINTENANCE) -->
   <section id="view-maintenance" class="view" hidden>
-    <div class="login-status">
-      <div class="login-icon" aria-hidden="true">🛠️</div>
-      <p class="login-title">Maintenance en cours</p>
-      <p class="muted" id="maintenance-msg"></p>
+    <div class="maint">
+      <div class="maint-anim" aria-hidden="true">
+        <svg viewBox="-20 -20 40 40" class="maint-gear maint-gear-a"><circle r="14.5" fill="none" stroke="currentColor" stroke-width="7" stroke-dasharray="5.7 5.7"/><circle r="12" fill="currentColor"/><circle r="4.5" class="maint-hole"/></svg>
+        <svg viewBox="-20 -20 40 40" class="maint-gear maint-gear-b"><circle r="14.5" fill="none" stroke="currentColor" stroke-width="7" stroke-dasharray="5.7 5.7"/><circle r="12" fill="currentColor"/><circle r="4.5" class="maint-hole"/></svg>
+        <img src="assets/ecusson-132.png" alt="" class="maint-logo" width="112" height="112">
+        <svg viewBox="0 0 24 24" class="maint-wrench" fill="currentColor" stroke="none"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        <span class="maint-spark s1"></span><span class="maint-spark s2"></span><span class="maint-spark s3"></span>
+      </div>
+      <div class="maint-ruban" aria-hidden="true"></div>
+      <h1>Maintenance en cours</h1>
+      <p id="maintenance-msg" class="maint-msg"></p>
+      <p id="maintenance-depuis" class="muted small"></p>
+      <p class="muted small">L’application est indisponible pendant la maintenance. Vous serez prévenu dès son retour&nbsp;; cette page se met aussi à jour toute seule.</p>
       <button type="button" class="primary" id="maintenance-retry">Réessayer</button>
+      <p id="maintenance-etat" class="muted small" role="status" aria-live="polite"></p>
       <p class="center"><button type="button" class="link" id="maintenance-logout">Se déconnecter</button></p>
     </div>
   </section>
 
   <!-- Application -->
   <section id="view-app" class="view" hidden>
-    <div id="maintenance-banner" class="flash" role="status" hidden>🛠️ Mode maintenance actif : l’application est fermée à tous sauf aux administrateurs.</div>
+    <div id="maintenance-banner" class="flash maint-banner" role="status" hidden><span>🛠️ <strong>Mode maintenance actif</strong> : l’application est fermée à tous sauf aux administrateurs.</span><button type="button" class="link" data-page="admin-maintenance">Gérer</button></div>
     <!-- Message après une action (ex. intervention envoyée), affiché sur la page d'arrivée -->
     <div id="flash" class="flash" role="status" aria-live="polite" hidden></div>
     <!-- Accueil du mode intervention -->
@@ -954,6 +965,23 @@
         </div>
       </div>
     </div>
+    <!-- Administration › Maintenance : administrateurs (maintenance.js, Maintenance.gs dans le dépôt privé) -->
+    <div id="tab-admin-maintenance" hidden>
+      <h1>Maintenance</h1>
+      <p class="muted small">Pendant une maintenance, seuls les administrateurs utilisent l’application. Les autres membres voient une page « Maintenance en cours » avec votre message ; leurs saisies hors ligne restent sur leur téléphone et partent au retour de l’application.</p>
+      <div id="mnt-carte" class="mnt-carte"></div>
+      <form id="mnt-form" autocomplete="off">
+        <label>Message affiché aux utilisateurs
+          <textarea name="message" rows="3" maxlength="400" placeholder="Ex. : mise à jour du planning des FMPA, retour prévu vers 16 h."></textarea>
+        </label>
+        <label class="mnt-check"><input type="checkbox" name="notifier" checked> <span id="mnt-notif-lib">Notifier les utilisateurs</span></label>
+        <p class="muted small" id="mnt-notif-aide"></p>
+        <p class="error" role="alert"></p>
+        <button type="submit" class="primary" id="mnt-go">Mettre l’application en maintenance</button>
+        <button type="button" class="link" id="mnt-msg-maj" hidden>Mettre à jour le message seulement</button>
+      </form>
+      <p id="mnt-state" class="muted small" role="status" aria-live="polite"></p>
+    </div>
     <!-- Administration › RH : comptes des responsables RH extérieurs (rh-admin.js, Rh.gs dans le dépôt privé) -->
     <div id="tab-admin-rh" hidden>
       <h1>Responsables RH</h1>
@@ -1110,6 +1138,7 @@
 <script src="csh.js"></script>
 <script src="personnel.js"></script>
 <script src="rh-admin.js"></script>
+<script src="maintenance.js"></script>
 <script src="dashboard.js"></script>
 <script src="nouveautes.js"></script>
 <script src="app.js"></script>

@@ -9,6 +9,8 @@
   const KEY_MODE = 'smpm_mode';
   const KEY_THEME = 'smpm_theme';   // préférence de l'appareil : conservée à la déconnexion
   const AUTH_ERRORS = ['Session invalide', 'Session expirée', 'Accès révoqué', 'Compte inactif'];
+  // Refus du serveur pendant une maintenance (Maintenance.gs, MAINT.ERREUR) : écran « Maintenance en cours »
+  const MAINT_ERR = 'Application en maintenance';
   // Fonction affichée sous le nom. Une personne qui cumule plusieurs casquettes
   // se voit attribuer la plus haute : c'est le rôle renvoyé par session.role.
   const ROLES = {
@@ -89,7 +91,8 @@
     if (name === 'interv-toutes') return canAllInterv(session);
     if (name.startsWith('interv-')) return canIntervene(session);
     if (name === 'cs-heures-toutes') return canAllCsHeures(session);
-    if (name === 'admin-rh') return canEditAllFmpa(session);   // Administration › RH : CTD et administrateurs (Rh.gs)
+    if (name === 'admin-rh') return canEditAllFmpa(session);
+    if (name === 'admin-maintenance') return isAdm(session);    // Administration › Maintenance : administrateurs (Maintenance.gs)   // Administration › RH : CTD et administrateurs (Rh.gs)
     if (CS_PAGES.includes(name)) return canAllFmpa(session);
     return true;
   }
@@ -236,6 +239,7 @@
       for (;;) {
         try { return await apiCall(action, payload, opts); }
         catch (e) {
+          if (e && e.message === MAINT_ERR) setTimeout(entrerMaintenance, 0);
           if (!(e instanceof NetworkError) || opts.noRetry || ECRITURES.test(action)) throw e;
           // Raté passager (requête coupée quand l'appli passe en arrière-plan, page d'erreur Google,
           // serveur saturé un instant) : jusqu'à 3 nouveaux essais automatiques avant de proposer « Réessayer ».
@@ -520,6 +524,7 @@
     CS_PAGES.forEach(p => { $('#tab-' + p).hidden = name !== p; });
     if (name === 'cs-heures-toutes') $('#tab-cs-heures').hidden = false;
     $('#tab-admin-rh').hidden = name !== 'admin-rh';
+    $('#tab-admin-maintenance').hidden = name !== 'admin-maintenance';
     $('#tab-bug').hidden = name !== 'bug';
     $('#tab-accueil').hidden = name !== 'accueil';
     $('#tab-annuaire').hidden = name !== 'annuaire';
@@ -550,7 +555,8 @@
     if (name.startsWith('cs-heures') && window.SMPM_CSH) window.SMPM_CSH.open(name);
     if (name === 'cs-specialistes' && window.SMPM_PERSONNEL) window.SMPM_PERSONNEL.open();
     if (name === 'admin-rh' && window.SMPM_RH_ADMIN) window.SMPM_RH_ADMIN.open();
-    if (name.startsWith('admin-')) setAdminGroup(true);
+    if (name === 'admin-maintenance' && window.SMPM_MAINT) window.SMPM_MAINT.open();
+    if (name === 'admin-rh') setAdminGroup(true);
     document.body.classList.toggle('page-dash', name === 'cs-tableau');
     if (window.SMPM_DASH) { if (name === 'cs-tableau') window.SMPM_DASH.open(); else window.SMPM_DASH.close(); }
     if (name === 'livret-remplir' && window.SMPM_THEMES) window.SMPM_THEMES.open();
@@ -792,6 +798,8 @@
   // explicit : déconnexion volontaire (bouton), tout est effacé de l'appareil ;
   // sinon (session expirée) les déclarations de FMPA non envoyées sont conservées
   function logout(explicit) {
+    maintBloque = false;
+    clearInterval(maintTimer);
     if (window.SMPM_PUSH) window.SMPM_PUSH.reset(store.get(KEY_TOKEN));   // avant la suppression du jeton
     if (window.SMPM_NOTIFS) window.SMPM_NOTIFS.reset();
     store.del(KEY_TOKEN);
@@ -850,6 +858,7 @@
     } catch (e) {
       if (e instanceof NetworkError) { prefillEmail(); return show('login'); }
       if (AUTH_ERRORS.includes(e.message)) { logout(); return; }
+      if (e.message === MAINT_ERR) return entrerMaintenance();
       prefillEmail();
       show('login');
     }
@@ -870,6 +879,7 @@
         const r = await api('boot', { token });
         const data = r.me;
         applyFonction(data, r.fonction);
+        data.maintenance = r.maintenance || null;     // état de la maintenance (bandeau des administrateurs)
         return [data, (r.options && r.options.ok) ? r.options : oldOptions];
       } catch (e) {
         if (e.message !== 'Action inconnue') throw e;
@@ -931,16 +941,71 @@
     gotoPage(p);
   }
 
-  // Maintenance (config.js) : application fermée à tous sauf aux administrateurs.
+  // ---------- maintenance ----------
+  // Ouverte depuis Administration › Maintenance (Maintenance.gs : le serveur refuse alors toute action aux
+  // non-administrateurs) ; secours sans serveur : config.js › MAINTENANCE.
   // Les saisies hors ligne restent sur l'appareil : elles partiront à la réouverture.
-  const enMaintenance = () => !!(window.SMPM_CONFIG && window.SMPM_CONFIG.MAINTENANCE);
-  function enterApp(data, options, offline) {
-    if (enMaintenance() && !isAdm(data && data.session)) {
-      $('#maintenance-msg').textContent = window.SMPM_CONFIG.MAINTENANCE_MESSAGE || 'L’application est en maintenance.';
-      show('maintenance');
-      return;
+  const maintConfig = () => !!(window.SMPM_CONFIG && window.SMPM_CONFIG.MAINTENANCE);
+  const maintServeur = () => !!(state.data && state.data.maintenance && state.data.maintenance.actif);
+  function majBandeauMaint() {
+    const on = maintConfig() || maintServeur();
+    $('#maintenance-banner').hidden = !on;
+    const dot = document.querySelector('#nav-maint .maint-dot');
+    if (dot) dot.hidden = !on;
+  }
+  let maintTimer = null;
+  let maintBloque = false;     // écran affiché : on n'en sort que par un rechargement (maintenance terminée)
+  function dateHeure(iso) {
+    const d = new Date(iso);
+    if (!iso || isNaN(d)) return '';
+    return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  }
+  function afficherMaint(m) {
+    const msg = (m && m.message) || (maintConfig() && window.SMPM_CONFIG.MAINTENANCE_MESSAGE) || 'L’application est en cours de maintenance.';
+    $('#maintenance-msg').textContent = msg;
+    const d = m && dateHeure(m.depuis);
+    $('#maintenance-depuis').textContent = d ? 'Depuis le ' + d + '.' : '';
+  }
+  // Interroge le serveur (sans jeton, action toujours permise) : recharge l'application si la maintenance est finie
+  async function verifierMaint(manuel) {
+    if (maintConfig()) return false;
+    const etat = $('#maintenance-etat');
+    if (manuel) etat.textContent = 'Vérification…';
+    try {
+      const r = await apiCall('maintenance_get', {}, { timeout: 30000 });
+      const m = r.maintenance || {};
+      if (!m.actif) {
+        etat.textContent = 'L’application est de nouveau disponible…';
+        location.reload();
+        return true;
+      }
+      afficherMaint(m);
+      if (manuel) etat.textContent = 'La maintenance est toujours en cours. Merci de votre patience.';
+    } catch (e) {
+      if (manuel) etat.textContent = 'Vérification impossible pour le moment' + (navigator.onLine ? '.' : ' (téléphone hors ligne).');
     }
-    $('#maintenance-banner').hidden = !enMaintenance();
+    return false;
+  }
+  function entrerMaintenance(m) {
+    if (state.data && isAdm(state.data.session) && !maintConfig()) return;   // l'administrateur n'est jamais bloqué
+    afficherMaint(m || null);
+    maintBloque = true;
+    if (!$('#view-maintenance').hidden) return;
+    if (window.SMPM_NOTIFS) window.SMPM_NOTIFS.close();
+    closeMenu();
+    show('maintenance');
+    $('#maintenance-etat').textContent = '';
+    clearInterval(maintTimer);
+    maintTimer = setInterval(() => { if (document.visibilityState === 'visible' && navigator.onLine) verifierMaint(false); }, 60000);
+    verifierMaint(false);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && !$('#view-maintenance').hidden) verifierMaint(false);
+  });
+  function enterApp(data, options, offline) {
+    if ((maintConfig() || maintBloque) && !isAdm(data && data.session)) { state.data = data; return entrerMaintenance(); }
+    if (data && data.maintenance && data.maintenance.actif && !isAdm(data.session)) { state.data = data; return entrerMaintenance(data.maintenance); }
+    clearInterval(maintTimer);
     const wasInApp = !$('#view-app').hidden;
     state.data = data;
     state.options = options;
@@ -1432,6 +1497,8 @@
     $('#nav-interv-all').hidden = !canAllInterv(session);
     $('#nav-csh-all').hidden = !canAllCsHeures(session);
     $('#nav-sec-admin').hidden = !canEditAllFmpa(session);
+    $('#nav-maint').hidden = !isAdm(session);
+    majBandeauMaint();
     $('#home-interv-new').hidden = !canIntervene(session);
 
     const form = $('#form-profil');
@@ -1515,7 +1582,8 @@
     logout(true);
   });
   $('#btn-menu').addEventListener('click', openMenu);
-  $('#maintenance-retry').addEventListener('click', () => location.reload());
+  $('#maintenance-retry').addEventListener('click', () => verifierMaint(true));
+  $('#maintenance-banner .link').addEventListener('click', () => gotoPage('admin-maintenance'));
   $('#maintenance-logout').addEventListener('click', () => logout(true));
   $('#btn-identity').addEventListener('click', () => gotoPage('infos'));
   $('#btn-intervention').addEventListener('click', toggleMode);
@@ -1676,6 +1744,15 @@
     gradeChoices: current => gradeChoices(state.options && state.options.grades, current),
     affectations: () => (state.options && state.options.affectations) || [],
     invGerer: () => !!state.data && canInvGerer(state.data.session),
+    // Administration › Maintenance (maintenance.js) : état reçu à l'ouverture, mis à jour après chaque bascule
+    maintenance: () => (state.data && state.data.maintenance) || null,
+    setMaintenance: m => {
+      if (!state.data) return;
+      state.data.maintenance = m || null;
+      const c = store.getJSON(KEY_CACHE);
+      if (c && c.data) { c.data.maintenance = state.data.maintenance; store.set(KEY_CACHE, JSON.stringify(c)); }
+      majBandeauMaint();
+    },
     poiDroits: () => ({ creer: !!state.data && canPoiCreate(state.data.session), modifier: !!state.data && canPoiEdit(state.data.session), gerer: !!state.data && canPoiAdmin(state.data.session) }),
   };
 
