@@ -2387,3 +2387,28 @@ button.dash-agent { background: none; border: 0; padding: 0; margin: 0; width: a
 .dash-agent-c > span:first-child { color: var(--muted); font-size: .8rem; }
 .dash-agent-c .pastille { align-self: flex-start; }
 .dash-agent-somme td { font-weight: 700; border-top: 1px solid var(--line); }
+
+/* ---------- Espace RH (rh.html, rh.js) et gestion des accès RH (rh-admin.js) ---------- */
+.rh-page #rh-view-app h1 { margin-top: 4px; }
+.rh-totaux { display: grid; grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)); gap: 6px; margin: 0 0 12px; }
+.rh-tuile { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; display: flex; flex-direction: column; gap: 2px; }
+.rh-tuile strong { font-size: 1.25rem; }
+.rh-tuile span { font-size: .8rem; color: var(--muted); }
+.rh-tuile.rh-repos strong { color: #1a7f37; }
+.rh-tuile.rh-tt strong { color: var(--primary); }
+.rh-agent { padding: 0; overflow: hidden; }
+.rh-agent-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: 56px; padding: 12px; background: none; border: 0; color: inherit; text-align: left; cursor: pointer; }
+.rh-agent-btn[aria-expanded="true"] { border-bottom: 1px solid var(--line); }
+.rh-agent > .ann-meta { padding: 0 12px 12px; }
+.rh-table-wrap { overflow-x: auto; padding: 4px 8px 10px; }
+.rh-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.rh-table th, .rh-table td { padding: 6px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.rh-table td:nth-child(4) { white-space: normal; min-width: 8em; }
+.rh-table th { color: var(--muted); font-weight: 600; }
+.rh-chip-repos { background: #e8f6ec; color: #1a7f37; }
+.rh-chip-tt { background: #e6eefa; color: var(--primary); }
+.rha-attente { background: #fff4d6; color: #8a5a00; }
+.rha-actions { gap: 12px; }
+.rha-centres { display: flex; flex-direction: column; max-height: 40vh; overflow-y: auto; margin-top: 6px; }
+.rha-centre { min-height: 40px; }
+.rha-centre[hidden] { display: none; }

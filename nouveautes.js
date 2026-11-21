@@ -22,6 +22,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 189, titre: 'Accès RH', texte: 'Nouvelle rubrique « Accès RH » (Chefs de section) : créez un accès pour le service RH d’un centre. Il reçoit une invitation par e-mail et consulte, en lecture seule, les FMPA suivies par les agents SMPM de ses centres (date, durée, lieu, repos ou temps de travail).', pour: ['ctd', 'admin'] },
     { v: 185, titre: 'Planning des FMPA : secteur à définir', texte: 'Le secteur n’est plus obligatoire à la création d’une date : laissez « Secteur à définir ». Il est fixé quand vous validez le CU RP, par défaut celui du CU RP, ou celui que vous choisissez au-dessus de la liste des candidats.', pour: ['ctd', 'admin'] },
     { v: 184, titre: 'Planning des FMPA : quotas', texte: 'Votre quota d’heures de l’année (FMPA départementales comprises) s’affiche dans « S’inscrire ». Au 1er semestre, vous ne pouvez pas dépasser la moitié du quota (+ 10 %) ; une fois le quota atteint, l’inscription est bloquée. En liste d’attente, la place libérée va à celui qui a le moins avancé dans son quota.', pour: ['tous'] },
     { v: 184, titre: 'Planning des FMPA : CU RP et CU sécurité', texte: 'Le premier chef d’unité validé est CU RP, le second CU sécurité. Si la FMPA est pleine, un 3e IMP 3 peut proposer une nouvelle FMPA dont il sera CU RP. Votre nombre d’encadrements de l’année (4 attendus) s’affiche dans « CU · Encadrer ».', pour: ['chef_unite', 'chef_section', 'ctd', 'admin'] },

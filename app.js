@@ -89,6 +89,7 @@
     if (name === 'interv-toutes') return canAllInterv(session);
     if (name.startsWith('interv-')) return canIntervene(session);
     if (name === 'cs-heures-toutes') return canAllCsHeures(session);
+    if (name === 'cs-rh') return canEditAllFmpa(session);   // Accès RH : CTD et administrateurs (Rh.gs)
     if (CS_PAGES.includes(name)) return canAllFmpa(session);
     return true;
   }
@@ -518,6 +519,7 @@
     $('#tab-gto').hidden = name !== 'gto';
     CS_PAGES.forEach(p => { $('#tab-' + p).hidden = name !== p; });
     if (name === 'cs-heures-toutes') $('#tab-cs-heures').hidden = false;
+    $('#tab-cs-rh').hidden = name !== 'cs-rh';
     $('#tab-bug').hidden = name !== 'bug';
     $('#tab-accueil').hidden = name !== 'accueil';
     $('#tab-annuaire').hidden = name !== 'annuaire';
@@ -547,6 +549,7 @@
     if (name.startsWith('cs-heures')) setCshGroup(true);
     if (name.startsWith('cs-heures') && window.SMPM_CSH) window.SMPM_CSH.open(name);
     if (name === 'cs-specialistes' && window.SMPM_PERSONNEL) window.SMPM_PERSONNEL.open();
+    if (name === 'cs-rh' && window.SMPM_RH_ADMIN) window.SMPM_RH_ADMIN.open();
     document.body.classList.toggle('page-dash', name === 'cs-tableau');
     if (window.SMPM_DASH) { if (name === 'cs-tableau') window.SMPM_DASH.open(); else window.SMPM_DASH.close(); }
     if (name === 'livret-remplir' && window.SMPM_THEMES) window.SMPM_THEMES.open();
@@ -794,6 +797,7 @@
     if (window.SMPM_ITV_LIST) window.SMPM_ITV_LIST.reset();
     if (window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.reset();
     if (window.SMPM_PERSONNEL) window.SMPM_PERSONNEL.reset();
+    if (window.SMPM_RH_ADMIN) window.SMPM_RH_ADMIN.reset();
     if (window.SMPM_DASH) window.SMPM_DASH.reset();
     if (window.SMPM_POI) window.SMPM_POI.reset(explicit === true);
     if (window.SMPM_INV) window.SMPM_INV.reset(explicit === true);
@@ -1420,6 +1424,7 @@
     $('#nav-interv').hidden = !canIntervene(session);
     $('#nav-interv-all').hidden = !canAllInterv(session);
     $('#nav-csh-all').hidden = !canAllCsHeures(session);
+    $('#nav-cs-rh').hidden = !canEditAllFmpa(session);
     $('#home-interv-new').hidden = !canIntervene(session);
 
     const form = $('#form-profil');

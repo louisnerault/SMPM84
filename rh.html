@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d4f91">
+<meta name="robots" content="noindex">
+<title>SMPM 84 – Espace RH</title>
+<link rel="preconnect" href="https://script.google.com" crossorigin>
+<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+<link rel="icon" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="stylesheet" href="style.css">
+<script>(function(){var t;try{t=localStorage.getItem('smpm_theme')}catch(e){}if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)})();</script>
+</head>
+<body class="rh-page">
+<header class="topbar">
+  <img src="assets/ecusson-132.png" alt="" class="logo" width="44" height="44">
+  <div class="brand"><strong id="rh-title">SMPM 84</strong><span id="rh-sub">Espace RH</span></div>
+</header>
+
+<div class="landscape">
+  <picture aria-hidden="true">
+    <source id="banner-night" media="(prefers-color-scheme: dark)" srcset="assets/banniere-nuit-700.jpg 700w, assets/banniere-nuit-1000.jpg 1000w, assets/banniere-nuit-1400.jpg 1400w" sizes="100vw">
+    <img src="assets/banniere-1000.jpg" srcset="assets/banniere-700.jpg 700w, assets/banniere-1000.jpg 1000w, assets/banniere-1400.jpg 1400w" sizes="100vw" alt="" decoding="async" fetchpriority="high">
+  </picture>
+  <script>(function(){var t=document.documentElement.getAttribute('data-theme'),s=document.getElementById('banner-night');if(t==='dark')s.media='all';else if(t==='light')s.media='not all'})();</script>
+</div>
+
+<main>
+  <section id="rh-view-loading" class="view">
+    <p class="muted center" role="status">Chargement…</p>
+  </section>
+
+  <!-- Connexion -->
+  <section id="rh-view-login" class="view" hidden>
+    <h1>Espace RH</h1>
+    <p class="muted small">Accès réservé aux services RH des centres, pour consulter les FMPA suivies par les spécialistes SMPM de leurs centres.</p>
+    <form id="rh-form-login" autocomplete="on">
+      <label>Adresse e-mail
+        <input type="email" name="email" autocomplete="username" required>
+      </label>
+      <label>Mot de passe
+        <input type="password" name="password" autocomplete="current-password" required>
+      </label>
+      <p class="error" role="alert"></p>
+      <button type="submit" class="primary">Se connecter</button>
+    </form>
+    <p class="center"><button class="link" data-rh-goto="activate">Première connexion ? Activer mon accès</button></p>
+    <p class="center"><button class="link" data-rh-goto="activate">Mot de passe oublié ?</button></p>
+    <p class="center small"><a class="link" href="./">Spécialiste SMPM ? Application SMPM 84</a></p>
+  </section>
+
+  <!-- Activation / mot de passe oublié : étape 1 -->
+  <section id="rh-view-activate" class="view" hidden>
+    <h1>Activer mon accès</h1>
+    <p class="muted">Saisissez l’adresse e-mail à laquelle vous avez reçu l’invitation. Un code vous sera envoyé par e-mail.</p>
+    <form id="rh-form-request" autocomplete="on">
+      <label>Adresse e-mail
+        <input type="email" name="email" autocomplete="username" required>
+      </label>
+      <p class="error" role="alert"></p>
+      <button type="submit" class="primary">Recevoir le code</button>
+    </form>
+    <p class="center"><button class="link" data-rh-goto="login">Retour à la connexion</button></p>
+  </section>
+
+  <!-- Étape 2 : code et mot de passe -->
+  <section id="rh-view-verify" class="view" hidden>
+    <h1>Code reçu par e-mail</h1>
+    <p class="muted" id="rh-verify-intro"></p>
+    <form id="rh-form-verify" autocomplete="off">
+      <label>Code à 6 chiffres
+        <input type="text" name="code" inputmode="numeric" pattern="\d{6}" maxlength="6" autocomplete="one-time-code" required>
+      </label>
+      <label>Choisissez votre mot de passe (8 caractères minimum)
+        <input type="password" name="password" minlength="8" autocomplete="new-password" required>
+      </label>
+      <p class="error" role="alert"></p>
+      <button type="submit" class="primary">Valider</button>
+    </form>
+    <p class="center"><button class="link" data-rh-goto="activate">Renvoyer un code</button></p>
+  </section>
+
+  <!-- Consultation -->
+  <section id="rh-view-app" hidden>
+    <h1>FMPA des agents SMPM</h1>
+    <p class="muted small" id="rh-centres"></p>
+    <div class="ann-tools">
+      <div class="ann-filters">
+        <select id="rh-annee" aria-label="Année"></select>
+        <select id="rh-centre" aria-label="Centre" hidden></select>
+      </div>
+      <input type="search" id="rh-search" placeholder="Nom, prénom…" autocomplete="off" aria-label="Rechercher un agent">
+    </div>
+    <div id="rh-totaux" class="rh-totaux"></div>
+    <p id="rh-state" class="muted small" role="status"></p>
+    <ul id="rh-list" class="ann-list"></ul>
+    <p class="center"><button type="button" class="link" id="rh-csv" hidden>Télécharger le tableau (CSV, tableur)</button></p>
+    <p class="muted small center">Repos : FMPA suivie sur un jour de repos. Temps de travail : FMPA suivie sur le temps de travail.</p>
+    <p class="center"><button type="button" class="link" id="rh-logout">Se déconnecter</button></p>
+  </section>
+</main>
+
+<script src="config.js"></script>
+<script src="rh.js"></script>
+</body>
+</html>
