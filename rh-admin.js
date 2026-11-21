@@ -1,6 +1,7 @@
-// Accès RH — gestion des comptes (menu « Chefs de section › Accès RH », CTD et administrateurs).
+// Responsables RH — gestion des comptes (menu « Administration › RH », CTD et administrateurs).
 // Les RH sont des personnes extérieures à la spécialité : elles se connectent sur rh.html et consultent,
-// en lecture seule, les FMPA suivies par les agents SMPM de leurs centres d'affectation.
+// en lecture seule, les heures (FMPA, heures chef de section) des agents SMPM de leurs centres d'affectation.
+// Aucun lien depuis l'écran de connexion des spécialistes : l'adresse de rh.html est envoyée dans l'invitation.
 // Actions serveur (dépôt privé, Rh.gs) : rh_admin_list, rh_admin_save, rh_admin_revoke — droits contrôlés par le serveur.
 // Données gardées en mémoire seulement : la rubrique demande le réseau.
 (() => {
@@ -33,6 +34,8 @@
   }
 
   function open() {
+    const lien = $('#rha-lien'), url = new URL('rh.html', location.href).href;
+    if (lien) { lien.href = url; lien.textContent = url; }
     if (S.data) render();
     if (!S.loading) load();
   }
@@ -60,14 +63,14 @@
   function render() {
     const q = fold($('#rha-search').value);
     const list = S.data.comptes.filter(c => !q || fold([c.nom, c.prenom, c.email, c.service, c.centres.join(' ')].join(' ')).includes(q));
-    $('#rha-count').textContent = `${list.length} accès`;
+    $('#rha-count').textContent = `${list.length} responsable${list.length > 1 ? 's' : ''} RH`;
     $('#rha-empty').hidden = list.length > 0;
-    $('#rha-empty').textContent = S.data.comptes.length ? 'Aucun accès ne correspond à la recherche.' : 'Aucun accès RH pour l’instant.';
+    $('#rha-empty').textContent = S.data.comptes.length ? 'Aucun responsable ne correspond à la recherche.' : 'Aucun responsable RH pour l’instant.';
     $('#rha-list').replaceChildren(...list.map(c => el('li', { class: 'ann-card' + (c.revoked ? ' pers-inactif' : '') },
       el('div', { class: 'ann-head' },
         el('h3', { class: 'ann-name' }, `${c.nom} ${c.prenom}`.trim()),
         statut(c)),
-      el('p', { class: 'ann-meta', text: [c.service, c.email].filter(Boolean).join(' · ') }),
+      el('p', { class: 'ann-meta', text: c.email }),
       el('ul', { class: 'chips ann-chips' }, c.centres.map(x => el('li', { text: x }))),
       el('p', { class: 'ann-meta', text: [vu(c.derniere_connexion), c.cree_par ? 'Créé par ' + c.cree_par : ''].filter(Boolean).join(' · ') }),
       el('div', { class: 'pers-actions rha-actions' },
@@ -85,9 +88,8 @@
         el('label', null, 'Nom', el('input', { type: 'text', name: 'nom', maxlength: 60, required: true, autocomplete: 'off' })),
         el('label', null, 'Prénom', el('input', { type: 'text', name: 'prenom', maxlength: 60, autocomplete: 'off' })),
         el('label', null, 'Adresse e-mail', el('input', { type: 'email', name: 'email', required: true, autocomplete: 'off' })),
-        el('label', null, 'Service (facultatif)', el('input', { type: 'text', name: 'service', maxlength: 80, placeholder: 'Ex. RH groupement Nord', autocomplete: 'off' })),
         el('fieldset', { class: 'pers-qualifs' },
-          el('legend', { text: 'Centres suivis' }),
+          el('legend', { text: 'Centres gérés' }),
           el('input', { type: 'search', id: 'rha-centres-search', placeholder: 'Filtrer les centres…', 'aria-label': 'Filtrer les centres', oninput: filtreCentres }),
           el('p', { class: 'muted small', id: 'rha-centres-n' }),
           el('div', { id: 'rha-centres', class: 'rha-centres' })),
@@ -96,7 +98,7 @@
         el('div', { class: 'ann-dialog-btns' },
           el('button', { type: 'button', text: 'Annuler', onclick: () => d.close() }),
           el('button', { type: 'submit', class: 'primary', id: 'rha-save', text: 'Enregistrer' }))));
-    $('#tab-cs-rh').append(d);
+    $('#tab-admin-rh').append(d);
     return d;
   }
   function compteCentres() {
@@ -111,11 +113,10 @@
   function edit(c) {
     S.edit = c || null;
     const d = dialog(), f = $('#rha-form');
-    $('#rha-dialog-title').textContent = c ? `Modifier l’accès de ${c.prenom} ${c.nom}`.trim() : 'Nouvel accès RH';
+    $('#rha-dialog-title').textContent = c ? `Modifier le responsable RH ${c.prenom} ${c.nom}`.trim() : 'Nouveau responsable RH';
     f.elements.nom.value = c ? c.nom : '';
     f.elements.prenom.value = c ? c.prenom : '';
     f.elements.email.value = c ? c.email : '';
-    f.elements.service.value = c ? c.service : '';
     const coches = new Set(((c && c.centres) || []).map(fold));
     $('#rha-centres').replaceChildren(...S.data.centres.map(x => {
       const box = el('input', { type: 'checkbox', value: x.centre, onchange: compteCentres });
@@ -126,7 +127,7 @@
     compteCentres();
     $('#rha-note').textContent = c
       ? 'Changer l’adresse e-mail oblige la personne à réactiver son accès (une nouvelle invitation lui est envoyée).'
-      : 'Une invitation est envoyée par e-mail : la personne active son accès sur l’espace RH avec un code reçu par e-mail.';
+      : 'Une invitation est envoyée par e-mail avec l’adresse de l’espace RH : la personne y active son accès avec un code reçu par e-mail.';
     $('#rha-error').textContent = '';
     $('#rha-save').disabled = false;
     d.showModal();
@@ -138,7 +139,7 @@
     const f = $('#rha-form');
     const rh = {
       nom: f.elements.nom.value.trim(), prenom: f.elements.prenom.value.trim(),
-      email: f.elements.email.value.trim(), service: f.elements.service.value.trim(),
+      email: f.elements.email.value.trim(), service: S.edit ? S.edit.service || '' : '',
       centres: Array.from(document.querySelectorAll('#rha-centres input:checked')).map(b => b.value),
     };
     if (!rh.centres.length) { $('#rha-error').textContent = 'Cochez au moins un centre.'; return; }

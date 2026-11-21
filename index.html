@@ -141,7 +141,15 @@
       <button data-page="cs-eval" id="nav-eval-gnr"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.8h6V4"/><path d="M8.5 12.5l2 2 4-4.5"/></svg>Évaluation GNR<span class="pending-dot" title="Évaluation en attente d'envoi" hidden></span></button>
       <button data-page="cs-tableau"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="9" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="5" rx="1.5"/><rect x="13.5" y="11.5" width="7" height="9" rx="1.5"/><rect x="3.5" y="15.5" width="7" height="5" rx="1.5"/></svg>Tableau de bord</button>
       <button data-page="cs-specialistes"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/><path d="M17.5 3.5l1 2 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5 2.2-.3z"/></svg>Mes spécialistes</button>
-      <button data-page="cs-rh" id="nav-cs-rh" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.3"/><path d="M5.5 16.5c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7"/><path d="M15 10h3.5M15 13.5h3.5"/></svg>Accès RH</button>
+    </div>
+    <div id="nav-sec-admin" class="nav-section" hidden>
+      <p class="nav-sep">Administration</p>
+      <div id="nav-admin" class="nav-group">
+        <button type="button" class="nav-group-btn" aria-expanded="false" aria-controls="nav-admin-sub"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>Administration<svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div id="nav-admin-sub" class="nav-sub" hidden>
+          <button data-page="admin-rh"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.3"/><path d="M5.5 16.5c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7"/><path d="M15 10h3.5M15 13.5h3.5"/></svg>RH</button>
+        </div>
+      </div>
     </div>
   </nav>
   <div class="drawer-foot">
@@ -211,7 +219,6 @@
     </form>
     <p class="center login-links"><button class="link" data-goto="reset">Mot de passe oublié ?</button></p>
     <p class="center login-links"><button class="link" data-goto="activate">Première connexion ? Activer mon compte</button></p>
-    <p class="center login-links small"><a class="link" href="rh.html">Service RH d’un centre ? Accès RH</a></p>
 
     <!-- État affiché à la place du formulaire pendant et après la tentative -->
     <div id="login-status" class="login-status" role="status" aria-live="polite" hidden>
@@ -946,12 +953,13 @@
         </div>
       </div>
     </div>
-    <!-- Accès RH : comptes des RH extérieurs (rh-admin.js, Rh.gs dans le dépôt privé) -->
-    <div id="tab-cs-rh" hidden>
-      <h1>Accès RH</h1>
-      <p class="muted small">Les RH des centres consultent sur l’espace RH (lien « Accès RH » de l’écran de connexion) les FMPA suivies par les agents SMPM actifs de leurs centres : date, durée, lieu, repos ou temps de travail. Aucune autre donnée ne leur est accessible.</p>
+    <!-- Administration › RH : comptes des responsables RH extérieurs (rh-admin.js, Rh.gs dans le dépôt privé) -->
+    <div id="tab-admin-rh" hidden>
+      <h1>Responsables RH</h1>
+      <p class="muted small">Les responsables RH des centres consultent, sur un espace séparé dont l’adresse leur est envoyée par e-mail, les heures des agents SMPM actifs de leurs centres : FMPA rapportées au quota, en repos ou en temps de travail, et heures des chefs de section sans le détail de leurs journées. Aucune autre donnée ne leur est accessible.</p>
+      <p class="small">Adresse de l’espace RH (envoyée dans chaque invitation) : <a id="rha-lien" class="rha-lien" target="_blank" rel="noopener"></a></p>
       <p id="rha-state" class="muted small" role="status"></p>
-      <button type="button" class="primary pers-new" id="rha-new">＋ Créer un accès RH</button>
+      <button type="button" class="primary pers-new" id="rha-new">＋ Créer un responsable RH</button>
       <div class="ann-tools">
         <input type="search" id="rha-search" placeholder="Nom, e-mail, centre…" autocomplete="off" aria-label="Rechercher">
         <div class="ann-foot"><span id="rha-count"></span></div>

@@ -89,7 +89,7 @@
     if (name === 'interv-toutes') return canAllInterv(session);
     if (name.startsWith('interv-')) return canIntervene(session);
     if (name === 'cs-heures-toutes') return canAllCsHeures(session);
-    if (name === 'cs-rh') return canEditAllFmpa(session);   // Accès RH : CTD et administrateurs (Rh.gs)
+    if (name === 'admin-rh') return canEditAllFmpa(session);   // Administration › RH : CTD et administrateurs (Rh.gs)
     if (CS_PAGES.includes(name)) return canAllFmpa(session);
     return true;
   }
@@ -519,7 +519,7 @@
     $('#tab-gto').hidden = name !== 'gto';
     CS_PAGES.forEach(p => { $('#tab-' + p).hidden = name !== p; });
     if (name === 'cs-heures-toutes') $('#tab-cs-heures').hidden = false;
-    $('#tab-cs-rh').hidden = name !== 'cs-rh';
+    $('#tab-admin-rh').hidden = name !== 'admin-rh';
     $('#tab-bug').hidden = name !== 'bug';
     $('#tab-accueil').hidden = name !== 'accueil';
     $('#tab-annuaire').hidden = name !== 'annuaire';
@@ -549,7 +549,8 @@
     if (name.startsWith('cs-heures')) setCshGroup(true);
     if (name.startsWith('cs-heures') && window.SMPM_CSH) window.SMPM_CSH.open(name);
     if (name === 'cs-specialistes' && window.SMPM_PERSONNEL) window.SMPM_PERSONNEL.open();
-    if (name === 'cs-rh' && window.SMPM_RH_ADMIN) window.SMPM_RH_ADMIN.open();
+    if (name === 'admin-rh' && window.SMPM_RH_ADMIN) window.SMPM_RH_ADMIN.open();
+    if (name.startsWith('admin-')) setAdminGroup(true);
     document.body.classList.toggle('page-dash', name === 'cs-tableau');
     if (window.SMPM_DASH) { if (name === 'cs-tableau') window.SMPM_DASH.open(); else window.SMPM_DASH.close(); }
     if (name === 'livret-remplir' && window.SMPM_THEMES) window.SMPM_THEMES.open();
@@ -592,6 +593,12 @@
   function setCshGroup(open) {
     $('#nav-csh .nav-group-btn').setAttribute('aria-expanded', String(open));
     $('#nav-csh-sub').hidden = !open;
+  }
+
+  // Sous-menu Administration (repliable) : RH — CTD et administrateurs
+  function setAdminGroup(open) {
+    $('#nav-admin .nav-group-btn').setAttribute('aria-expanded', String(open));
+    $('#nav-admin-sub').hidden = !open;
   }
 
   // Sous-menu Documentation (repliable) : FTE, Notices et GTO/GDO/GNR
@@ -1424,7 +1431,7 @@
     $('#nav-interv').hidden = !canIntervene(session);
     $('#nav-interv-all').hidden = !canAllInterv(session);
     $('#nav-csh-all').hidden = !canAllCsHeures(session);
-    $('#nav-cs-rh').hidden = !canEditAllFmpa(session);
+    $('#nav-sec-admin').hidden = !canEditAllFmpa(session);
     $('#home-interv-new').hidden = !canIntervene(session);
 
     const form = $('#form-profil');
@@ -1539,6 +1546,9 @@
   });
   $('#nav-doc .nav-group-btn').addEventListener('click', e => {
     setDocGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
+  });
+  $('#nav-admin .nav-group-btn').addEventListener('click', e => {
+    setAdminGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
   });
 
   $('#form-login').addEventListener('submit', async e => {
