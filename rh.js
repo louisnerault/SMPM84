@@ -112,18 +112,21 @@
       entrer(r.token, r.rh);
     } catch (x) { err.textContent = x.message; } finally { busy(f, false); }
   });
+  // Envoi du code puis écran de saisie (code + mot de passe)
+  async function envoyerCode(email) {
+    S.email = email;
+    await api('rh_request_code', { email });
+    store.set(KEY_EMAIL, email);
+    $('#rh-verify-intro').textContent = `Un code à 6 chiffres vient d’être envoyé à ${email} (valable 10 minutes). `
+      + 'Consultez votre messagerie, y compris les courriers indésirables (spams). Saisissez le code ci-dessous, puis choisissez votre mot de passe.';
+    show('verify');
+    $('#rh-form-verify').elements.code.focus();
+  }
   $('#rh-form-request').addEventListener('submit', async e => {
     e.preventDefault();
     const f = e.target, err = f.querySelector('.error');
-    S.email = f.elements.email.value.trim();
     busy(f, true);
-    try {
-      await api('rh_request_code', { email: S.email });
-      store.set(KEY_EMAIL, S.email);
-      $('#rh-verify-intro').textContent = `Si ${S.email} correspond à un accès RH ouvert, un code vient d’y être envoyé (pensez à vérifier les courriers indésirables). Il est valable 10 minutes.`;
-      show('verify');
-      $('#rh-form-verify').elements.code.focus();
-    } catch (x) { err.textContent = x.message; } finally { busy(f, false); }
+    try { await envoyerCode(f.elements.email.value.trim()); } catch (x) { err.textContent = x.message; } finally { busy(f, false); }
   });
   $('#rh-form-verify').addEventListener('submit', async e => {
     e.preventDefault();
@@ -368,6 +371,22 @@
 
   // ---------- démarrage ----------
   (async () => {
+    // Lien « Activer mon accès » de l'invitation (rh.html?activer=<e-mail>) : première connexion, adresse pré-remplie,
+    // code envoyé tout de suite (le serveur n'en renvoie pas un autre dans la minute). Paramètre retiré de l'adresse
+    // pour qu'un rechargement ou un favori ne redemande pas de code.
+    const activer = new URLSearchParams(location.search).get('activer');
+    if (activer && !VUE_ADMIN) {
+      try { history.replaceState(null, '', location.pathname); } catch (e) {}
+      const email = activer.trim();
+      store.del(KEY_TOKEN);
+      $('#rh-form-request').elements.email.value = email;
+      show('activate');
+      const f = $('#rh-form-request'), err = f.querySelector('.error');
+      busy(f, true);
+      err.textContent = 'Envoi du code…';
+      try { await envoyerCode(email); } catch (x) { err.textContent = x.message; } finally { busy(f, false); }
+      return;
+    }
     if (VUE_ADMIN) {
       show('app');
       $('#rh-title').textContent = 'Vue RH';
