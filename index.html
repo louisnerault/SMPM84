@@ -254,8 +254,20 @@
     <p class="center"><button class="link" data-goto="resend">Renvoyer un code</button></p>
   </section>
 
+  <!-- Maintenance (config.js : MAINTENANCE) : tous sauf les administrateurs -->
+  <section id="view-maintenance" class="view" hidden>
+    <div class="login-status">
+      <div class="login-icon" aria-hidden="true">🛠️</div>
+      <p class="login-title">Maintenance en cours</p>
+      <p class="muted" id="maintenance-msg"></p>
+      <button type="button" class="primary" id="maintenance-retry">Réessayer</button>
+      <p class="center"><button type="button" class="link" id="maintenance-logout">Se déconnecter</button></p>
+    </div>
+  </section>
+
   <!-- Application -->
   <section id="view-app" class="view" hidden>
+    <div id="maintenance-banner" class="flash" role="status" hidden>🛠️ Mode maintenance actif : l’application est fermée à tous sauf aux administrateurs.</div>
     <!-- Message après une action (ex. intervention envoyée), affiché sur la page d'arrivée -->
     <div id="flash" class="flash" role="status" aria-live="polite" hidden></div>
     <!-- Accueil du mode intervention -->

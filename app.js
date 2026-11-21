@@ -411,7 +411,7 @@
   }
 
   // ---------- navigation ----------
-  const views = ['loading', 'login', 'activate', 'verify', 'app'];
+  const views = ['loading', 'login', 'activate', 'verify', 'maintenance', 'app'];
   function show(name) {
     views.forEach(v => { $('#view-' + v).hidden = v !== name; });
     $('#btn-logout').hidden = name !== 'app';
@@ -920,7 +920,16 @@
     gotoPage(p);
   }
 
+  // Maintenance (config.js) : application fermée à tous sauf aux administrateurs.
+  // Les saisies hors ligne restent sur l'appareil : elles partiront à la réouverture.
+  const enMaintenance = () => !!(window.SMPM_CONFIG && window.SMPM_CONFIG.MAINTENANCE);
   function enterApp(data, options, offline) {
+    if (enMaintenance() && !isAdm(data && data.session)) {
+      $('#maintenance-msg').textContent = window.SMPM_CONFIG.MAINTENANCE_MESSAGE || 'L’application est en maintenance.';
+      show('maintenance');
+      return;
+    }
+    $('#maintenance-banner').hidden = !enMaintenance();
     const wasInApp = !$('#view-app').hidden;
     state.data = data;
     state.options = options;
@@ -1494,6 +1503,8 @@
     logout(true);
   });
   $('#btn-menu').addEventListener('click', openMenu);
+  $('#maintenance-retry').addEventListener('click', () => location.reload());
+  $('#maintenance-logout').addEventListener('click', () => logout(true));
   $('#btn-identity').addEventListener('click', () => gotoPage('infos'));
   $('#btn-intervention').addEventListener('click', toggleMode);
   $('#btn-home').addEventListener('click', () => gotoPage(isIntervention() ? 'accueil' : 'livret'));
