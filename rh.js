@@ -201,12 +201,21 @@
 
   function remplirCentres() {
     const d = S.data;
-    $('#rh-centres').textContent = (d.vue_admin ? `Vue RH du CTD et des administrateurs : ${d.centres.length} centres` : (d.centres.length > 1 ? 'Centres : ' : 'Centre : ') + d.centres.join(', '))
-      + ` · période du ${fmtD(d.du)} au ${fmtD(d.au)}` + (d.annees > 1 ? ` (${d.annees} années civiles : quotas annuels additionnés)` : '');
+    $('#rh-centres').textContent = (d.vue_admin ? `Vue RH du CTD et des administrateurs (${d.centres.length} centres) · ` : '')
+      + `Période du ${fmtD(d.du)} au ${fmtD(d.au)}` + (d.annees > 1 ? ` (${d.annees} années civiles : quotas annuels additionnés)` : '');
     const sc = $('#rh-centre'), avant = sc.value;
     sc.hidden = d.centres.length < 2;
     sc.replaceChildren(new Option(d.vue_admin ? 'Tous les centres' : 'Tous mes centres', ''), ...d.centres.map(c => new Option(c, c)));
     if (d.centres.includes(avant)) sc.value = avant;
+    titreCentre();
+  }
+
+  // Nom du centre en gros : le centre choisi, sinon le ou les centres du responsable RH
+  function titreCentre() {
+    const d = S.data, c = $('#rh-centre').value;
+    const t = c || (d.vue_admin ? 'Tous les centres' : d.centres.join(' · '));
+    $('#rh-centre-titre').textContent = t;
+    document.title = `${t} – Espace RH SMPM 84`;
   }
 
   // ---------- barres ----------
@@ -292,7 +301,14 @@
       $('#rh-list').replaceChildren(el('li', { class: 'muted center rh-vide', text: 'Aucun agent SMPM actif n’est affecté à vos centres.' }));
       return;
     }
-    $('#rh-list').replaceChildren(...list.map(ligne));
+    const centres = [...new Set(list.map(a => a.affectation))];
+    if (centres.length > 1) {
+      const ordre = centres.sort((x, y) => x.localeCompare(y, 'fr'));
+      $('#rh-list').replaceChildren(...ordre.flatMap(c => {
+        const ag = list.filter(a => a.affectation === c);
+        return [el('li', { class: 'rh-groupe' }, el('h2', { text: c }), el('span', { class: 'muted small', text: `${ag.length} agent${ag.length > 1 ? 's' : ''}` })), ...ag.map(ligne)];
+      }));
+    } else $('#rh-list').replaceChildren(...list.map(ligne));
     if (!list.length) $('#rh-list').append(el('li', { class: 'muted center rh-vide', text: 'Aucun agent ne correspond à la recherche.' }));
   }
 
@@ -364,7 +380,7 @@
     setTimeout(() => URL.revokeObjectURL(lien.href), 5000);
   }
 
-  $('#rh-centre').addEventListener('change', () => { if (S.data) rendre(); });
+  $('#rh-centre').addEventListener('change', () => { if (S.data) { titreCentre(); rendre(); } });
   $('#rh-tri').addEventListener('change', () => { if (S.data) rendre(); });
   $('#rh-search').addEventListener('input', () => { if (S.data) rendre(); });
   $('#rh-csv').addEventListener('click', csv);
