@@ -712,6 +712,16 @@
     // Gestion de la date (CT)
     if (A.gerer && f.phase !== 'annulee' && f.phase !== 'proposee') out.push(section('Gestion de la date', ...renderGestion(f)));
 
+    // Suppression définitive (administrateur)
+    if (S.data && S.data.moi && S.data.moi.admin) {
+      out.push(section('Administrateur', el('div', { class: 'orga-actions' },
+        bouton('Supprimer définitivement', () => {
+          if (!confirm('Supprimer DÉFINITIVEMENT cette FMPA, avec ses encadrants et ses inscrits ?\nAucune notification ne sera envoyée et c’est irréversible.')) return;
+          if (!confirm('Dernière confirmation : supprimer cette FMPA pour toujours ?')) return;
+          action('supprimer', { id: f.id }, 'FMPA supprimée.').then(r => { if (r) { S.id = null; render(); } });
+        }, 'pill danger-pill'))));
+    }
+
     box.replaceChildren(...out);
   }
 
