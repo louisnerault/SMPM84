@@ -22,6 +22,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 204, titre: 'Traccar configuré en un geste', texte: 'Dans « Partager ma position », le bouton Configurer Traccar ouvre Traccar Client avec l’adresse du serveur, votre identifiant et les bons réglages déjà remplis.', pour: ['tous'] },
     { v: 203, titre: 'Croix SSSM sur la carte', texte: 'Pendant le partage de position, les agents SSSM sont repérés sur la carte par une croix de secours blanche dans leur pastille.', pour: ['tous'] },
     { v: 200, titre: 'Partager ma position', texte: 'Nouveau bouton « Partager ma position » dans Cartographie / points d’intérêt et sur l’accueil intervention : avec l’appli gratuite Traccar Client, votre position est partagée même écran éteint. Pendant votre partage, vous voyez sur la carte les agents qui partagent aussi la leur.', pour: ['tous'] },
     { v: 197, titre: 'Maintenance de l’application', texte: 'Nouvelle rubrique Administration › Maintenance : mettez l’application en maintenance (seuls les administrateurs y accèdent, les autres membres voient une page d’attente) et prévenez les membres par notification, au début puis au retour à la normale.', pour: ['admin'] },

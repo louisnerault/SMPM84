@@ -17,6 +17,13 @@
   const URL_ANDROID = 'https://play.google.com/store/apps/details?id=org.traccar.client';
   const URL_IOS = 'https://apps.apple.com/app/traccar-client/id843156974';
   const ANDROID = /android/i.test(navigator.userAgent);
+  // Lien de configuration de Traccar Client (versions 9.6 et suivantes) : adresse, identifiant, fréquence, distance
+  function configurerTraccar(id) {
+    const q = 'url=' + encodeURIComponent(window.SMPM_CONFIG.API_URL) + '&id=' + encodeURIComponent(id) + '&interval=30&distance=25&accuracy=highest';
+    location.href = ANDROID
+      ? 'intent://config?' + q + '#Intent;scheme=org.traccar.client;package=org.traccar.client;S.browser_fallback_url=' + encodeURIComponent(URL_ANDROID) + ';end'
+      : 'org.traccar.client://config?' + q;
+  }
   // Ouvre Traccar Client (Android ; Google Play s'il n'est pas installé). Pas de lien d'ouverture connu sur iPhone.
   function ouvrirTraccar() {
     if (!ANDROID) return false;
@@ -193,8 +200,12 @@
       h('p', { class: 'small', text: 'Le partage passe par l’application gratuite Traccar Client : elle envoie votre position même écran éteint et application SMPM fermée. À régler une seule fois.' }),
       h('ol', { class: 'partage-etapes' },
         h('li', {}, 'Installez ', h('strong', { text: 'Traccar Client' }), ' : ', h('a', { href: ios ? URL_IOS : URL_ANDROID, target: '_blank', rel: 'noopener', text: ios ? 'App Store' : 'Google Play' }), '.'),
-        h('li', {}, 'Dans ses réglages, collez ces deux valeurs :', ligne('Identifiant de l’appareil', id), ligne('URL du serveur', url)),
-        h('li', {}, 'Réglez ', h('strong', { text: 'Précision : élevée' }), ', ', h('strong', { text: 'Fréquence : 30 s' }), ', ', h('strong', { text: 'Distance : 25 m' }), '. Autorisez la position ', h('strong', { text: '« Toujours »' }), ' et, sur Android, retirez l’optimisation de batterie pour Traccar.'),
+        h('li', {}, 'Touchez ', h('strong', { text: 'Configurer Traccar' }), ' : Traccar s’ouvre avec l’adresse, votre identifiant, la fréquence et la distance déjà remplis.',
+          h('button', { type: 'button', class: 'pill partage-go', text: 'Configurer Traccar', onclick: () => configurerTraccar(id) }),
+          h('details', { class: 'small' }, h('summary', { text: 'Si Traccar ne se remplit pas : saisie manuelle' }),
+            'Dans ses réglages, collez ces deux valeurs :', ligne('Identifiant de l’appareil', id), ligne('URL du serveur', url),
+            'Réglez ', h('strong', { text: 'Précision : élevée' }), ', ', h('strong', { text: 'Fréquence : 30 s' }), ', ', h('strong', { text: 'Distance : 25 m' }), '.')),
+        h('li', {}, 'Autorisez la position ', h('strong', { text: '« Toujours »' }), ' et, sur Android, retirez l’optimisation de batterie pour Traccar.'),
         h('li', {}, 'Touchez ', h('strong', { text: 'Démarrer le partage' }), ' ci-dessous' + (ANDROID ? ' : Traccar Client s’ouvre' : ', puis ouvrez Traccar Client') + ' ; activez-y le ', h('strong', { text: 'Service' }), ' (sur Android, une notification reste affichée tant qu’il tourne).')),
       quiVoit(), btnDemarrer(),
       h('p', { class: 'small', text: 'Cet identifiant est personnel : ne le communiquez pas. En cas de doute (téléphone perdu…), renouvelez-le : l’ancien ne fonctionnera plus.' }),
