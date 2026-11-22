@@ -133,9 +133,15 @@
     }
     const t = S.moi && S.moi.t ? Date.parse(S.moi.t) : 0;
     b.querySelector('.partage-dot').style.background = COUL[t ? couleur(t) : 'gris'];
-    b.querySelector('.partage-age').textContent = t
-      ? `Dernière position ${age(t)}` + (S.moi.batt != null ? ` · 🔋 ${S.moi.batt} %` : '')
-      : 'En attente de Traccar : activez son Service';
+    // Diagnostic : Traccar envoie, mais une position plus ancienne que la dernière (mémoire tampon de Traccar)
+    const recu = S.moi && S.moi.recu ? Date.parse(S.moi.recu) : 0, recuPos = S.moi && S.moi.recuPos ? Date.parse(S.moi.recuPos) : 0;
+    const vieux = recu && recuPos && (!t || recuPos < t) && Date.now() - recu < ORANGE_MS;
+    const hm = d => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    b.querySelector('.partage-age').textContent = vieux
+      ? `Traccar renvoie une ancienne position (${hm(recuPos)}) : désactivez son Buffer`
+      : t ? `Dernière position ${age(t)}` + (S.moi.batt != null ? ` · 🔋 ${S.moi.batt} %` : '')
+      : recu ? 'Traccar envoie, position en attente…' : 'En attente de Traccar : activez son Service';
+    b.title = recu ? `Dernier envoi reçu de Traccar ${age(recu)}` : 'Aucun envoi reçu de Traccar';
   }
 
   // Boutons « Partager ma position » (rubrique, accueil intervention, carte)
