@@ -2542,3 +2542,5 @@ a.rh-logout { text-decoration: none; }
 .partage-champ { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; }
 .partage-champ .small { width: 100%; }
 .partage-champ code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: .78rem; padding: 4px 6px; border-radius: 6px; background: rgba(127,127,127,.15); }
+.partage-pill.partage-btn-on, .home-btn-partage.partage-btn-on { background: #2a9d3a; color: #fff; border-color: #2a9d3a; }
+.partage-go { display: block; width: 100%; margin: 10px 0; padding: 10px; background: #2a9d3a; color: #fff; border-color: #2a9d3a; font-weight: 600; }

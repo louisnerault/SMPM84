@@ -299,6 +299,10 @@
           <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18v-5a6 6 0 0 1 12 0v5"/><path d="M4 18h16v3H4z"/><path d="M12 2.5v2M3.5 6l1.5 1.4M20.5 6L19 7.4"/></svg>
           <span>Nouvelle intervention</span>
         </button>
+        <button type="button" class="home-btn home-btn-partage" data-partage hidden>
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M6.3 6.3a8 8 0 0 0 0 11.4M17.7 6.3a8 8 0 0 1 0 11.4M8.8 8.8a4.5 4.5 0 0 0 0 6.4M15.2 8.8a4.5 4.5 0 0 1 0 6.4"/></svg>
+          <span><span class="partage-lib">Partager ma position</span> <small class="home-sub">Position en temps réel sur la carte</small></span>
+        </button>
         <button type="button" class="home-btn" data-go="annuaire">
           <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.4c1.9.8 3 2.8 3 5.6"/></svg>
           <span>Annuaire des spécialistes</span>
@@ -374,6 +378,7 @@
         <div class="poi-head">
           <h1>Cartographie / points d'intérêt</h1>
           <div class="poi-head-btns">
+            <button type="button" class="pill partage-pill" data-partage hidden><span class="partage-lib">Partager ma position</span></button>
             <button type="button" class="pill" id="poi-scan-btn" title="Lire des coordonnées sur une photo ou un texte">Scanner des coordonnées</button>
             <button type="button" class="pill" id="poi-gerer" hidden>Gérer les types et secteurs</button>
             <button type="button" class="pill poi-eph-btn" id="poi-add-eph" hidden title="PRM, victime, PC… visible de tous, effacé au bout de 24 h">＋ Point éphémère</button>
