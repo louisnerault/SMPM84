@@ -19,7 +19,7 @@
   const ANDROID = /android/i.test(navigator.userAgent);
   // Lien de configuration de Traccar Client (versions 9.6 et suivantes) : adresse, identifiant, fréquence, distance
   function configurerTraccar(id) {
-    const q = 'url=' + encodeURIComponent(window.SMPM_CONFIG.API_URL) + '&id=' + encodeURIComponent(id) + '&interval=30&distance=25&accuracy=highest&buffer=false';   // sans mémoire tampon : pas de vieilles positions renvoyées en boucle
+    const q = 'url=' + encodeURIComponent(window.SMPM_CONFIG.API_URL) + '&id=' + encodeURIComponent(id) + '&interval=30&distance=25&accuracy=highest&buffer=false&stopDetection=false';   // sans mémoire tampon : pas de vieilles positions renvoyées en boucle
     location.href = ANDROID
       ? 'intent://config?' + q + '#Intent;scheme=org.traccar.client;package=org.traccar.client;S.browser_fallback_url=' + encodeURIComponent(URL_ANDROID) + ';end'
       : 'org.traccar.client://config?' + q;
@@ -138,7 +138,7 @@
     const vieux = recu && recuPos && (!t || recuPos < t) && Date.now() - recu < ORANGE_MS;
     const hm = d => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     b.querySelector('.partage-age').textContent = vieux
-      ? `Traccar renvoie une ancienne position (${hm(recuPos)}) : désactivez son Buffer`
+      ? `Traccar renvoie une ancienne position (${hm(recuPos)}) : désactivez « Mise en tampon hors ligne »`
       : t ? `Dernière position ${age(t)}` + (S.moi.batt != null ? ` · 🔋 ${S.moi.batt} %` : '')
       : recu ? 'Traccar envoie, position en attente…' : 'En attente de Traccar : activez son Service';
     b.title = recu ? `Dernier envoi reçu de Traccar ${age(recu)}` : 'Aucun envoi reçu de Traccar';
@@ -210,7 +210,7 @@
           h('button', { type: 'button', class: 'pill partage-go', text: 'Configurer Traccar', onclick: () => configurerTraccar(id) }),
           h('details', { class: 'small' }, h('summary', { text: 'Si Traccar ne se remplit pas : saisie manuelle' }),
             'Dans ses réglages, collez ces deux valeurs :', ligne('Identifiant de l’appareil', id), ligne('URL du serveur', url),
-            'Réglez ', h('strong', { text: 'Précision : élevée' }), ', ', h('strong', { text: 'Fréquence : 30 s' }), ', ', h('strong', { text: 'Distance : 25 m' }), ', ', h('strong', { text: 'Mise en mémoire tampon (Buffer) : désactivée' }), '.')),
+            'Réglez ', h('strong', { text: 'Précision : élevée' }), ', ', h('strong', { text: 'Fréquence : 30 s' }), ', ', h('strong', { text: 'Distance : 25 m' }), ', ', '. Dans ', h('strong', { text: 'Paramètres avancés' }), ' : désactivez ', h('strong', { text: 'Mise en tampon hors ligne' }), ' et ', h('strong', { text: 'Détection des arrêts' }), '.')),
         h('li', {}, 'Autorisez la position ', h('strong', { text: '« Toujours »' }), ' et, sur Android, retirez l’optimisation de batterie pour Traccar.'),
         h('li', {}, 'Touchez ', h('strong', { text: 'Démarrer le partage' }), ' ci-dessous' + (ANDROID ? ' : Traccar Client s’ouvre' : ', puis ouvrez Traccar Client') + ' ; activez-y le ', h('strong', { text: 'Service' }), ' (sur Android, une notification reste affichée tant qu’il tourne).')),
       quiVoit(), btnDemarrer(),
