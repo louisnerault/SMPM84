@@ -2533,3 +2533,12 @@ a.rh-logout { text-decoration: none; }
 .partage-pin svg { display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
 .partage-btn { display: flex; align-items: center; justify-content: center; }
 .partage-btn.partage-btn-on { background: #2a9d3a; color: #fff; }
+.partage-dlg { max-width: min(460px, 94vw); border: 0; border-radius: 14px; padding: 18px; background: var(--card, #fff); color: inherit; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+.partage-dlg::backdrop { background: rgba(0,0,0,.45); }
+.partage-dlg h3 { margin: 0 28px 8px 0; }
+.partage-x { position: absolute; top: 8px; right: 10px; border: 0; background: none; font-size: 1.6rem; line-height: 1; cursor: pointer; color: inherit; }
+.partage-choix { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; margin: 8px 0; padding: 10px 12px; text-align: left; border-radius: 10px; }
+.partage-etapes { padding-left: 1.2em; } .partage-etapes li { margin: 8px 0; }
+.partage-champ { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; }
+.partage-champ .small { width: 100%; }
+.partage-champ code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: .78rem; padding: 4px 6px; border-radius: 6px; background: rgba(127,127,127,.15); }

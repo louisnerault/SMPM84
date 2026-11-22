@@ -4,6 +4,8 @@
 //   âge de la dernière position envoyée et bouton Arrêter. Le partage reprend à la réouverture de l'appli.
 // - Batterie : GPS suivi en continu, mais envoi au plus toutes les 30 s (ou après 25 m de déplacement) ;
 //   une web app ne tourne pas écran verrouillé : le partage est alors en pause.
+// - Partage en arrière-plan (écran éteint, appli fermée) : appli Traccar Client, réglée avec l'adresse du serveur
+//   et un identifiant personnel (Partage.gs : pos_cle) ; fenêtre « Partager ma position » ci-dessous.
 // - Carte : pastilles rondes (vert < 2 min, orange < 7 min, gris au-delà), étoile pour les IMP 3 ;
 //   chemin parcouru en pointillé (effacé à l'arrêt du partage) ; clic : nom, batterie, âge et précision. Actualisées toutes les 20 s quand la carte est affichée.
 (() => {
@@ -220,7 +222,7 @@
         L.DomEvent.disableClickPropagation(b);
         b.addEventListener('click', () => {
           if (actif()) { if (confirm('Arrêter le partage de votre position ?')) arreter(); }
-          else if (confirm('Partager votre position en temps réel avec les chefs de section, CT et administrateurs ?\n\nLe partage continue tant que l’application reste ouverte ; il se met en pause écran verrouillé.')) demarrer();
+          else choix();
         });
         C.btn = b;
         majBouton();
@@ -230,6 +232,57 @@
     map.addControl(new Btn());
     charger();
     boucle();
+  }
+
+  // ---------- fenêtre « Partager ma position » : dans l'appli, ou en arrière-plan avec Traccar Client ----------
+  function h(tag, attrs, ...enfants) {
+    const e = document.createElement(tag);
+    Object.entries(attrs || {}).forEach(([k, v]) => {
+      if (k === 'text') e.textContent = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v);
+    });
+    enfants.flat().forEach(c => c != null && e.append(c));
+    return e;
+  }
+  function fenetre(...contenu) {
+    let d = document.getElementById('partage-dlg');
+    if (!d) { d = h('dialog', { id: 'partage-dlg', class: 'partage-dlg' }); document.body.append(d); }
+    d.replaceChildren(h('button', { type: 'button', class: 'partage-x', 'aria-label': 'Fermer', text: '×', onclick: () => d.close() }), ...contenu);
+    if (!d.open) d.showModal ? d.showModal() : d.setAttribute('open', '');
+    return d;
+  }
+  function choix() {
+    const d = fenetre(
+      h('h3', { text: 'Partager ma position' }),
+      h('p', { class: 'small', text: 'Votre position et votre chemin seront visibles des chefs de section, du CT et des administrateurs.' }),
+      h('button', { type: 'button', class: 'pill partage-choix', onclick: () => { d.close(); demarrer(); } },
+        h('strong', { text: 'Depuis l’application' }), h('span', { class: 'small', text: 'Tant que l’application reste ouverte ; en pause écran verrouillé.' })),
+      h('button', { type: 'button', class: 'pill partage-choix', onclick: () => traccar(false) },
+        h('strong', { text: 'En arrière-plan avec Traccar Client' }), h('span', { class: 'small', text: 'Écran éteint et application fermée, avec une notification permanente.' })));
+  }
+  async function copier(txt, btn) {
+    try { await navigator.clipboard.writeText(txt); btn.textContent = 'Copié ✓'; } catch (e) { btn.textContent = 'Copie impossible'; }
+    setTimeout(() => { btn.textContent = 'Copier'; }, 1800);
+  }
+  async function traccar(renouveler) {
+    const etat = h('p', { class: 'small', text: 'Préparation de votre identifiant…' });
+    fenetre(h('h3', { text: 'Partage en arrière-plan' }), etat);
+    let id;
+    try { id = (await appel('pos_cle', { renouveler: !!renouveler })).id; }
+    catch (e) { etat.textContent = navigator.onLine ? (e.message || 'Erreur du serveur') : 'Réseau nécessaire pour préparer l’identifiant.'; return; }
+    const url = window.SMPM_CONFIG.API_URL;
+    const ligne = (lib, val) => { const b = h('button', { type: 'button', class: 'pill', text: 'Copier' }); b.addEventListener('click', () => copier(val, b));
+      return h('div', { class: 'partage-champ' }, h('div', { class: 'small', text: lib }), h('code', { text: val }), b); };
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    fenetre(
+      h('h3', { text: 'Partage en arrière-plan' }),
+      h('ol', { class: 'partage-etapes' },
+        h('li', {}, 'Installez l’application gratuite ', h('strong', { text: 'Traccar Client' }), ' : ',
+          h('a', { href: ios ? 'https://apps.apple.com/app/traccar-client/id843156974' : 'https://play.google.com/store/apps/details?id=org.traccar.client', target: '_blank', rel: 'noopener', text: ios ? 'App Store' : 'Google Play' }), '.'),
+        h('li', {}, 'Dans ses réglages, copiez ces deux valeurs :', ligne('Identifiant de l’appareil', id), ligne('URL du serveur', url)),
+        h('li', {}, 'Réglez ', h('strong', { text: 'Précision : élevée' }), ', ', h('strong', { text: 'Fréquence : 30 s' }), ', ', h('strong', { text: 'Distance : 25 m' }), ', puis autorisez la position ', h('strong', { text: '« Toujours »' }), ' et désactivez l’optimisation de batterie pour Traccar.'),
+        h('li', {}, 'Activez le ', h('strong', { text: 'Service' }), ' : une notification reste affichée tant que le partage est en cours. Désactivez-le pour arrêter : votre pastille grise, puis votre chemin disparaît au bout de 15 min.')),
+      h('p', { class: 'small', text: 'Cet identifiant est personnel : ne le partagez pas. En cas de doute (téléphone perdu…), renouvelez-le : l’ancien ne fonctionnera plus.' }),
+      h('button', { type: 'button', class: 'pill', text: 'Renouveler l’identifiant', onclick: () => { if (confirm('Créer un nouvel identifiant ? L’ancien ne fonctionnera plus dans Traccar.')) traccar(true); } }));
   }
 
   // Reprise automatique à la réouverture de l'application ; arrêt à la déconnexion
@@ -249,5 +302,5 @@
   window.addEventListener('load', () => setTimeout(reprise, 2500));
   setInterval(reprise, 15000);
 
-  window.SMPM_PARTAGE = { attacher, demarrer, arreter, actif };
+  window.SMPM_PARTAGE = { attacher, demarrer, arreter, actif, choix, traccar };
 })();
