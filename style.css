@@ -2550,3 +2550,8 @@ a.rh-logout { text-decoration: none; }
 .partage-age { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .partage-stop { padding: 5px 10px; font-size: .8rem; }
 body.partage-on { padding-bottom: 64px; }
+
+/* Bouton d'orientation de la carte (poi.js) */
+.poi-orient a { display: flex; align-items: center; justify-content: center; }
+.poi-orient svg { transition: transform .15s linear; }
+.poi-orient.actif a { background: #ffe0b2; }

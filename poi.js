@@ -816,8 +816,11 @@
   }
 
   // ---------- carte ----------
-  let leafletP = null;
+  let leafletP = null, rotateP = null;
   function loadLeaflet() {
+    return chargerLeaflet().then(chargerRotation);
+  }
+  function chargerLeaflet() {
     if (window.L) return Promise.resolve();
     if (leafletP) return leafletP;
     const base = './vendor/leaflet/';   // Leaflet embarqué (fonctionne hors ligne)
@@ -832,10 +835,76 @@
     });
     return leafletP;
   }
-  function makeMap(L, box, center, zoom) {
-    const map = L.map(box, { center, zoom, zoomControl: true });
+  // Extension leaflet-rotate (orientation de la carte) — facultative : sans elle, carte classique nord en haut.
+  function chargerRotation() {
+    if (window.L.Map.CompassBearing) return Promise.resolve();
+    if (rotateP) return rotateP;
+    rotateP = new Promise(resolve => {
+      const js = el('script', { src: './vendor/leaflet-rotate/leaflet-rotate.js' });
+      js.onload = () => resolve();
+      js.onerror = () => { rotateP = null; js.remove(); resolve(); };
+      document.head.append(js);
+    });
+    return rotateP;
+  }
+
+  // Bouton boussole : nord en haut ⇄ carte orientée selon la boussole du téléphone.
+  // La rotation à deux doigts (ou Maj + glisser sur ordinateur) reste toujours possible.
+  function controleOrientation(L, map) {
+    const Ctl = L.Control.extend({
+      options: { position: 'topleft' },
+      onAdd() {
+        const box = L.DomUtil.create('div', 'leaflet-bar poi-orient');
+        const a = L.DomUtil.create('a', '', box);
+        a.href = '#'; a.setAttribute('role', 'button');
+        a.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 2l4 10h-8z" fill="#c62828"/><path d="M12 22l-4-10h8z" fill="#9e9e9e"/><text x="12" y="10.2" font-size="5" text-anchor="middle" fill="#fff" font-family="sans-serif" font-weight="bold">N</text></svg>';
+        const fleche = a.firstChild;
+        const maj = () => {
+          const b = map.getBearing ? map.getBearing() : 0;
+          fleche.style.transform = `rotate(${-b}deg)`;
+          const suit = map.compassBearing && map.compassBearing.enabled();
+          box.classList.toggle('actif', !!suit);
+          a.title = suit ? 'Carte orientée selon la boussole — toucher pour remettre le nord en haut'
+            : b ? 'Remettre le nord en haut' : 'Orienter la carte selon la boussole du téléphone';
+          a.setAttribute('aria-label', a.title);
+        };
+        L.DomEvent.disableClickPropagation(box);
+        L.DomEvent.on(a, 'click', async e => {
+          L.DomEvent.preventDefault(e);
+          const suit = map.compassBearing.enabled();
+          const b = map.getBearing();
+          if (suit || b) {
+            map.compassBearing.disable();
+            map.setBearing(0);
+          } else {
+            const DOE = window.DeviceOrientationEvent;
+            if (!DOE) { alerte('Boussole indisponible sur cet appareil. Tournez la carte avec deux doigts.'); return; }
+            if (typeof DOE.requestPermission === 'function') {   // iPhone : autorisation explicite
+              try { if (await DOE.requestPermission() !== 'granted') { alerte('Accès à la boussole refusé.'); return; } }
+              catch (_) { alerte('Accès à la boussole refusé.'); return; }
+            }
+            map.compassBearing.enable();
+            if (!map.compassBearing.enabled()) alerte('Boussole indisponible sur cet appareil. Tournez la carte avec deux doigts.');
+          }
+          maj();
+        });
+        map.on('rotate', maj);
+        maj();
+        return box;
+      },
+    });
+    const alerte = msg => L.popup({ closeButton: true }).setLatLng(map.getCenter()).setContent(msg).openOn(map);
+    new Ctl().addTo(map);
+  }
+
+  function makeMap(L, box, center, zoom, orientable) {
+    const rot = !!(orientable && L.Map.CompassBearing);
+    const opts = { center, zoom, zoomControl: true };
+    if (rot) Object.assign(opts, { rotate: true, touchRotate: true, shiftKeyRotate: true, rotateControl: false, bearing: 0 });
+    const map = L.map(box, opts);
     window.SMPM_FONDS.ajouter(L, map);
     L.control.scale({ imperial: false }).addTo(map);
+    if (rot) controleOrientation(L, map);
     return map;
   }
 
@@ -1032,7 +1101,7 @@
     }
     const L = window.L;
     if (!M.map) {
-      M.map = makeMap(L, $('#poi-map'), VAUCLUSE, 9);
+      M.map = makeMap(L, $('#poi-map'), VAUCLUSE, 9, true);
       M.traces = L.featureGroup().addTo(M.map);
       M.liens = L.featureGroup().addTo(M.map);
       M.group = L.featureGroup().addTo(M.map);

@@ -6,7 +6,7 @@
 // - Carte hors ligne : cache dédié (smpm84-carte) rempli par carte-hors-ligne.js à la demande ; jamais rempli ici.
 // - Photos des points d'intérêt : cache dédié (smpm84-poi) rempli par poi.js ; jamais rempli ici.
 // Les données personnelles ne passent jamais par ce cache (elles sont dans localStorage).
-const CACHE = 'smpm84-shell-v207';
+const CACHE = 'smpm84-shell-v208';
 const FICHES_CACHE = 'smpm84-fiches';
 const CARTE_CACHE = 'smpm84-carte';
 const POI_CACHE = 'smpm84-poi';         // photos des points d'intérêt consultées (poi.js)
@@ -15,7 +15,7 @@ const OCR_CACHE = 'smpm84-ocr-tesseract-6.0.1';   // lecture de coordonnées (ve
 const SHELL = [
   './', 'index.html', 'style.css', 'app.js', 'fiches.js', 'fmpa.js', 'fmpa-list.js', 'fmpa-orga.js', 'intervention-list.js', 'annuaire.js', 'itineraire.js', 'poi.js', 'partage-pos.js', 'fmpa-valid.js', 'livret-remplir.js', 'livret-themes.js', 'carte-hors-ligne.js', 'push.js', 'notifs.js', 'bugs.js', 'csh.js', 'personnel.js', 'rh-admin.js', 'maintenance.js', 'rh.html', 'rh.js', 'dashboard.js', 'nouveautes.js', 'coord-scan.js', 'inventaire.js', 'vendor/qrcode/qrcode.min.js', 'vendor/pdfjs/pdf.min.mjs', 'vendor/pdfjs/pdf.worker.min.mjs', 'config.js', 'manifest.webmanifest',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'vendor/leaflet/images/layers.png', 'vendor/leaflet/images/layers-2x.png',
-  'vendor/leaflet/images/marker-icon.png', 'vendor/leaflet/images/marker-icon-2x.png', 'vendor/leaflet/images/marker-shadow.png',
+  'vendor/leaflet/images/marker-icon.png', 'vendor/leaflet/images/marker-icon-2x.png', 'vendor/leaflet/images/marker-shadow.png', 'vendor/leaflet-rotate/leaflet-rotate.js',
   'assets/ecusson-132.png', 'assets/sdis84-210.png', 'assets/icon-192.png',
   'assets/banniere-700.jpg', 'assets/banniere-1000.jpg', 'assets/banniere-nuit-700.jpg', 'assets/banniere-nuit-1000.jpg', 'assets/soleil.png', 'assets/lune.png',
 ];
