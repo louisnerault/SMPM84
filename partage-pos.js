@@ -3,7 +3,7 @@
 //   serveur et son identifiant personnel, puis touche « Démarrer le partage » ici. Tous les membres peuvent partager.
 // - Boutons « Partager ma position » : rubrique Cartographie / points d'intérêt, Accueil intervention, carte.
 // - Pendant le partage : bandeau flottant en haut (âge de la dernière position reçue, bouton Arrêter).
-// - Carte : pastilles des agents (vert < 2 min, orange < 7 min, gris au-delà), étoile pour les IMP 3, chemin en
+// - Carte : pastilles des agents (vert < 2 min, orange < 7 min, gris au-delà), étoile pour les IMP 3, croix de secours pour les SSSM, chemin en
 //   pointillé ; clic : nom, batterie, âge, précision. Visibles des chefs de section, CT et administrateurs
 //   (app.js : canVoirPos) et des agents qui partagent eux-mêmes leur position (contrôle par le serveur).
 (() => {
@@ -206,7 +206,9 @@
 
   function pastille(a) {
     const c = COUL[couleur(Date.parse(a.t))];
-    const etoile = a.imp3 ? '<path d="M12 5.2l1.9 3.9 4.3.6-3.1 3 .7 4.3L12 15l-3.8 2 .7-4.3-3.1-3 4.3-.6z" fill="#fff"/>' : '';
+    // SSSM : croix de secours (prioritaire) ; IMP 3 : étoile
+    const etoile = a.sssm ? '<path d="M10.2 6h3.6v4.2H18v3.6h-4.2V18h-3.6v-4.2H6v-3.6h4.2z" fill="#fff"/>'
+      : a.imp3 ? '<path d="M12 5.2l1.9 3.9 4.3.6-3.1 3 .7 4.3L12 15l-3.8 2 .7-4.3-3.1-3 4.3-.6z" fill="#fff"/>' : '';
     return `<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="${c}" stroke="#fff" stroke-width="2.5"/>${a.moi ? '<circle cx="12" cy="12" r="11.5" fill="none" stroke="#1d72d8" stroke-width="1.5"/>' : ''}${etoile}</svg>`;
   }
 
@@ -214,7 +216,7 @@
     const t = Date.parse(a.t);
     const bat = a.batt === null || a.batt === undefined ? 'inconnue' : `${a.batt} %${a.charge ? ' (en charge)' : ''}`;
     return h('div', { class: 'poi-pop partage-pop' },
-      h('strong', { text: (a.nom || 'Agent') + (a.moi ? ' (vous)' : '') + (a.imp3 ? ' ★' : '') }),
+      h('strong', { text: (a.nom || 'Agent') + (a.moi ? ' (vous)' : '') + (a.imp3 ? ' ★' : '') + (a.sssm ? ' ✚ SSSM' : '') }),
       h('div', { class: 'small', text: `🔋 Batterie : ${bat}` }),
       h('div', { class: 'small', text: `Position ${age(t)}` + (a.acc ? ` · ± ${a.acc} m` : '') }));
   }

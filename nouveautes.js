@@ -22,6 +22,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 203, titre: 'Croix SSSM sur la carte', texte: 'Pendant le partage de position, les agents SSSM sont repérés sur la carte par une croix de secours blanche dans leur pastille.', pour: ['tous'] },
     { v: 200, titre: 'Partager ma position', texte: 'Nouveau bouton « Partager ma position » dans Cartographie / points d’intérêt et sur l’accueil intervention : avec l’appli gratuite Traccar Client, votre position est partagée même écran éteint. Pendant votre partage, vous voyez sur la carte les agents qui partagent aussi la leur.', pour: ['tous'] },
     { v: 197, titre: 'Maintenance de l’application', texte: 'Nouvelle rubrique Administration › Maintenance : mettez l’application en maintenance (seuls les administrateurs y accèdent, les autres membres voient une page d’attente) et prévenez les membres par notification, au début puis au retour à la normale.', pour: ['admin'] },
     { v: 192, titre: 'Vue RH : quotas Neige et ISS', texte: 'Dans la Vue RH, les agents qualifiés Neige ou ISS ont aussi une barre sur leur quota de la spécialité (quotas du livret), et la liste est plus compacte.', pour: ['ctd', 'admin'] },
