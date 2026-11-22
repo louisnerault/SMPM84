@@ -16,6 +16,13 @@
   const COUL = { vert: '#2a9d3a', orange: '#f08c00', gris: '#8a8f98' };
   const URL_ANDROID = 'https://play.google.com/store/apps/details?id=org.traccar.client';
   const URL_IOS = 'https://apps.apple.com/app/traccar-client/id843156974';
+  const ANDROID = /android/i.test(navigator.userAgent);
+  // Ouvre Traccar Client (Android ; Google Play s'il n'est pas installé). Pas de lien d'ouverture connu sur iPhone.
+  function ouvrirTraccar() {
+    if (!ANDROID) return false;
+    location.href = 'intent://#Intent;package=org.traccar.client;S.browser_fallback_url=' + encodeURIComponent(URL_ANDROID) + ';end';
+    return true;
+  }
 
   const app = () => window.SMPM_APP;
   const store = {
@@ -86,7 +93,9 @@
       store.set(KEY_ACTIF, '1');
       S.moi = { actif: true, t: '' };
       fermer();
-      await lire();
+      bandeau(); boutons();
+      ouvrirTraccar();          // l'agent y active le Service, puis revient (ou non) dans l'appli
+      lire();
     } catch (e) { alert(navigator.onLine ? (e.message || 'Erreur du serveur') : 'Réseau nécessaire pour démarrer le partage.'); }
     finally { if (btn) btn.disabled = false; }
   }
@@ -162,7 +171,7 @@
     if (!connecte()) return;
     if (store.get(KEY_REGLE)) {
       fenetre(h('h3', { text: 'Partager ma position' }),
-        h('p', {}, 'Activez le ', h('strong', { text: 'Service' }), ' dans ', h('strong', { text: 'Traccar Client' }), ', puis démarrez le partage.'),
+        h('p', {}, ANDROID ? 'Touchez Démarrer le partage : Traccar Client s’ouvre, activez-y le ' : 'Touchez Démarrer le partage, puis ouvrez Traccar Client et activez le ', h('strong', { text: 'Service' }), '.'),
         quiVoit(), btnDemarrer(),
         h('button', { type: 'button', class: 'link', text: 'Revoir les réglages de Traccar Client', onclick: () => reglages(false) }));
     } else reglages(false);
@@ -186,7 +195,7 @@
         h('li', {}, 'Installez ', h('strong', { text: 'Traccar Client' }), ' : ', h('a', { href: ios ? URL_IOS : URL_ANDROID, target: '_blank', rel: 'noopener', text: ios ? 'App Store' : 'Google Play' }), '.'),
         h('li', {}, 'Dans ses réglages, collez ces deux valeurs :', ligne('Identifiant de l’appareil', id), ligne('URL du serveur', url)),
         h('li', {}, 'Réglez ', h('strong', { text: 'Précision : élevée' }), ', ', h('strong', { text: 'Fréquence : 30 s' }), ', ', h('strong', { text: 'Distance : 25 m' }), '. Autorisez la position ', h('strong', { text: '« Toujours »' }), ' et, sur Android, retirez l’optimisation de batterie pour Traccar.'),
-        h('li', {}, 'Activez le ', h('strong', { text: 'Service' }), ' (sur Android, une notification reste affichée tant qu’il tourne), puis touchez ', h('strong', { text: 'Démarrer le partage' }), ' ci-dessous.')),
+        h('li', {}, 'Touchez ', h('strong', { text: 'Démarrer le partage' }), ' ci-dessous' + (ANDROID ? ' : Traccar Client s’ouvre' : ', puis ouvrez Traccar Client') + ' ; activez-y le ', h('strong', { text: 'Service' }), ' (sur Android, une notification reste affichée tant qu’il tourne).')),
       quiVoit(), btnDemarrer(),
       h('p', { class: 'small', text: 'Cet identifiant est personnel : ne le communiquez pas. En cas de doute (téléphone perdu…), renouvelez-le : l’ancien ne fonctionnera plus.' }),
       h('button', { type: 'button', class: 'link', text: 'Renouveler l’identifiant', onclick: () => { if (confirm('Créer un nouvel identifiant ? L’ancien ne fonctionnera plus dans Traccar Client.')) reglages(true); } }));

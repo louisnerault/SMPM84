@@ -2522,8 +2522,8 @@ a.rh-logout { text-decoration: none; }
 #mnt-msg-maj[hidden] { display: none; }
 
 /* Partage de position des agents (partage-pos.js) */
-.partage-bandeau { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 8px); left: 50%; transform: translateX(-50%); z-index: 10050;
-  display: flex; align-items: center; gap: 10px; width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box; padding: 8px 8px 8px 12px; border-radius: 16px;
+.partage-bandeau { position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); left: 50%; transform: translateX(-50%); z-index: 10050;
+  display: flex; align-items: center; gap: 10px; width: max-content; max-width: min(480px, calc(100vw - 24px)); box-sizing: border-box; padding: 8px 8px 8px 12px; border-radius: 16px;
   background: rgba(20, 28, 38, .92); color: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.3); font-size: .85rem; }
 .partage-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255,255,255,.8); }
 .partage-txt { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; flex: 1; }
@@ -2544,3 +2544,9 @@ a.rh-logout { text-decoration: none; }
 .partage-champ code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: .78rem; padding: 4px 6px; border-radius: 6px; background: rgba(127,127,127,.15); }
 .partage-pill.partage-btn-on, .home-btn-partage.partage-btn-on { background: #2a9d3a; color: #fff; border-color: #2a9d3a; }
 .partage-go { display: block; width: 100%; margin: 10px 0; padding: 10px; background: #2a9d3a; color: #fff; border-color: #2a9d3a; font-weight: 600; }
+
+.partage-bandeau { font-size: .8rem; line-height: 1.2; }
+.partage-bandeau strong { font-size: .82rem; white-space: nowrap; }
+.partage-age { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.partage-stop { padding: 5px 10px; font-size: .8rem; }
+body.partage-on { padding-bottom: 64px; }
