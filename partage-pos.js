@@ -119,7 +119,7 @@
     b.querySelector('.partage-dot').style.background = COUL[t ? couleur(t) : 'gris'];
     b.querySelector('.partage-age').textContent = t
       ? `Dernière position ${age(t)}` + (S.moi.batt != null ? ` · 🔋 ${S.moi.batt} %` : '')
-      : 'En attente de la première position de Traccar Client…';
+      : 'En attente de Traccar : activez son Service';
   }
 
   // Boutons « Partager ma position » (rubrique, accueil intervention, carte)
