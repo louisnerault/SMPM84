@@ -5,7 +5,7 @@
 // - Batterie : GPS suivi en continu, mais envoi au plus toutes les 30 s (ou après 25 m de déplacement) ;
 //   une web app ne tourne pas écran verrouillé : le partage est alors en pause.
 // - Carte : pastilles rondes (vert < 2 min, orange < 7 min, gris au-delà), étoile pour les IMP 3 ;
-//   clic : nom, batterie, âge et précision. Actualisées toutes les 20 s quand la carte est affichée.
+//   chemin parcouru en pointillé (effacé à l'arrêt du partage) ; clic : nom, batterie, âge et précision. Actualisées toutes les 20 s quand la carte est affichée.
 (() => {
   'use strict';
 
@@ -174,6 +174,11 @@
     if (!C.couche) return;
     const L = C.L;
     C.couche.clearLayers();
+    C.agents.forEach(a => {
+      // chemin parcouru, en pointillé de la couleur de la pastille
+      const tr = (a.trace || []).concat([[a.lat, a.lng]]);
+      if (tr.length > 1) L.polyline(tr, { color: COUL[couleur(Date.parse(a.t))], weight: 3, opacity: .85, dashArray: '6 7', interactive: false }).addTo(C.couche);
+    });
     C.agents.forEach(a => {
       const icon = L.divIcon({ className: 'partage-pin', html: pastille(a), iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -12] });
       L.marker([a.lat, a.lng], { icon, title: a.nom, zIndexOffset: 1000, keyboard: true }).bindPopup(() => popup(a)).addTo(C.couche);
