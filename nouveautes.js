@@ -22,6 +22,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 198, titre: 'Partage de position sur la carte (test)', texte: 'Sur la carte des points d’intérêt, le nouveau bouton de partage diffuse votre position en temps réel ; un bandeau en haut indique que le partage est en cours. Les agents qui partagent apparaissent en pastilles (vert < 2 min, orange < 7 min, gris au-delà, étoile pour les IMP 3) : touchez-en une pour voir le nom et la batterie.', pour: ['chef_section', 'ctd', 'admin'] },
     { v: 197, titre: 'Maintenance de l’application', texte: 'Nouvelle rubrique Administration › Maintenance : mettez l’application en maintenance (seuls les administrateurs y accèdent, les autres membres voient une page d’attente) et prévenez les membres par notification, au début puis au retour à la normale.', pour: ['admin'] },
     { v: 192, titre: 'Vue RH : quotas Neige et ISS', texte: 'Dans la Vue RH, les agents qualifiés Neige ou ISS ont aussi une barre sur leur quota de la spécialité (quotas du livret), et la liste est plus compacte.', pour: ['ctd', 'admin'] },
     { v: 191, titre: 'Vue RH', texte: 'Menu « Administration › Vue RH » : vous voyez l’espace RH comme un responsable RH, pour tous les centres — barres de quota FMPA et heures chef de section, filtre par période, détail des dates.', pour: ['ctd', 'admin'] },

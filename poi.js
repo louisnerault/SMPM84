@@ -1098,6 +1098,8 @@
       });
       M.map.addControl(new Me());
       // Itinéraire sur la carte (itineraire.js) : bouton, panneau, tracé
+      // Partage de position des agents (partage-pos.js) : bouton, pastilles des agents
+      if (window.SMPM_PARTAGE) window.SMPM_PARTAGE.attacher(L, M.map);
       if (window.SMPM_ITIN) window.SMPM_ITIN.attacher(L, M.map, { locate, plein: pleinEcran, estPlein: plein, points: () => (S.data && S.data.points) || [] });
     }
     M.group.clearLayers();

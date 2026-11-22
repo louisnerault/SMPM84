@@ -61,6 +61,8 @@
   const canPoiEdit = session => !!session && (isAdm(session) || ['chef_section', 'ctd', 'admin'].includes(session.role));
   // Gestion des listes des points d'intérêt (types et icônes, secteurs et couleurs) : CTD et administrateurs (Poi.gs : POI.ADMIN)
   const canPoiAdmin = session => !!session && (isAdm(session) || ['chef_section', 'ctd', 'admin'].includes(session.role));
+  // Partage de position des agents sur la carte (phase de test, à garder cohérent avec Partage.gs : POS.ROLES)
+  const canPartagePos = session => !!session && (isAdm(session) || ['chef_section', 'ctd', 'admin'].includes(session.role));
   // Contrôleur EPI : casquette cumulable avec n'importe quel rôle (case « Contrôleur EPI » de la Liste du personnel,
   // renvoyée par l'action « fonction » de Roles.gs : fonction.ctrl_epi) — responsable matériel de son secteur
   const isCtrlEpi = session => !!session && (session.ctrl_epi === true
@@ -1753,6 +1755,7 @@
       if (c && c.data) { c.data.maintenance = state.data.maintenance; store.set(KEY_CACHE, JSON.stringify(c)); }
       majBandeauMaint();
     },
+    partageDroit: () => !!state.data && canPartagePos(state.data.session),
     poiDroits: () => ({ creer: !!state.data && canPoiCreate(state.data.session), modifier: !!state.data && canPoiEdit(state.data.session), gerer: !!state.data && canPoiAdmin(state.data.session) }),
   };
 
