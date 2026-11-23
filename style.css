@@ -1526,7 +1526,14 @@ label.poi-file input { position: absolute; width: 1px; height: 1px; opacity: 0; 
 }
 
 /* ---------- Points d'intérêt : épingles, icônes, gestion des listes ---------- */
-.poi-head-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.poi-head-btns { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; }
+.poi-head-btns .pill { flex: 1 1 calc(50% - 8px); display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-align: center; }
+.poi-head-btns .pill[hidden] { display: none; }
+.poi-head-btns .btn-ico { flex: none; }
+.poi-filtres-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: start; }
+.poi-filtres-row details[open] { grid-column: 1 / -1; }
+.poi-filtres-row details[hidden] { display: none; }
+.poi-filtres-row .poi-checks { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
 .poi-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; box-shadow: 0 0 0 1.5px rgba(255,255,255,.85); }
 .poi-qf { display: inline-flex; align-items: center; gap: 4px; }
 .poi-qf svg { flex: none; }

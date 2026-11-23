@@ -378,23 +378,27 @@
         <div class="poi-head">
           <h1>Cartographie / points d'intérêt</h1>
           <div class="poi-head-btns">
-            <button type="button" class="pill partage-pill" data-partage hidden><span class="partage-lib">Partager ma position</span></button>
-            <button type="button" class="pill" id="poi-scan-btn" title="Lire des coordonnées sur une photo ou un texte">Scanner des coordonnées</button>
+            <button type="button" class="pill partage-pill" data-partage hidden><svg class="btn-ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="2.6"/><path d="M8.2 18.5c.4-2.4 1.9-3.6 3.8-3.6s3.4 1.2 3.8 3.6"/><path d="M5.6 6.2a8 8 0 0 0 0 9.6M18.4 6.2a8 8 0 0 1 0 9.6"/><path d="M8 8a4.6 4.6 0 0 0 0 5.4M16 8a4.6 4.6 0 0 1 0 5.4"/></svg><span class="partage-lib">Partager ma position</span></button>
+            <button type="button" class="pill" id="poi-scan-btn" title="Lire des coordonnées sur une photo ou un texte"><svg class="btn-ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Scanner des coordonnées</span></button>
             <button type="button" class="pill" id="poi-gerer" hidden>Gérer les types et secteurs</button>
             <button type="button" class="pill poi-eph-btn" id="poi-add-eph" hidden title="PRM, victime, PC… visible de tous, effacé au bout de 24 h">＋ Point éphémère</button>
             <button type="button" class="pill poi-add" id="poi-add" hidden>＋ Nouveau point</button>
           </div>
         </div>
-        <p class="muted small">Points GPS partagés : parkings, accès, lieux-dits, codes de cadenas… Gardés sur l'appareil pour une consultation hors ligne.</p>
         <div id="poi-outbox"></div>
         <p id="poi-state" class="muted small" role="status"></p>
         <div class="ann-tools" id="poi-tools">
           <input type="search" id="poi-search" placeholder="Nom, commentaire, caractéristique…" autocomplete="off" aria-label="Rechercher un point">
-          <div class="ann-qualifs" id="poi-secteurs" role="group" aria-label="Secteurs"></div>
-          <details class="poi-types-filtre" id="poi-types-box">
-            <summary>Types <span id="poi-types-n" class="muted small"></span></summary>
-            <div class="poi-checks" id="poi-caracs" role="group" aria-label="Types de points"></div>
-          </details>
+          <div class="poi-filtres-row">
+            <details class="poi-types-filtre" id="poi-secteurs-box">
+              <summary>Secteurs <span id="poi-secteurs-n" class="muted small"></span></summary>
+              <div class="poi-checks" id="poi-secteurs" role="group" aria-label="Secteurs"></div>
+            </details>
+            <details class="poi-types-filtre" id="poi-types-box">
+              <summary>Types <span id="poi-types-n" class="muted small"></span></summary>
+              <div class="poi-checks" id="poi-caracs" role="group" aria-label="Types de points"></div>
+            </details>
+          </div>
           <div class="ann-filters">
             <select id="poi-groupe" aria-label="Groupe" hidden></select>
             <label class="poi-check" id="poi-regrouper-l" hidden><input type="checkbox" id="poi-regrouper" checked><span>Regrouper</span></label>
@@ -406,14 +410,14 @@
           </div>
           <div class="ann-foot">
             <div class="poi-view" role="group" aria-label="Affichage">
-              <button type="button" class="pill" data-view="liste" aria-pressed="true">Liste</button>
-              <button type="button" class="pill" data-view="carte" aria-pressed="false">Carte</button>
+              <button type="button" class="pill" data-view="liste" aria-pressed="false">Liste</button>
+              <button type="button" class="pill" data-view="carte" aria-pressed="true">Carte</button>
             </div>
             <button type="button" class="link" id="poi-reset" hidden>Effacer les filtres</button>
             <span id="poi-count"></span>
           </div>
         </div>
-        <div id="poi-map" class="gps-map poi-map" hidden></div>
+        <div id="poi-map" class="gps-map poi-map"></div>
         <p id="poi-map-note" class="muted small" role="status"></p>
         <div id="poi-legend" class="poi-legend" hidden></div>
         <p id="poi-empty" class="muted center" hidden></p>

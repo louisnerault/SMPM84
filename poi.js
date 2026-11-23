@@ -25,7 +25,7 @@
   const app = () => window.SMPM_APP;
   const fold = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-  const F0 = () => ({ q: '', secteurs: [], caracs: [], groupe: '', regrouper: true, tri: 'distance', vue: 'liste' });
+  const F0 = () => ({ q: '', secteurs: [], caracs: [], groupe: '', regrouper: true, tri: 'distance', vue: 'carte' });
   // tri par défaut : les plus proches (filtres enregistrés avant ce changement : tri remis à « distance » une fois)
   const filtresGardes = () => {
     const g = store.getJSON(KEY_FILTRES) || {};
@@ -34,7 +34,7 @@
   };
   const S = {
     data: null, loadedAt: 0, loading: false, pos: null,
-    f: Object.assign(F0(), filtresGardes()),
+    f: Object.assign(F0(), filtresGardes(), { vue: 'carte' }),   // la carte s'affiche à chaque ouverture
     posT: 0,
     edit: null,                              // point en cours de modification (null = création)
     ajouts: [],                              // fichiers ajoutés dans le formulaire : { nom, mime, data: 'data:…', taille }
@@ -311,16 +311,23 @@
     // secteurs proposés : ceux présents dans les points visibles, dans l'ordre de la liste
     const presents = L.secteurs.filter(s => points.some(p => p.secteurs.includes(s.code))).map(s => s.code);
     S.f.secteurs = S.f.secteurs.filter(c => presents.includes(c));
-    $('#poi-secteurs').replaceChildren(...presents.map(c => el('button', {
-      type: 'button', class: 'ann-qf poi-qf', 'aria-pressed': String(S.f.secteurs.includes(c)), title: secteurLib(c),
-      html: `<i class="poi-dot" style="background:${secteurCouleur(c)}"></i>#${c}`,
-      onclick: e => {
-        const on = !S.f.secteurs.includes(c);
-        S.f.secteurs = on ? [...S.f.secteurs, c] : S.f.secteurs.filter(x => x !== c);
-        e.currentTarget.setAttribute('aria-pressed', String(on));
+    const paintSecteursN = () => {
+      const n = S.f.secteurs.length;
+      $('#poi-secteurs-n').textContent = n ? `(${n})` : '(tous)';
+    };
+    $('#poi-secteurs').replaceChildren(...presents.map(c => {
+      const cb = el('input', { type: 'checkbox', value: c });
+      cb.checked = S.f.secteurs.includes(c);
+      cb.addEventListener('change', () => {
+        S.f.secteurs = cb.checked ? [...S.f.secteurs, c] : S.f.secteurs.filter(x => x !== c);
+        paintSecteursN();
         changed();
-      },
-    })));
+      });
+      return el('label', { class: 'poi-check', title: secteurLib(c) }, cb,
+        el('span', { html: `<i class="poi-dot" style="background:${secteurCouleur(c)}"></i>#${c}` }));
+    }));
+    $('#poi-secteurs-box').hidden = !presents.length;
+    paintSecteursN();
     // Types : cases à cocher (plusieurs = l'un ou l'autre) ; seuls les types présents dans les points sont proposés
     if (!Array.isArray(S.f.caracs)) S.f.caracs = S.f.carac ? [S.f.carac] : [];
     delete S.f.carac;
