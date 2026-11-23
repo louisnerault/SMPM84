@@ -238,18 +238,62 @@
       h('div', { class: 'small', text: `Position ${age(t)}` + (a.acc ? ` · ± ${a.acc} m` : '') }));
   }
 
+  // Zoom à l'échelle d'environ 200 m (barre d'échelle de 100 px) ; ne dézoome jamais
+  function zoom200(map, ll) {
+    const lat = Array.isArray(ll) ? ll[0] : ll.lat;
+    const z = Math.floor(Math.log2(156543.03 * Math.cos(lat * Math.PI / 180) * 100 / 200));
+    map.setView(ll, Math.max(map.getZoom(), Math.min(z, map.getMaxZoom() || 19)));
+  }
+
+  // Regroupe les agents dont les pastilles se chevauchent à l'écran (distance < 30 px)
+  function regrouper() {
+    const groupes = [];
+    S.agents.forEach(a => {
+      const p = C.map.latLngToLayerPoint([a.lat, a.lng]);
+      const g = groupes.find(g => g.p.distanceTo(p) < 30);
+      if (g) { g.agents.push(a); g.p = L_moy(g.agents); } else groupes.push({ agents: [a], p });
+    });
+    return groupes;
+  }
+  function L_moy(agents) {
+    let x = 0, y = 0;
+    agents.forEach(a => { const p = C.map.latLngToLayerPoint([a.lat, a.lng]); x += p.x; y += p.y; });
+    return C.L.point(x / agents.length, y / agents.length);
+  }
+
   function dessiner() {
     if (!C.couche) return;
     const L = C.L;
+    const groupes = S.voit ? regrouper() : [];
+    // inutile de tout redessiner (et de fermer une fenêtre ouverte) si rien n'a changé
+    const sig = JSON.stringify([C.map.getZoom(), groupes.map(g => g.agents.map(a => [a.id, a.lat, a.lng, a.t, a.batt, a.moi, couleur(Date.parse(a.t)), (a.trace || []).length]))]);
+    if (sig === C.sig) return;
+    C.sig = sig;
     C.couche.clearLayers();
     if (!S.voit) return;
     S.agents.forEach(a => {
       const tr = (a.trace || []).concat([[a.lat, a.lng]]);
       if (tr.length > 1) L.polyline(tr, { color: COUL[couleur(Date.parse(a.t))], weight: 3, opacity: .85, dashArray: '6 7', interactive: false }).addTo(C.couche);
     });
-    S.agents.forEach(a => {
-      const icon = L.divIcon({ className: 'partage-pin', html: pastille(a), iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -12] });
-      L.marker([a.lat, a.lng], { icon, title: a.nom, zIndexOffset: 1000 }).bindPopup(() => popup(a)).addTo(C.couche);
+    groupes.forEach(g => {
+      if (g.agents.length === 1) {
+        const a = g.agents[0];
+        const icon = L.divIcon({ className: 'partage-pin', html: pastille(a), iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -12] });
+        const m = L.marker([a.lat, a.lng], { icon, title: a.nom, zIndexOffset: 1000 }).bindPopup(() => popup(a)).addTo(C.couche);
+        m.on('click', () => zoom200(C.map, [a.lat, a.lng]));
+        return;
+      }
+      const n = g.agents.length;
+      const ll = C.map.layerPointToLatLng(g.p);
+      const icon = L.divIcon({ className: 'partage-pin', html: `<span class="partage-grp">${n}</span>`, iconSize: [30, 30], iconAnchor: [15, 15] });
+      const m = L.marker(ll, { icon, title: n + ' agents', zIndexOffset: 1000 }).addTo(C.couche);
+      m.on('click', () => {
+        const max = C.map.getMaxZoom() || 19;
+        if (C.map.getZoom() >= max - 1) {
+          // zoom maximal : les positions restent confondues, on liste les agents
+          L.popup().setLatLng(ll).setContent(h('div', { class: 'poi-pop partage-pop' }, ...g.agents.map(a => popup(a)))).openOn(C.map);
+        } else C.map.fitBounds(L.latLngBounds(g.agents.map(a => [a.lat, a.lng])), { padding: [50, 50], maxZoom: max - 1 });
+      });
     });
   }
 
@@ -260,6 +304,7 @@
     if (C.map === map) return;
     C.L = L; C.map = map;
     C.couche = L.featureGroup().addTo(map);
+    map.on('zoomend', dessiner);
     const Btn = L.Control.extend({
       options: { position: 'topleft' },
       onAdd: () => {
@@ -288,5 +333,5 @@
   window.addEventListener('load', () => setTimeout(() => { boutons(); if (connecte() && store.get(KEY_ACTIF)) lire(); }, 2500));
   setInterval(() => { boutons(); if (!connecte()) { store.del(KEY_ACTIF); S.moi = null; bandeau(); } }, 15000);
 
-  window.SMPM_PARTAGE = { attacher, ouvrir, arreter, actif, lire };
+  window.SMPM_PARTAGE = { attacher, ouvrir, arreter, actif, lire, zoom200 };
 })();

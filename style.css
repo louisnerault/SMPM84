@@ -2537,6 +2537,7 @@ a.rh-logout { text-decoration: none; }
 .partage-age { opacity: .85; font-size: .78rem; }
 .partage-stop { flex: none; border: 0; border-radius: 999px; padding: 6px 12px; background: #d62828; color: #fff; font-weight: 600; cursor: pointer; }
 .partage-pin { background: none; border: 0; }
+.partage-grp { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; box-sizing: border-box; border-radius: 50%; background: #3d4a5a; color: #fff; font: 700 14px/1 system-ui, sans-serif; border: 2.5px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
 .partage-pin svg { display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
 .partage-btn { display: flex; align-items: center; justify-content: center; }
 .partage-btn.partage-btn-on { background: #2a9d3a; color: #fff; }

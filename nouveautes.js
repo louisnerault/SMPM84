@@ -22,6 +22,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 211, titre: 'Carte : points regroupés et zoom', texte: 'Sur la carte, les agents trop proches s’affichent en un seul point avec leur nombre : zoomez pour les séparer. Un clic sur un point (agent ou POI) zoome automatiquement à l’échelle 200 m.', pour: ['tous'] },
     { v: 210, titre: 'Cartographie plus compacte', texte: 'La carte s’affiche dès l’ouverture de Cartographie / points d’intérêt : boutons répartis sur la largeur avec leurs icônes, secteurs et types en listes côte à côte.', pour: ['tous'] },
     { v: 209, titre: 'Supprimer une FMPA', texte: 'Dans la fiche d’une FMPA du planning, le bouton « Supprimer définitivement » efface la FMPA, ses encadrants et ses inscrits, sans notification (double confirmation).', pour: ['admin'] },
     { v: 208, titre: 'Orienter la carte', texte: 'Sur la carte des points d’intérêt, tournez la carte avec deux doigts, ou touchez la boussole (sous le zoom) pour qu’elle suive l’orientation du téléphone ; un nouveau toucher remet le nord en haut.', pour: ['tous'] },

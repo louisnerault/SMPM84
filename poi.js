@@ -1211,6 +1211,7 @@
       const m = L.marker([p.lat, p.lng], { title: p.nom, icon, draggable: peutModifier(p) && plein() }).bindPopup(pop);
       m.on('dragend', () => deplacer(p, m));
       if (p.propose) m.setOpacity(.55);
+      m.on('click', () => { if (window.SMPM_PARTAGE) window.SMPM_PARTAGE.zoom200(M.map, [p.lat, p.lng]); });
       m.poiId = p.id;
       m.poiSec = estSecondaire(p);   // l’échelle prime, quels que soient la recherche et les filtres
       m.poiEch = echPoint(p);
