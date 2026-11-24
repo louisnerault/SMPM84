@@ -201,7 +201,15 @@
         el('div', { class: 'fmpa-fig' },
           el('strong', { text: f.capacite ? f.inscrits.length + '/' + f.capacite : f.departementale ? String(f.inscrits.length) : '' }),
           f.capacite ? el('span', { text: 'inscrits' }) : f.departementale ? el('span', { text: 'affectés' }) : null));
-      return el('li', null, btn);
+      const noms = l => l.map(p => p.nomComplet).join(', ') || '—';
+      const det = el('dl', { class: 'acc-detail', hidden: true },
+        el('dt', { text: 'Lieu' }), el('dd', { text: f.infos.lieu || 'À préciser' }),
+        el('dt', { text: 'RDV' }), el('dd', { text: f.infos.heure ? heureTxt(f.infos.heure) : 'À préciser' }),
+        el('dt', { text: 'CU' }), el('dd', { text: noms(f.encadrants) }),
+        el('dt', { text: 'Inscrits (' + f.inscrits.length + ')' }), el('dd', { text: noms(f.inscrits) }));
+      const tg = el('button', { type: 'button', class: 'acc-toggle', 'aria-expanded': 'false', 'aria-label': 'Afficher le détail de la FMPA',
+        onclick: () => { const o = det.hidden; det.hidden = !o; tg.setAttribute('aria-expanded', String(o)); tg.classList.toggle('ouvert', o); } }, '▾');
+      return el('li', null, btn, tg, det);
     }));
   }
 

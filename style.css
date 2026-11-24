@@ -2563,3 +2563,12 @@ body.partage-on { padding-bottom: 64px; }
 .poi-orient a { display: flex; align-items: center; justify-content: center; }
 .poi-orient svg { transition: transform .15s linear; }
 .poi-orient.actif a { background: #ffe0b2; }
+
+/* Accueil › Mes prochaines FMPA : flèche de détail */
+#livret-fmpa-list > li { position: relative; }
+.acc-toggle { display: block; margin: 2px 0 0 auto; padding: 2px 14px; border: 0; background: none; color: var(--primary); font-size: 1.1rem; line-height: 1; cursor: pointer; }
+.acc-toggle.ouvert { transform: rotate(180deg); }
+.acc-detail { margin: 4px 0 6px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); font-size: .85rem; }
+.acc-detail dt { font-weight: 700; color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .03em; margin-top: 6px; }
+.acc-detail dt:first-child { margin-top: 0; }
+.acc-detail dd { margin: 0; }
