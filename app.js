@@ -1057,8 +1057,8 @@
     // demandes de validation des thèmes en attente : compteur du menu
     // (compteur affiché tout de suite depuis l'appareil, puis rafraîchi : menu, bouton ☰ et icône de l'application)
     if (canDeclare(data.session) && window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.refresh();
-    // planning des FMPA : compteur du menu (candidatures à examiner, informations à compléter) pour l'encadrement
-    if (!offline && (canEditAllFmpa(data.session) || canEncadrer(data)) && window.SMPM_ORGA) window.SMPM_ORGA.refresh();
+    // planning des FMPA : compteur du menu (encadrement) et « Mes prochaines FMPA » de l'accueil (tous les membres)
+    if (window.SMPM_ORGA) { window.SMPM_ORGA.accueil(); if (!offline) window.SMPM_ORGA.refresh(); }
   }
 
   // ---------- livret individuel : compteurs d'heures et formations ----------

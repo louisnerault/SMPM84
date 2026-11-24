@@ -174,7 +174,32 @@
       S.ouvrirDepuisNotif = false;
     }
     badge();
+    accueil();
     render();
+  }
+
+  // Accueil (« Mes heures ») : prochaines FMPA auxquelles je suis inscrit, en liste d'attente ou encadrant validé
+  function accueil() {
+    const box = $('#livret-fmpa'), ul = $('#livret-fmpa-list');
+    if (!box || !ul) return;
+    if (!S.data) { const c = store.getJSON(KEY); if (c) S.data = c; }
+    const auj = new Date().toISOString().slice(0, 10);
+    const l = ((S.data && S.data.fmpa) || [])
+      .filter(f => actif(f) && (f.date2 || f.date) >= auj && (f.moi.inscrit === 'INSCRIT' || f.moi.inscrit === 'ATTENTE' || f.moi.encadrant === 'VALIDE'))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    box.hidden = !l.length;
+    ul.replaceChildren(...l.map(f => {
+      const [, m, d] = (f.date || '').split('-').map(Number);
+      const btn = el('button', { type: 'button', class: 'fmpal-item orga-item', onclick: () => app().goto('fmpa-orga:' + f.id) },
+        el('time', { class: 'fmpa-date', datetime: f.date }, el('strong', { text: String(d) }), el('span', { text: MOIS[m - 1] })),
+        el('div', { class: 'fmpa-body' },
+          el('p', { class: 'fmpa-lieu', text: f.infos.lieu || (f.departementale ? 'FMPA départementale' : f.note || 'Lieu à préciser') }),
+          el('p', { class: 'fmpa-meta' }, tagSecteur(f.secteur),
+            ' ' + [jourSemaine(f.date) + (f.date2 ? ' et ' + jourSemaine(f.date2) + ' ' + Number(f.date2.slice(8)) : ''), hTxt(f, f.date2 ? '/jour' : ''),
+              f.infos.heure ? 'RDV ' + heureTxt(f.infos.heure) : ''].filter(Boolean).join(' · ')),
+          el('span', { class: 'orga-moi', text: monStatut(f) })));
+      return el('li', null, btn);
+    }));
   }
 
   // Compteurs du menu : candidatures à examiner (CT), informations à compléter (chef d'unité validé), total sur le groupe
@@ -1012,7 +1037,7 @@
   // Rafraîchit le compteur du menu sans ouvrir la rubrique (encadrement : candidatures, informations à compléter)
   async function refresh() {
     const c = store.getJSON(KEY);
-    if (c && !S.data) { S.data = c; badge(); }
+    if (c && !S.data) { S.data = c; badge(); accueil(); }
     try {
       const res = await app().api('orga', { token: app().token(), op: 'list' });
       recevoir(res);
@@ -1023,7 +1048,8 @@
     store.del(KEY);
     Object.assign(S, { data: null, fresh: false, espace: 'insc', vue: null, secteur: '', id: null, busy: false, edit: null, mois: moisCourant() });
     badge();
+    accueil();
   }
 
-  window.SMPM_ORGA = { open, refresh, reset };
+  window.SMPM_ORGA = { open, refresh, reset, accueil };
 })();
