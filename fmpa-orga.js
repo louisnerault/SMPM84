@@ -197,7 +197,10 @@
           el('p', { class: 'fmpa-meta' }, tagSecteur(f.secteur),
             ' ' + [jourSemaine(f.date) + (f.date2 ? ' et ' + jourSemaine(f.date2) + ' ' + Number(f.date2.slice(8)) : ''), hTxt(f, f.date2 ? '/jour' : ''),
               f.infos.heure ? 'RDV ' + heureTxt(f.infos.heure) : ''].filter(Boolean).join(' · ')),
-          el('span', { class: 'orga-moi', text: monStatut(f) })));
+          el('span', { class: 'orga-moi', text: monStatut(f) })),
+        el('div', { class: 'fmpa-fig' },
+          el('strong', { text: f.capacite ? f.inscrits.length + '/' + f.capacite : f.departementale ? String(f.inscrits.length) : '' }),
+          f.capacite ? el('span', { text: 'inscrits' }) : f.departementale ? el('span', { text: 'affectés' }) : null));
       return el('li', null, btn);
     }));
   }
