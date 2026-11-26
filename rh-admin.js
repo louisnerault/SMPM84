@@ -2,7 +2,7 @@
 // Les RH sont des personnes extérieures à la spécialité : elles se connectent sur rh.html et consultent,
 // en lecture seule, les heures (FMPA, heures chef de section) des agents SMPM de leurs centres d'affectation.
 // Aucun lien depuis l'écran de connexion des spécialistes : l'adresse de rh.html est envoyée dans l'invitation.
-// Actions serveur (dépôt privé, Rh.gs) : rh_admin_list, rh_admin_save, rh_admin_revoke — droits contrôlés par le serveur.
+// Actions serveur (dépôt privé, Rh.gs) : rh_admin_list, rh_admin_save, rh_admin_revoke, rh_admin_renvoyer — droits contrôlés par le serveur.
 // Données gardées en mémoire seulement : la rubrique demande le réseau.
 (() => {
   'use strict';
@@ -74,6 +74,7 @@
       el('ul', { class: 'chips ann-chips' }, c.centres.map(x => el('li', { text: x }))),
       el('p', { class: 'ann-meta', text: [vu(c.derniere_connexion), c.cree_par ? 'Créé par ' + c.cree_par : ''].filter(Boolean).join(' · ') }),
       el('div', { class: 'pers-actions rha-actions' },
+        c.revoked ? null : el('button', { type: 'button', class: 'link', text: 'Renvoyer le mail', onclick: () => renvoyer(c) }),
         el('button', { type: 'button', class: 'link', text: c.revoked ? 'Rétablir' : 'Révoquer', onclick: () => revoke(c) }),
         el('button', { type: 'button', class: 'link', text: 'Modifier', onclick: () => edit(c) })))));
   }
@@ -170,6 +171,22 @@
       const res = await app().api('rh_admin_revoke', { token: app().token(), id: c.id, revoked: v });
       S.data = { comptes: res.comptes || [], centres: res.centres || [] };
       setState(res.message || '');
+      render();
+    } catch (err) {
+      if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
+      setState(err instanceof app().NetworkError ? `${app().netLabel()} : réessayez avec du réseau.` : err.message, true);
+    } finally { S.busy = false; }
+  }
+
+  async function renvoyer(c) {
+    if (S.busy) return;
+    if (!confirm(`Renvoyer le mail de connexion à ${c.email} ?`)) return;
+    S.busy = true;
+    setState('Envoi du mail…');
+    try {
+      const res = await app().api('rh_admin_renvoyer', { token: app().token(), id: c.id, lien: new URL('rh.html', location.href).href });
+      S.data = { comptes: res.comptes || [], centres: res.centres || [] };
+      setState(res.message || 'Mail renvoyé');
       render();
     } catch (err) {
       if (app().AUTH_ERRORS.includes(err.message)) return app().logout();
