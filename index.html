@@ -1016,7 +1016,7 @@
     <!-- Administration › Audience : CTD et administrateurs (audience.js, Audience.gs dans le dépôt privé) -->
     <div id="tab-admin-audience" hidden>
       <h1>Audience</h1>
-      <p class="muted small">Usage de l’application : connexions par jour, agents actifs et rubriques les plus consultées. Les données sont pseudonymisées (aucun nom n’est enregistré).</p>
+      <p class="muted small">Usage de l’application : connexions par jour, agents actifs et rubriques les plus consultées. Réservé au CTD et aux administrateurs : les noms des agents sont affichés, mais le classeur d’audience ne contient que des identifiants pseudonymisés.</p>
       <div class="aud-filtres">
         <label>Période
           <select id="aud-periode">
@@ -1039,6 +1039,10 @@
       <div id="aud-rub"></div>
       <h2>Par rôle</h2>
       <div id="aud-roles"></div>
+      <h2>Agents</h2>
+      <p class="muted small">Du plus récemment actif au moins récent.</p>
+      <div id="aud-agents"></div>
+      <details class="aud-non"><summary id="aud-non-sum">Agents non connectés</summary><div id="aud-non"></div></details>
       <h2>Heures d’ouverture</h2>
       <div id="aud-heures" class="aud-jours aud-heures" role="img" aria-label="Ouvertures par heure de la journée"></div>
       <div class="aud-axe small muted"><span>0 h</span><span>12 h</span><span>23 h</span></div>

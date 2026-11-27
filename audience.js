@@ -2,8 +2,8 @@
 //
 // 1) Mesure (tous les membres) : chaque ouverture de l'application et chaque rubrique consultée sont mises en
 //    file puis envoyées par lots au serveur (action audience_track, Audience.gs dans le dépôt privé).
-//    Aucune donnée nominative n'est envoyée : seulement la rubrique et l'heure ; le serveur rattache un
-//    identifiant pseudonymisé. L'envoi est silencieux (pas de barre de chargement, échec sans conséquence),
+//    Aucun nom n'est envoyé : seulement la rubrique et l'heure ; le serveur rattache un identifiant
+//    pseudonymisé (le nom n'est retrouvé qu'à la consultation par le CTD et les administrateurs). L'envoi est silencieux (pas de barre de chargement, échec sans conséquence),
 //    différé hors ligne, et la file est conservée sur l'appareil jusqu'à l'envoi.
 // 2) Consultation (CTD et administrateurs, Administration › Audience) : audience_stats — connexions
 //    quotidiennes, agents actifs, rubriques les plus consultées, répartition par rôle et par heure.
@@ -98,6 +98,10 @@
     }
     return LIB_SUP[cle] || cle;
   }
+  function dateCourte(ms) {
+    const d = new Date(ms);
+    return isNaN(d) ? '' : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  }
   const jourCourt = j => j.slice(8, 10) + '/' + j.slice(5, 7);
   const pct = (n, d) => d > 0 ? Math.round(100 * n / d) + ' %' : '';
   const setState = (t, err) => { const p = $('#aud-state'); p.textContent = t || ''; p.classList.toggle('error', !!err); };
@@ -163,6 +167,22 @@
     });
     if (!rol.children.length) rol.append(el('p', 'muted small', 'Aucune donnée.'));
 
+    // agents nommés
+    const ag = $('#aud-agents');
+    ag.replaceChildren();
+    (d.agents || []).forEach(x => {
+      const l = el('div', 'aud-ligne');
+      const t = el('div', 'aud-ligne-t');
+      t.append(el('span', 'aud-nom', x.nom), el('span', 'aud-n', dateCourte(x.derniere)));
+      const s = el('div', 'aud-n', (ROLES[x.role] || x.role || '') + ' · ' + x.ouvertures + ' ouverture' + (x.ouvertures > 1 ? 's' : '') + ' · ' + x.vues + ' vue' + (x.vues > 1 ? 's' : '') + ' · ' + x.jours + ' jour' + (x.jours > 1 ? 's' : ''));
+      l.append(t, s);
+      ag.append(l);
+    });
+    if (!ag.children.length) ag.append(el('p', 'muted small', 'Aucune activité enregistrée sur la période.'));
+    const non = d.non_connectes || [];
+    $('#aud-non-sum').textContent = 'Agents non connectés sur la période (' + non.length + ')';
+    $('#aud-non').replaceChildren(...non.map(n => el('div', 'aud-nom aud-non-l', n)));
+
     // heures d'ouverture
     const hh = $('#aud-heures');
     hh.replaceChildren();
@@ -175,7 +195,7 @@
       hh.append(c);
     });
 
-    $('#aud-pied').textContent = 'Données pseudonymisées (aucun nom), conservées ' + Math.round((d.conservation_jours || 365) / 30) + ' mois. Mise à jour à ' +
+    $('#aud-pied').textContent = 'Le classeur d’audience ne contient que des identifiants pseudonymisés ; les noms sont retrouvés à l’affichage. Données conservées ' + Math.round((d.conservation_jours || 365) / 30) + ' mois. Mise à jour à ' +
       new Date(d.maj).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + ' (actualisation toutes les 5 minutes au plus).';
   }
 

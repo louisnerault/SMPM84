@@ -2622,3 +2622,7 @@ body.partage-on { padding-bottom: 64px; }
 .aud-n { color: var(--muted); white-space: nowrap; font-size: .85rem; }
 .aud-barre { height: 8px; margin-top: 4px; border-radius: 4px; background: var(--primary-soft); overflow: hidden; }
 .aud-barre span { display: block; height: 100%; background: var(--primary); border-radius: 4px; }
+
+.aud-non { margin: 10px 0; }
+.aud-non summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
+.aud-non-l { font-weight: 400; margin: 4px 0; }
