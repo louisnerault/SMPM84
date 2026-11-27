@@ -2599,3 +2599,26 @@ body.partage-on { padding-bottom: 64px; }
 .bug-mes { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 12px; margin: 12px 0; }
 .bug-mes > summary { font-weight: 700; cursor: pointer; min-height: 36px; display: flex; align-items: center; }
 .bug-reponse { margin: 6px 0 0; padding: 6px 10px; border-left: 3px solid var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--card)); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Administration › Audience (audience.js) */
+.aud-filtres { display: grid; gap: 10px; margin: 12px 0 4px; }
+.aud-filtres select { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; min-height: 44px; padding: 0 12px; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+.aud-tuiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+.aud-tuile { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); padding: 12px 14px; }
+.aud-valeur { font-size: 1.9rem; font-weight: 700; line-height: 1.1; color: var(--primary); }
+.aud-lib { font-size: .9rem; margin-top: 2px; }
+.aud-detail { font-size: .8rem; color: var(--muted); margin-top: 2px; }
+.aud-jours { display: grid; grid-template-columns: repeat(var(--aud-n, 24), 1fr); gap: 2px; align-items: end; height: 120px; margin: 8px 0 4px; padding: 6px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
+.aud-heures { --aud-n: 24; height: 80px; }
+.aud-col { position: relative; height: 100%; min-width: 0; }
+.aud-col span { position: absolute; bottom: 0; border-radius: 2px 2px 0 0; }
+.aud-o { left: 0; right: 0; background: var(--primary-soft); }
+.aud-a { left: 22%; right: 22%; background: var(--primary); min-height: 1px; }
+.aud-col-h .aud-a { left: 0; right: 0; }
+.aud-axe { display: flex; justify-content: space-between; gap: 8px; }
+.aud-ligne { margin: 8px 0; }
+.aud-ligne-t { display: flex; justify-content: space-between; gap: 10px; font-size: .92rem; }
+.aud-nom { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.aud-n { color: var(--muted); white-space: nowrap; font-size: .85rem; }
+.aud-barre { height: 8px; margin-top: 4px; border-radius: 4px; background: var(--primary-soft); overflow: hidden; }
+.aud-barre span { display: block; height: 100%; background: var(--primary); border-radius: 4px; }

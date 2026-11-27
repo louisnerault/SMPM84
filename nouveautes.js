@@ -22,6 +22,7 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 217, titre: 'Audience de l’application', texte: 'Dans Administration › Audience, suivez les connexions par jour, les agents actifs, les rubriques les plus consultées et les heures d’utilisation (données sans nom).', pour: ['ctd', 'admin'] },
     { v: 216, titre: 'Gérer les signalements', texte: 'Dans Administration › Signalements, retrouvez les bugs et suggestions, changez leur statut et répondez : l’auteur est notifié avec votre réponse.', pour: ['admin'] },
     { v: 216, titre: 'Suivre mes signalements', texte: 'Dans « Signaler un problème », la liste « Mes signalements » montre où en est chaque demande et la réponse de l’administrateur.', pour: ['tous'] },
     { v: 215, titre: 'Renvoyer le mail de connexion', texte: 'Dans Administration › RH, le bouton « Renvoyer le mail » renvoie au responsable RH son e-mail d’invitation avec le lien d’activation, s’il ne l’a pas reçu ou l’a perdu.', pour: ['ctd', 'admin'] },

@@ -151,6 +151,7 @@
           <button type="button" id="nav-vue-rh"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V10M10 19V5M16 19v-7M21 19H3"/></svg>Vue RH</button>
         </div>
       </div>
+      <button data-page="admin-audience" id="nav-audience" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V10M10 19V5M16 19v-7M21 19H3"/></svg>Audience</button>
       <button data-page="admin-maintenance" id="nav-maint" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Maintenance<span class="pending-dot maint-dot" title="Maintenance en cours" hidden></span></button>
       <button data-page="admin-bugs" id="nav-bugs" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg>Signalements<span class="pending-dot bugs-dot" title="Signalements en attente" hidden></span></button>
     </div>
@@ -1012,6 +1013,37 @@
       <p id="bga-state" class="muted small" role="status" aria-live="polite"></p>
       <div id="bga-liste" class="bug-liste"></div>
     </div>
+    <!-- Administration › Audience : CTD et administrateurs (audience.js, Audience.gs dans le dépôt privé) -->
+    <div id="tab-admin-audience" hidden>
+      <h1>Audience</h1>
+      <p class="muted small">Usage de l’application : connexions par jour, agents actifs et rubriques les plus consultées. Les données sont pseudonymisées (aucun nom n’est enregistré).</p>
+      <div class="aud-filtres">
+        <label>Période
+          <select id="aud-periode">
+            <option value="7">7 derniers jours</option>
+            <option value="30" selected>30 derniers jours</option>
+            <option value="90">90 derniers jours</option>
+          </select>
+        </label>
+        <label class="mnt-check"><input type="checkbox" id="aud-admin"> <span>Inclure l’usage des administrateurs</span></label>
+        <button type="button" class="link" id="aud-refresh">Actualiser</button>
+      </div>
+      <p id="aud-state" class="muted small" role="status" aria-live="polite"></p>
+      <div id="aud-tuiles" class="aud-tuiles"></div>
+      <h2>Ouvertures par jour</h2>
+      <p class="muted small" id="aud-total"></p>
+      <div id="aud-jours" class="aud-jours" role="img" aria-label="Ouvertures de l’application par jour"></div>
+      <div id="aud-axe" class="aud-axe small muted"></div>
+      <p class="muted small">Barre claire : ouvertures de l’application. Barre foncée : agents distincts.</p>
+      <h2>Rubriques les plus consultées</h2>
+      <div id="aud-rub"></div>
+      <h2>Par rôle</h2>
+      <div id="aud-roles"></div>
+      <h2>Heures d’ouverture</h2>
+      <div id="aud-heures" class="aud-jours aud-heures" role="img" aria-label="Ouvertures par heure de la journée"></div>
+      <div class="aud-axe small muted"><span>0 h</span><span>12 h</span><span>23 h</span></div>
+      <p id="aud-pied" class="muted small"></p>
+    </div>
     <!-- Administration › Maintenance : administrateurs (maintenance.js, Maintenance.gs dans le dépôt privé) -->
     <div id="tab-admin-maintenance" hidden>
       <h1>Maintenance</h1>
@@ -1188,6 +1220,7 @@
 <script src="personnel.js"></script>
 <script src="rh-admin.js"></script>
 <script src="maintenance.js"></script>
+<script src="audience.js"></script>
 <script src="dashboard.js"></script>
 <script src="nouveautes.js"></script>
 <script src="app.js"></script>

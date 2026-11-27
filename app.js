@@ -97,6 +97,7 @@
     if (name === 'admin-rh') return canEditAllFmpa(session);
     if (name === 'admin-bugs') return isAdm(session);          // Administration › Signalements : administrateurs (Bugs.gs)
     if (name === 'admin-maintenance') return isAdm(session);    // Administration › Maintenance : administrateurs (Maintenance.gs)   // Administration › RH : CTD et administrateurs (Rh.gs)
+    if (name === 'admin-audience') return canEditAllFmpa(session);   // Administration › Audience : CTD et administrateurs (Audience.gs)
     if (CS_PAGES.includes(name)) return canAllFmpa(session);
     return true;
   }
@@ -529,6 +530,7 @@
     if (name === 'cs-heures-toutes') $('#tab-cs-heures').hidden = false;
     $('#tab-admin-rh').hidden = name !== 'admin-rh';
     $('#tab-admin-maintenance').hidden = name !== 'admin-maintenance';
+    $('#tab-admin-audience').hidden = name !== 'admin-audience';
     $('#tab-admin-bugs').hidden = name !== 'admin-bugs';
     $('#tab-bug').hidden = name !== 'bug';
     $('#tab-accueil').hidden = name !== 'accueil';
@@ -561,6 +563,8 @@
     if (name === 'cs-specialistes' && window.SMPM_PERSONNEL) window.SMPM_PERSONNEL.open();
     if (name === 'admin-rh' && window.SMPM_RH_ADMIN) window.SMPM_RH_ADMIN.open();
     if (name === 'admin-maintenance' && window.SMPM_MAINT) window.SMPM_MAINT.open();
+    if (name === 'admin-audience' && window.SMPM_AUDIENCE) window.SMPM_AUDIENCE.open();
+    if (window.SMPM_AUDIENCE) window.SMPM_AUDIENCE.noter(name);     // mesure d'audience (audience.js) : rubrique ouverte
     if (name === 'admin-bugs' && window.SMPM_BUGS_ADMIN) window.SMPM_BUGS_ADMIN.open();
     if (name === 'admin-rh') setAdminGroup(true);
     document.body.classList.toggle('page-dash', name === 'cs-tableau');
@@ -808,6 +812,7 @@
     clearInterval(maintTimer);
     if (window.SMPM_PUSH) window.SMPM_PUSH.reset(store.get(KEY_TOKEN));   // avant la suppression du jeton
     if (window.SMPM_NOTIFS) window.SMPM_NOTIFS.reset();
+    if (window.SMPM_AUDIENCE) window.SMPM_AUDIENCE.vider();               // file d'audience non envoyée : jamais transmise à l'utilisateur suivant
     store.del(KEY_TOKEN);
     store.del(KEY_CACHE);          // important sur un appareil partagé
     store.del(KEY_LIVRET);
@@ -1020,6 +1025,7 @@
     if (window.SMPM_CARTE) window.SMPM_CARTE.setAllowed(true);
     if (window.SMPM_PUSH) window.SMPM_PUSH.setSession(data.session);
     show('app');
+    if (window.SMPM_AUDIENCE) window.SMPM_AUDIENCE.ouverture();      // mesure d'audience : application ouverte
     if (window.SMPM_NOTIFS) window.SMPM_NOTIFS.setSession(data.session, offline);
     applyMode(store.get(KEY_MODE) === 'intervention');
     // Au retour du réseau, on rafraîchit sans quitter la page en cours (ex. déclaration de FMPA en cours de saisie)
@@ -1504,6 +1510,7 @@
     $('#nav-csh-all').hidden = !canAllCsHeures(session);
     $('#nav-sec-admin').hidden = !canEditAllFmpa(session);
     $('#nav-maint').hidden = !isAdm(session);
+    $('#nav-audience').hidden = !canEditAllFmpa(session);
     $('#nav-bugs').hidden = !isAdm(session);
     majBandeauMaint();
     $('#home-interv-new').hidden = !canIntervene(session);
