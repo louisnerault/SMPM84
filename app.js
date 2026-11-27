@@ -99,7 +99,7 @@
     if (name === 'cs-gfor') return canCsGfor(session);
     if (name === 'admin-rh') return canEditAllFmpa(session);
     if (name === 'admin-bugs') return isAdm(session);          // Administration › Signalements : administrateurs (Bugs.gs)
-    if (name === 'admin-maintenance') return isAdm(session);    // Administration › Maintenance : administrateurs (Maintenance.gs)   // Administration › RH : CTD et administrateurs (Rh.gs)
+    if (name === 'admin-maintenance') return canEditAllFmpa(session);   // Administration › Maintenance : CTD et administrateurs (Maintenance.gs)
     if (name === 'admin-audience') return canEditAllFmpa(session);   // Administration › Audience : CTD et administrateurs (Audience.gs)
     if (CS_PAGES.includes(name)) return canAllFmpa(session);
     return true;
@@ -1529,7 +1529,7 @@
     $('#nav-csh-all').hidden = !canAllCsHeures(session);
     $('#nav-csh-gfor').hidden = !canCsGfor(session);
     $('#nav-sec-admin').hidden = !canEditAllFmpa(session);
-    $('#nav-maint').hidden = !isAdm(session);
+    $('#nav-maint').hidden = !canEditAllFmpa(session);
     $('#nav-audience').hidden = !canEditAllFmpa(session);
     $('#nav-bugs').hidden = !isAdm(session);
     majBandeauMaint();
