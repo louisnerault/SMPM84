@@ -46,6 +46,8 @@
   const isAdm = session => !!session && (session.is_admin === true || session.admin === true);
   // Déclaration de FMPA : chef d'unité ou supérieur, et administrateurs
   const FMPA_ROLES = ['chef_unite', 'chef_section', 'ctd', 'admin'];
+  // Maintenance : le CTD et les administrateurs ne sont jamais bloqués (Maintenance.gs fait de même)
+  const maintPasse = session => isAdm(session) || (!!session && session.role === 'ctd');
   const canDeclare = session => !!session && (isAdm(session) || FMPA_ROLES.includes(session.role));
   // Toutes les FMPA : administrateurs, conseillers techniques (modification) et chefs de section
   // (consultation, modification de leur secteur)
@@ -1002,7 +1004,7 @@
     return false;
   }
   function entrerMaintenance(m) {
-    if (state.data && isAdm(state.data.session) && !maintConfig()) return;   // l'administrateur n'est jamais bloqué
+    if (state.data && maintPasse(state.data.session) && !maintConfig()) return;   // l'administrateur n'est jamais bloqué
     afficherMaint(m || null);
     maintBloque = true;
     if (!$('#view-maintenance').hidden) return;
@@ -1018,8 +1020,8 @@
     if (document.visibilityState === 'visible' && !$('#view-maintenance').hidden) verifierMaint(false);
   });
   function enterApp(data, options, offline) {
-    if ((maintConfig() || maintBloque) && !isAdm(data && data.session)) { state.data = data; return entrerMaintenance(); }
-    if (data && data.maintenance && data.maintenance.actif && !isAdm(data.session)) { state.data = data; return entrerMaintenance(data.maintenance); }
+    if ((maintConfig() || maintBloque) && !maintPasse(data && data.session)) { state.data = data; return entrerMaintenance(); }
+    if (data && data.maintenance && data.maintenance.actif && !maintPasse(data.session)) { state.data = data; return entrerMaintenance(data.maintenance); }
     clearInterval(maintTimer);
     const wasInApp = !$('#view-app').hidden;
     state.data = data;
