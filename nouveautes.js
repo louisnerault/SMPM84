@@ -22,6 +22,8 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 219, titre: 'Heures réalisées dans le cadre du GFOR', texte: 'Dans « Heures chefs de section › GFOR », saisissez les heures de formation d’un agent (sans quota). Elles n’entrent dans aucun autre compteur.', pour: ['chef_section', 'ctd', 'admin'] },
+    { v: 219, titre: 'Compteur GFOR dans Mon livret', texte: 'Si vous avez des heures réalisées dans le cadre du GFOR, un compteur hors quota apparaît dans Mon livret pour l’année concernée.', pour: ['tous'] },
     { v: 218, titre: 'Audience : qui se connecte', texte: 'Administration › Audience affiche maintenant les noms : agents actifs avec leur dernière connexion, et liste des agents jamais connectés sur la période.', pour: ['ctd', 'admin'] },
     { v: 217, titre: 'Audience de l’application', texte: 'Dans Administration › Audience, suivez les connexions par jour, les agents actifs, les rubriques les plus consultées et les heures d’utilisation (rubrique réservée).', pour: ['ctd', 'admin'] },
     { v: 216, titre: 'Gérer les signalements', texte: 'Dans Administration › Signalements, retrouvez les bugs et suggestions, changez leur statut et répondez : l’auteur est notifié avec votre réponse.', pour: ['admin'] },

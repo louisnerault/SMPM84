@@ -82,9 +82,11 @@
   // Planning des FMPA (fmpa-orga.js, Orga.gs) : un espace par rôle — à garder cohérent avec ORGA.GERER
   const ORGA_PAGES = ['orga-ct', 'orga-cu', 'orga-insc'];
   // Rubriques réservées aux chefs de section (et CTD, administrateurs) — à garder cohérent avec backend/Heures.gs
-  const CS_PAGES = ['cs-heures', 'cs-eval', 'cs-tableau', 'cs-specialistes'];
+  const CS_PAGES = ['cs-heures', 'cs-gfor', 'cs-eval', 'cs-tableau', 'cs-specialistes'];
   // Heures chefs de section : « Mes heures » (chefs de section, CTD, admin), « Toutes les heures » (CTD, admin)
   const canAllCsHeures = session => !!session && (isAdm(session) || ['ctd', 'admin'].includes(session.role));
+  // GFOR (Gfor.gs) : saisie réservée aux chefs de section et au-dessus
+  const canCsGfor = session => !!session && (isAdm(session) || ['chef_section', 'ctd', 'admin'].includes(session.role));
   function allowedPage(name, session) {
     if (name === 'fmpa') return canDeclare(session) && canEncadrer(state.data);
     if (name === 'fmpa-fiche' || name === 'fmpa-mes' || name === 'fmpa-valid') return canDeclare(session);
@@ -94,6 +96,7 @@
     if (name === 'interv-toutes') return canAllInterv(session);
     if (name.startsWith('interv-')) return canIntervene(session);
     if (name === 'cs-heures-toutes') return canAllCsHeures(session);
+    if (name === 'cs-gfor') return canCsGfor(session);
     if (name === 'admin-rh') return canEditAllFmpa(session);
     if (name === 'admin-bugs') return isAdm(session);          // Administration › Signalements : administrateurs (Bugs.gs)
     if (name === 'admin-maintenance') return isAdm(session);    // Administration › Maintenance : administrateurs (Maintenance.gs)   // Administration › RH : CTD et administrateurs (Rh.gs)
@@ -560,6 +563,7 @@
     if (name === 'livret' && window.SMPM_CSH) window.SMPM_CSH.home(state.year);
     if (name.startsWith('cs-heures')) setCshGroup(true);
     if (name.startsWith('cs-heures') && window.SMPM_CSH) window.SMPM_CSH.open(name);
+    if (name === 'cs-gfor') { setCshGroup(true); if (window.SMPM_GFOR) window.SMPM_GFOR.open(); }
     if (name === 'cs-specialistes' && window.SMPM_PERSONNEL) window.SMPM_PERSONNEL.open();
     if (name === 'admin-rh' && window.SMPM_RH_ADMIN) window.SMPM_RH_ADMIN.open();
     if (name === 'admin-maintenance' && window.SMPM_MAINT) window.SMPM_MAINT.open();
@@ -1298,6 +1302,20 @@
     return wrap;
   }
 
+  // Heures réalisées dans le cadre du GFOR (Gfor.gs) : compteur sans quota, seulement si le total de l'année est > 0
+  function gforCounter(gfor, year) {
+    const done = ((gfor && gfor.lignes) || [])
+      .filter(l => Number(String(l.date).slice(0, 4)) === Number(year))
+      .reduce((s, l) => s + (Number(l.heures) || 0), 0);
+    if (!(done > 0)) return null;
+    const card = document.createElement('article');
+    card.className = 'counter no-quota';
+    card.innerHTML = '<div class="counter-head"><strong>Heures réalisées dans le cadre du GFOR</strong><span>Formation</span></div>' +
+      '<p class="counter-value"><span class="big" data-to="' + done + '">0</span><span class="unit"> h</span></p>' +
+      '<p class="counter-note">Hors quota</p>';
+    return card;
+  }
+
   function renderCounters(L, list, year) {
     const box = $('#livret-counters');
     if (!L) { box.replaceChildren(); return; }
@@ -1370,7 +1388,8 @@
       if (done > 0) card.append(repartitionRH(rh[c.key], done));
       return card;
     });
-    box.replaceChildren(...cards);
+    const gfor = gforCounter(L.gfor, year);
+    box.replaceChildren(...cards, ...(gfor ? [gfor] : []));
     animateCounters(box);
   }
 
@@ -1508,6 +1527,7 @@
     $('#nav-interv').hidden = !canIntervene(session);
     $('#nav-interv-all').hidden = !canAllInterv(session);
     $('#nav-csh-all').hidden = !canAllCsHeures(session);
+    $('#nav-csh-gfor').hidden = !canCsGfor(session);
     $('#nav-sec-admin').hidden = !canEditAllFmpa(session);
     $('#nav-maint').hidden = !isAdm(session);
     $('#nav-audience').hidden = !canEditAllFmpa(session);

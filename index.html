@@ -135,6 +135,7 @@
         <button type="button" class="nav-group-btn" aria-expanded="false" aria-controls="nav-csh-sub"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12.5" r="8.5"/><path d="M12 7.5v5l3.2 2"/></svg>Heures chefs de section<svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg><span class="pending-dot" title="Journée en attente d'envoi" hidden></span></button>
         <div id="nav-csh-sub" class="nav-sub" hidden>
           <button data-page="cs-heures"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>Mes heures</button>
+          <button data-page="cs-gfor" id="nav-csh-gfor" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16M8 15l3-4 3 2 4-6"/></svg>GFOR</button>
           <button data-page="cs-heures-toutes" id="nav-csh-all" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>Toutes les heures</button>
         </div>
       </div>
@@ -932,6 +933,29 @@
       <p id="csh-none" class="muted" hidden></p>
       <ul id="csh-list" class="csh-list"></ul>
     </div>
+    <!-- Heures réalisées dans le cadre du GFOR (gfor.js, backend/Gfor.gs) : saisie par les chefs de section -->
+    <div id="tab-cs-gfor" hidden>
+      <div id="gfor-head"><h1>Heures réalisées dans le cadre du GFOR</h1></div>
+      <p class="muted small">Heures de formation (formation initiale, etc.) saisies pour un agent. Compteur sans quota : il n'entre dans aucun autre quota.</p>
+      <label class="year-pick">Année <select id="gfor-annee"></select></label>
+      <p id="gfor-state" class="muted small" role="status"></p>
+      <form id="gfor-form" class="csh-form" novalidate>
+        <h2 class="section-title">Saisir des heures</h2>
+        <label for="gfor-agent">Agent <span class="req">*</span></label>
+        <select id="gfor-agent" name="agent" required></select>
+        <label for="gfor-date">Date <span class="req">*</span></label>
+        <input type="date" id="gfor-date" name="date" required>
+        <label for="gfor-heures">Heures <span class="req">*</span></label>
+        <input type="number" id="gfor-heures" name="heures" min="0.5" max="24" step="0.5" value="7" inputmode="decimal" required>
+        <label for="gfor-detail">Formation <span class="req">*</span></label>
+        <textarea id="gfor-detail" name="detail" rows="3" maxlength="1000" required placeholder="Intitulé et contenu de la formation"></textarea>
+        <p class="error" role="alert"></p>
+        <p class="ok" role="status"></p>
+        <div class="csh-actions"><button type="submit" class="primary" id="gfor-send">Enregistrer</button></div>
+      </form>
+      <p id="gfor-total" class="muted small"></p>
+      <ul id="gfor-list" class="csh-list"></ul>
+    </div>
     <!-- Évaluation GNR (fmpa.js, moteur createDeclarer ; back-end EvalGnr.gs) : formulaire « Évaluation IMP 2 - IMP3 » -->
     <div id="tab-cs-eval" hidden>
       <div id="eval-head"><h1>Évaluation GNR</h1></div>
@@ -1221,6 +1245,7 @@
 <script src="bugs.js"></script>
 <script src="bugs-admin.js"></script>
 <script src="csh.js"></script>
+<script src="gfor.js"></script>
 <script src="personnel.js"></script>
 <script src="rh-admin.js"></script>
 <script src="maintenance.js"></script>
