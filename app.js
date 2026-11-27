@@ -95,6 +95,7 @@
     if (name.startsWith('interv-')) return canIntervene(session);
     if (name === 'cs-heures-toutes') return canAllCsHeures(session);
     if (name === 'admin-rh') return canEditAllFmpa(session);
+    if (name === 'admin-bugs') return isAdm(session);          // Administration › Signalements : administrateurs (Bugs.gs)
     if (name === 'admin-maintenance') return isAdm(session);    // Administration › Maintenance : administrateurs (Maintenance.gs)   // Administration › RH : CTD et administrateurs (Rh.gs)
     if (CS_PAGES.includes(name)) return canAllFmpa(session);
     return true;
@@ -528,6 +529,7 @@
     if (name === 'cs-heures-toutes') $('#tab-cs-heures').hidden = false;
     $('#tab-admin-rh').hidden = name !== 'admin-rh';
     $('#tab-admin-maintenance').hidden = name !== 'admin-maintenance';
+    $('#tab-admin-bugs').hidden = name !== 'admin-bugs';
     $('#tab-bug').hidden = name !== 'bug';
     $('#tab-accueil').hidden = name !== 'accueil';
     $('#tab-annuaire').hidden = name !== 'annuaire';
@@ -559,6 +561,7 @@
     if (name === 'cs-specialistes' && window.SMPM_PERSONNEL) window.SMPM_PERSONNEL.open();
     if (name === 'admin-rh' && window.SMPM_RH_ADMIN) window.SMPM_RH_ADMIN.open();
     if (name === 'admin-maintenance' && window.SMPM_MAINT) window.SMPM_MAINT.open();
+    if (name === 'admin-bugs' && window.SMPM_BUGS_ADMIN) window.SMPM_BUGS_ADMIN.open();
     if (name === 'admin-rh') setAdminGroup(true);
     document.body.classList.toggle('page-dash', name === 'cs-tableau');
     if (window.SMPM_DASH) { if (name === 'cs-tableau') window.SMPM_DASH.open(); else window.SMPM_DASH.close(); }
@@ -1501,6 +1504,7 @@
     $('#nav-csh-all').hidden = !canAllCsHeures(session);
     $('#nav-sec-admin').hidden = !canEditAllFmpa(session);
     $('#nav-maint').hidden = !isAdm(session);
+    $('#nav-bugs').hidden = !isAdm(session);
     majBandeauMaint();
     $('#home-interv-new').hidden = !canIntervene(session);
 

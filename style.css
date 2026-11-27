@@ -2572,3 +2572,30 @@ body.partage-on { padding-bottom: 64px; }
 .acc-detail dt { font-weight: 700; color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .03em; margin-top: 6px; }
 .acc-detail dt:first-child { margin-top: 0; }
 .acc-detail dd { margin: 0; }
+
+/* Signalements : gestion (Administration) et « Mes signalements » */
+.bga-filtres { display: grid; gap: 10px; margin: 12px 0 4px; }
+.bga-filtres select, .bga-filtres input { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; min-height: 44px; padding: 0 12px; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+.bug-liste { display: grid; gap: 10px; margin: 10px 0 16px; }
+.bug-carte { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); padding: 10px 12px; }
+.bug-carte p { margin: 4px 0; }
+.bug-tete { display: grid; gap: 4px; width: 100%; text-align: left; background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; min-height: 44px; }
+.bug-l1 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.bug-extrait { overflow-wrap: anywhere; }
+.bug-badge { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: .78rem; font-weight: 700; border: 1px solid var(--line); }
+.bug-badge.st-a-traiter { background: #fde2e1; color: #8a1c17; border-color: #f2b8b5; }
+.bug-badge.st-en-cours { background: #fff4cc; color: #5a4300; border-color: #e8d28a; }
+.bug-badge.st-corrige { background: #e3f4e1; color: #1f5d1a; border-color: #b7dfb2; }
+.bug-badge.st-rejete { background: #eceff1; color: #455a64; border-color: #cfd8dc; }
+.bug-badge.gr-urgent { background: #c62828; color: #fff; border-color: #c62828; }
+.bug-detail { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; }
+.bug-texte { white-space: pre-wrap; overflow-wrap: anywhere; }
+.bug-meta { overflow-wrap: anywhere; }
+.bug-rep { display: grid; gap: 10px; margin-top: 10px; }
+.bug-rep select, .bug-rep textarea { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 10px 12px; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+.bug-rep textarea { resize: vertical; }
+.bug-chips { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.bug-chips .link { text-align: left; }
+.bug-mes { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 12px; margin: 12px 0; }
+.bug-mes > summary { font-weight: 700; cursor: pointer; min-height: 36px; display: flex; align-items: center; }
+.bug-reponse { margin: 6px 0 0; padding: 6px 10px; border-left: 3px solid var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--card)); white-space: pre-wrap; overflow-wrap: anywhere; }

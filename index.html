@@ -152,6 +152,7 @@
         </div>
       </div>
       <button data-page="admin-maintenance" id="nav-maint" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Maintenance<span class="pending-dot maint-dot" title="Maintenance en cours" hidden></span></button>
+      <button data-page="admin-bugs" id="nav-bugs" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg>Signalements<span class="pending-dot bugs-dot" title="Signalements en attente" hidden></span></button>
     </div>
   </nav>
   <div class="drawer-foot">
@@ -838,6 +839,11 @@
     <div id="tab-bug" hidden>
       <h1>Signaler un problème</h1>
       <p class="muted small">Application, opération, FMPA, matériel, technique, RH ou relation avec le personnel : décrivez le problème, ajoutez si besoin des photos ou un message vocal. Le signalement est adressé à l'administrateur uniquement. Sans réseau, il part au retour de la connexion.</p>
+      <details id="bug-mes" class="bug-mes" hidden>
+        <summary id="bug-mes-titre">Mes signalements</summary>
+        <p id="bug-mes-etat" class="muted small" role="status"></p>
+        <div id="bug-mes-liste" class="bug-liste"></div>
+      </details>
       <form id="form-bug">
         <label>Catégorie
           <select name="categorie" id="bug-cat" required>
@@ -978,6 +984,33 @@
           <button type="button" class="link" id="dash-portrait">Continuer en portrait</button>
         </div>
       </div>
+    </div>
+    <!-- Administration › Signalements : administrateurs (bugs-admin.js, Bugs.gs dans le dépôt privé) -->
+    <div id="tab-admin-bugs" hidden>
+      <h1>Signalements</h1>
+      <p class="muted small">Bugs et suggestions envoyés par les membres. Changez le statut et répondez : l’auteur reçoit une notification avec votre réponse.</p>
+      <div class="bga-filtres">
+        <label>Statut
+          <select id="bga-statut">
+            <option value="attente">En attente (à traiter + en cours)</option>
+            <option value="À traiter">À traiter</option>
+            <option value="En cours">En cours</option>
+            <option value="Corrigé">Corrigés</option>
+            <option value="Rejeté">Rejetés</option>
+            <option value="tous">Tous</option>
+          </select>
+        </label>
+        <label>Catégorie
+          <select id="bga-cat">
+            <option value="">Toutes</option>
+            <option>L'application</option><option>OPS</option><option>FMPA</option><option>Matériel</option>
+            <option>Techniques</option><option>RH</option><option>Personnels</option>
+          </select>
+        </label>
+        <input type="search" id="bga-search" placeholder="Auteur, mot de la description…" autocomplete="off" aria-label="Rechercher">
+      </div>
+      <p id="bga-state" class="muted small" role="status" aria-live="polite"></p>
+      <div id="bga-liste" class="bug-liste"></div>
     </div>
     <!-- Administration › Maintenance : administrateurs (maintenance.js, Maintenance.gs dans le dépôt privé) -->
     <div id="tab-admin-maintenance" hidden>
@@ -1150,6 +1183,7 @@
 <script src="push.js"></script>
 <script src="notifs.js"></script>
 <script src="bugs.js"></script>
+<script src="bugs-admin.js"></script>
 <script src="csh.js"></script>
 <script src="personnel.js"></script>
 <script src="rh-admin.js"></script>

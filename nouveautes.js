@@ -22,6 +22,8 @@
   const BRANCHE = 'main';
 
   const NOUVEAUTES = [
+    { v: 216, titre: 'Gérer les signalements', texte: 'Dans Administration › Signalements, retrouvez les bugs et suggestions, changez leur statut et répondez : l’auteur est notifié avec votre réponse.', pour: ['admin'] },
+    { v: 216, titre: 'Suivre mes signalements', texte: 'Dans « Signaler un problème », la liste « Mes signalements » montre où en est chaque demande et la réponse de l’administrateur.', pour: ['tous'] },
     { v: 215, titre: 'Renvoyer le mail de connexion', texte: 'Dans Administration › RH, le bouton « Renvoyer le mail » renvoie au responsable RH son e-mail d’invitation avec le lien d’activation, s’il ne l’a pas reçu ou l’a perdu.', pour: ['ctd', 'admin'] },
     { v: 212, titre: 'Mes prochaines FMPA sur l’accueil', texte: 'L’accueil (Mes heures) affiche les prochaines FMPA auxquelles vous êtes inscrit, en liste d’attente ou encadrant. Un toucher ouvre la fiche de la FMPA.', pour: ['tous'] },
     { v: 211, titre: 'Carte : points regroupés et zoom', texte: 'Sur la carte, les agents trop proches s’affichent en un seul point avec leur nombre : zoomez pour les séparer. Un clic sur un point (agent ou POI) zoome automatiquement à l’échelle 200 m.', pour: ['tous'] },

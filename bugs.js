@@ -71,6 +71,49 @@
     }
     majRec();
     flush();
+    chargerMes();
+  }
+
+  // ---------- Mes signalements (statut et réponse de l'administrateur) ----------
+  function dateCourte(iso) {
+    const d = new Date(iso);
+    return (!iso || isNaN(d)) ? '' : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  async function chargerMes() {
+    const box = $('#bug-mes');
+    if (!box || !app() || !app().token() || !navigator.onLine) return;
+    try {
+      const r = await app().api('bug_list', { token: app().token() });
+      const l = r.items || [];
+      box.hidden = !l.length;
+      if (!l.length) return;
+      const reps = l.filter(b => b.reponse).length;
+      $('#bug-mes-titre').textContent = 'Mes signalements (' + l.length + ')' + (reps ? ' · ' + reps + ' réponse' + (reps > 1 ? 's' : '') : '');
+      $('#bug-mes-liste').replaceChildren(...l.map(b => {
+        const art = document.createElement('article');
+        art.className = 'bug-carte';
+        const h = document.createElement('p');
+        const n = document.createElement('strong'); n.textContent = 'n°' + b.num;
+        const st = document.createElement('span');
+        st.className = 'bug-badge st-' + b.statut.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]+/g, '-');
+        st.textContent = b.statut;
+        h.append(n, ' ', st);
+        const m = document.createElement('p');
+        m.className = 'muted small';
+        m.textContent = [b.categorie && b.objet ? b.categorie + ' › ' + b.objet : b.rubrique, dateCourte(b.date)].filter(Boolean).join(' · ');
+        const d = document.createElement('p');
+        d.className = 'bug-extrait';
+        d.textContent = b.description ? (b.description.length > 160 ? b.description.slice(0, 160) + '…' : b.description) : '(photos / vocal)';
+        art.append(h, m, d);
+        if (b.reponse) {
+          const q = document.createElement('blockquote');
+          q.className = 'bug-reponse';
+          q.textContent = b.reponse;
+          art.append(q);
+        }
+        return art;
+      }));
+    } catch (e) { /* hors ligne ou serveur indisponible : on garde la page telle quelle */ }
   }
 
   // ---------- photos ----------
@@ -293,6 +336,7 @@
       try {
         const r = await envoyer(item);
         reset();
+        chargerMes();
         msg('', `Merci ! Signalement n°${r.numero} transmis à l'administrateur. Vous serez notifié de son suivi (en cours, corrigé ou rejeté).`);
       } catch (e) {
         if (e instanceof app().NetworkError) {
