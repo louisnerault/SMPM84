@@ -31,7 +31,7 @@
     { id: 'itv', nom: 'Interventions', sets: ['itv', 'personnel'], ico: ico('<path d="M6 18v-5a6 6 0 0 1 12 0v5"/><path d="M4 18h16v3H4z"/><path d="M12 2.5v2M3.5 6l1.5 1.4M20.5 6L19 7.4"/>') },
     { id: 'fmpa', nom: 'FMPA', sets: ['fmpa', 'personnel'], ico: ico('<rect x="5" y="3.5" width="14" height="17.5" rx="2"/><path d="M9 3.5h6v3H9z"/><path d="M8.5 12.5l2.2 2.2 4.8-4.8"/>') },
     { id: 'livrets', nom: 'Livrets', sets: ['livrets', 'personnel'], ico: ico('<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M9 8h7M9 11.5h5"/>') },
-    { id: 'neige', nom: 'Neige', sets: ['personnel', 'fmpa', 'itv', 'livrets', 'inv'], ico: ico('<path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7"/><path d="M9.5 3.5L12 6l2.5-2.5M9.5 20.5L12 18l2.5 2.5"/>') },
+    { id: 'neige', nom: 'Neige', sets: ['personnel', 'fmpa', 'itv', 'livrets', 'inv', 'neige'], ico: ico('<path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7"/><path d="M9.5 3.5L12 6l2.5-2.5M9.5 20.5L12 18l2.5 2.5"/>') },
     { id: 'speleo', nom: 'Spéléo', sets: ['personnel', 'fmpa', 'itv', 'livrets', 'inv'], ico: ico('<path d="M3 20h18"/><path d="M5 20c0-6 3-11 7-11s7 5 7 11"/><path d="M12 9V4M9.5 5.5L12 4l2.5 1.5"/>') },
     { id: 'inv', nom: 'Inventaires', sets: ['inv'], ico: ico('<path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9"/>') },
     { id: 'eff', nom: 'Effectifs', sets: ['personnel'], instant: true, // CT et administrateurs (voir themesVisibles)
@@ -508,6 +508,25 @@
         ])));
       }
     }
+    if (S === 'NEIGE' && D.neige && !D.neige.erreur) {
+      const L = D.neige.recs.filter(x => dans(x.d, r)), Lp = D.neige.recs.filter(x => dans(x.d, rp));
+      const faites = L.filter(x => x.man === 'fait');
+      const incomplets = L.filter(x => !x.inv || !x.man || !x.itv || !x.clos);
+      kp.push(kpi('Postes neige', n0(L.length), `${n0(L.filter(x => x.clos).length)} fermé(s)`, delta(L.length, Lp.length)));
+      kp.push(kpi('Manœuvres en poste', n0(faites.length), `${fmtH(sum(faites, x => x.mh))} · ${n0(L.filter(x => x.man === 'non_realise').length)} non réalisée(s)`));
+      kp.push(kpi('Inventaires de poste', n0(L.filter(x => x.inv === 'fait').length), `${n0(L.filter(x => x.inv === 'non_realise').length)} non réalisé(s)`));
+      cartes.push(carteHtml('Postes neige par mois', colonnes(axe.keys.map(axe.lab), [{ nom: 'Postes', c: S1, vals: parTemps(axe, L) }], { ref: { nom: 'N-1', vals: parTempsPrec(axe, D.neige.recs) } }), { large: true, sous: 'Gardes postées du Mont Serein' }));
+      cartes.push(carteHtml('Chefs de poste', barres(versItems(compter(L, x => x.c)), { top: 8, autres: false })));
+      html.push(tableau('Postes neige de la période', [
+        { t: 'Date', f: x => esc(fmtDate(x.d) + ' ' + (x.h || '')) }, { t: 'Chef de poste', f: x => esc(x.c) }, { t: 'Présents', f: x => esc((x.pr || []).join(', ')) },
+        { t: 'Inventaire', f: x => (x.inv === 'fait' ? 'Fait' : x.inv ? 'Non réalisé' : '—') },
+        { t: 'Manœuvre', f: x => (x.man === 'fait' ? fmtH(x.mh) : x.man ? 'Non réalisée' : '—') },
+        { t: 'Interventions', f: x => (x.itv === 'oui' ? 'Oui' : x.itv ? 'Aucune' : '—') },
+        { t: 'État', f: x => (x.clos ? 'Fermé' : 'Ouvert') },
+      ], L.slice().sort((a, b) => (a.d < b.d ? 1 : -1))));
+      if (incomplets.length) kp.push(kpi('Postes à compléter', n0(incomplets.length), 'rubrique manquante ou poste non fermé'));
+    }
+
     html.unshift(kpis(kp), grille(cartes));
     return html.join('');
   }
@@ -745,6 +764,7 @@
     if (voitItv() && D.itv && D.itv.recs) D.itv.recs.forEach(x => add(x.d));
     if (D.fmpa && D.fmpa.recs) D.fmpa.recs.forEach(x => add(x.d));
     if (D.inv && D.inv.inv) D.inv.inv.forEach(x => add(x.d));
+    if (D.neige && D.neige.recs) D.neige.recs.forEach(x => add(x.d));
     if (D.livrets && D.livrets.agents) D.livrets.agents.forEach(a => Object.keys(a.h || {}).forEach(k => add(k.slice(0, 4) + '-01-01')));
     return [...ys].sort((a, b) => b - a);
   }
