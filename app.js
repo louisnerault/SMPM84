@@ -80,6 +80,16 @@
     if (data.fonction && typeof data.fonction.imp3 === 'boolean') return data.fonction.imp3;
     return (data.qualifications || []).some(q => String(q.code).replace(/\s/g, '') === 'IMP3' && q.acquis);
   };
+  // Poste neige (neige.js, Neige.gs) : spécialistes qualifiés NEIGE, plus administrateurs, CTD et chefs de section NEIGE
+  // — à garder cohérent avec Neige.gs : neigeApi_
+  const canNeige = data => {
+    if (!data || !data.session) return false;
+    const s = data.session;
+    if (isAdm(s) || s.role === 'ctd') return true;
+    const sec = (data.fonction && data.fonction.sections) || [];
+    if (sec.some(x => String(x).toUpperCase() === 'NEIGE')) return true;
+    return (data.qualifications || []).some(q => q.code === 'NEIGE' && q.acquis);
+  };
   const FMPA_LISTS = ['fmpa-mes', 'fmpa-toutes'];
   // Planning des FMPA (fmpa-orga.js, Orga.gs) : un espace par rôle — à garder cohérent avec ORGA.GERER
   const ORGA_PAGES = ['orga-ct', 'orga-cu', 'orga-insc'];
@@ -93,6 +103,7 @@
     if (name === 'fmpa') return canDeclare(session) && canEncadrer(state.data);
     if (name === 'fmpa-fiche' || name === 'fmpa-mes' || name === 'fmpa-valid') return canDeclare(session);
     if (name === 'fmpa-toutes') return canAllFmpa(session);
+    if (name === 'neige') return canNeige(state.data);
     if (name === 'orga-ct') return canEditAllFmpa(session);
     if (name === 'orga-cu') return canEncadrer(state.data);
     if (name === 'interv-toutes') return canAllInterv(session);
@@ -542,6 +553,7 @@
     $('#tab-annuaire').hidden = name !== 'annuaire';
     $('#tab-poi').hidden = name !== 'poi';
     $('#tab-inventaire').hidden = name !== 'inventaire';
+    $('#tab-neige').hidden = name !== 'neige';
     $('#tab-fmpa-orga').hidden = !ORGA_PAGES.includes(name);
     $('#tab-fmpa').hidden = !(name === 'fmpa' || name === 'fmpa-fiche');
     $('#tab-fmpa-list').hidden = !FMPA_LISTS.includes(name);
@@ -561,6 +573,7 @@
     if (name === 'annuaire' && window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.open();
     if (name === 'poi' && window.SMPM_POI) window.SMPM_POI.open();
     if (name === 'inventaire' && window.SMPM_INV) window.SMPM_INV.open();
+    if (name === 'neige' && window.SMPM_NEIGE) window.SMPM_NEIGE.open();
     if (ORGA_PAGES.includes(name) && window.SMPM_ORGA) window.SMPM_ORGA.open(name.slice(5), orgaId);
     if (name === 'livret' && window.SMPM_CSH) window.SMPM_CSH.home(state.year);
     if (name.startsWith('cs-heures')) setCshGroup(true);
@@ -1524,6 +1537,7 @@
     $('#nav-fmpa').hidden = !canDeclare(session);
     $$('[data-page="fmpa"]').forEach(b => { b.hidden = !canEncadrer(state.data); });
     $('#nav-fmpa-all').hidden = !canAllFmpa(session);
+    $('#nav-neige').hidden = !canNeige(state.data);
     $('#nav-orga-ct').hidden = !canEditAllFmpa(session);
     $('#nav-orga-cu').hidden = !canEncadrer(state.data);
     $('#nav-interv').hidden = !canIntervene(session);

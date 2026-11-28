@@ -19,9 +19,10 @@
 (function () {
   'use strict';
 
-  const BRANCHE = 'main';
+  const BRANCHE = 'neige';
 
   const NOUVEAUTES = [
+    { v: 222, titre: 'Poste neige', texte: 'Le chef de poste ouvre la garde postée du Mont Serein, renseigne l’inventaire, la manœuvre (comptée en FMPA neige) et les interventions, puis ferme le poste. Un rappel est envoyé à 18h30 s’il manque une rubrique.', pour: ['equipier', 'chef_unite', 'chef_section', 'ctd', 'admin'] },
     { v: 219, titre: 'Heures réalisées dans le cadre du GFOR', texte: 'Dans « Heures chefs de section › GFOR », saisissez les heures de formation d’un agent (sans quota). Elles n’entrent dans aucun autre compteur.', pour: ['chef_section', 'ctd', 'admin'] },
     { v: 219, titre: 'Compteur GFOR dans Mon livret', texte: 'Si vous avez des heures réalisées dans le cadre du GFOR, un compteur hors quota apparaît dans Mon livret pour l’année concernée.', pour: ['tous'] },
     { v: 218, titre: 'Audience : qui se connecte', texte: 'Administration › Audience affiche maintenant les noms : agents actifs avec leur dernière connexion, et liste des agents jamais connectés sur la période.', pour: ['ctd', 'admin'] },

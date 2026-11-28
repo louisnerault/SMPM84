@@ -6,14 +6,14 @@
 // - Carte hors ligne : cache dédié (smpm84-carte) rempli par carte-hors-ligne.js à la demande ; jamais rempli ici.
 // - Photos des points d'intérêt : cache dédié (smpm84-poi) rempli par poi.js ; jamais rempli ici.
 // Les données personnelles ne passent jamais par ce cache (elles sont dans localStorage).
-const CACHE = 'smpm84-shell-v221';
+const CACHE = 'smpm84-shell-v222';
 const FICHES_CACHE = 'smpm84-fiches';
 const CARTE_CACHE = 'smpm84-carte';
 const POI_CACHE = 'smpm84-poi';         // photos des points d'intérêt consultées (poi.js)
 const INV_CACHE = 'smpm84-inv';         // photos des articles de l'inventaire (inventaire.js)
 const OCR_CACHE = 'smpm84-ocr-tesseract-6.0.1';   // lecture de coordonnées (vendor/tesseract, ~7 Mo) : gardé au premier usage, hors ligne ensuite
 const SHELL = [
-  './', 'index.html', 'style.css', 'app.js', 'fiches.js', 'fmpa.js', 'fmpa-list.js', 'fmpa-orga.js', 'intervention-list.js', 'annuaire.js', 'itineraire.js', 'poi.js', 'partage-pos.js', 'fmpa-valid.js', 'livret-remplir.js', 'livret-themes.js', 'carte-hors-ligne.js', 'push.js', 'notifs.js', 'bugs.js', 'bugs-admin.js', 'csh.js', 'gfor.js', 'personnel.js', 'rh-admin.js', 'maintenance.js', 'audience.js', 'rh.html', 'rh.js', 'dashboard.js', 'nouveautes.js', 'coord-scan.js', 'inventaire.js', 'vendor/qrcode/qrcode.min.js', 'vendor/pdfjs/pdf.min.mjs', 'vendor/pdfjs/pdf.worker.min.mjs', 'config.js', 'manifest.webmanifest',
+  './', 'index.html', 'style.css', 'app.js', 'fiches.js', 'fmpa.js', 'fmpa-list.js', 'fmpa-orga.js', 'intervention-list.js', 'annuaire.js', 'itineraire.js', 'poi.js', 'partage-pos.js', 'fmpa-valid.js', 'livret-remplir.js', 'livret-themes.js', 'carte-hors-ligne.js', 'push.js', 'notifs.js', 'bugs.js', 'bugs-admin.js', 'csh.js', 'gfor.js', 'personnel.js', 'rh-admin.js', 'maintenance.js', 'audience.js', 'rh.html', 'rh.js', 'dashboard.js', 'nouveautes.js', 'coord-scan.js', 'inventaire.js', 'neige.js', 'vendor/qrcode/qrcode.min.js', 'vendor/pdfjs/pdf.min.mjs', 'vendor/pdfjs/pdf.worker.min.mjs', 'config.js', 'manifest.webmanifest',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'vendor/leaflet/images/layers.png', 'vendor/leaflet/images/layers-2x.png',
   'vendor/leaflet/images/marker-icon.png', 'vendor/leaflet/images/marker-icon-2x.png', 'vendor/leaflet/images/marker-shadow.png', 'vendor/leaflet-rotate/leaflet-rotate.js',
   'assets/ecusson-132.png', 'assets/sdis84-210.png', 'assets/icon-192.png',

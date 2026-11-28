@@ -2626,3 +2626,17 @@ body.partage-on { padding-bottom: 64px; }
 .aud-non { margin: 10px 0; }
 .aud-non summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
 .aud-non-l { font-weight: 400; margin: 4px 0; }
+
+/* Poste neige (neige.js) */
+.neige-list { list-style: none; padding: 0; margin: 0; }
+.neige-poste { border: 1px solid var(--border, #d0d7de); border-radius: 10px; padding: .75rem; margin-bottom: .75rem; }
+.neige-head { display: flex; justify-content: space-between; gap: .5rem; align-items: center; }
+.neige-rub { margin: .35rem 0; padding-left: .5rem; border-left: 3px solid #bbb; }
+.neige-rub.neige-ok { border-left-color: #2e9e5b; }
+.neige-rub.neige-warn { border-left-color: #d98e04; }
+.neige-rub.neige-todo { border-left-color: #c0392b; }
+.neige-manque { color: #c0392b; font-weight: 600; margin: .4rem 0; }
+.neige-form { margin: .75rem 0; }
+.neige-form label { display: block; margin-top: .5rem; }
+.neige-form input[type="radio"], .neige-form input[type="checkbox"] { width: auto; margin-right: .4rem; }
+.neige-agents { max-height: 14rem; overflow: auto; border: 1px solid var(--border, #d0d7de); border-radius: 8px; padding: .4rem; margin-top: .4rem; }
