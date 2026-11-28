@@ -22,7 +22,7 @@
     return t.charAt(0).toUpperCase() + t.slice(1);
   };
   const dCourt = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m ? `${m[3]}/${m[2]}/${m[1]}` : String(iso || ''); };
-  const hm = h => String(h || '').slice(0, 5).replace(':', 'h');
+  const hm = h => { const m = /(\d{1,2}):(\d{2})(?!.*\d{1,2}:\d{2})/.exec(String(h || '')); return m ? m[1].padStart(2, '0') + 'h' + m[2] : ''; };
   const todayIso = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
   const nowHm = () => { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
   const sid = () => 'neige-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
