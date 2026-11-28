@@ -2705,3 +2705,4 @@ body.partage-on { padding-bottom: 64px; }
 .ng-det > dl { margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 10px 10px; background: var(--bg); font-size: .86rem; }
 @media (prefers-color-scheme: dark) { :where(:root:not([data-theme="light"])) .ng-kpis strong { color: #cfe2fb; } }
 :where(:root[data-theme="dark"]) .ng-kpis strong { color: #cfe2fb; }
+.nav-sub .ng-nav-dot { margin-left: auto; min-width: 0; width: 12px; height: 12px; padding: 0; border-radius: 50%; }

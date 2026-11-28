@@ -101,6 +101,8 @@
     document.querySelectorAll('[data-neige-count]').forEach(b => { b.textContent = k ? String(k) : ''; b.hidden = !k; });
     // Inventaire, Manœuvre, Interventions, Fermeture : seulement quand le chef de poste a une garde ouverte
     document.querySelectorAll('[data-neige-etape]').forEach(b => { b.hidden = !p; });
+    // pastille sur chaque étape encore à renseigner
+    document.querySelectorAll('[data-neige-todo]').forEach(b => { b.hidden = !p || etatEtape(p, b.dataset.neigeTodo) !== 'todo'; });
     const sup = !!(data && data.superviseur);
     document.querySelectorAll('[data-neige-sup]').forEach(b => { b.hidden = !sup; });
   }
