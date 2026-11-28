@@ -2706,3 +2706,6 @@ body.partage-on { padding-bottom: 64px; }
 @media (prefers-color-scheme: dark) { :where(:root:not([data-theme="light"])) .ng-kpis strong { color: #cfe2fb; } }
 :where(:root[data-theme="dark"]) .ng-kpis strong { color: #cfe2fb; }
 .nav-sub .ng-nav-dot { margin-left: auto; min-width: 0; width: 12px; height: 12px; padding: 0; border-radius: 50%; }
+.ng-det-act { display: flex; justify-content: flex-end; padding: 8px 12px 10px; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 10px 10px; background: var(--bg); }
+.ng-det[open] > dl { border-radius: 0; }
+.ng-suppr { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }

@@ -290,7 +290,9 @@
           ${ligneDet('Inventaire', p.inv === 'fait' ? 'Réalisé' + (p.invObs ? ' · ' + esc(p.invObs) : '') : p.inv ? 'Non réalisé · ' + esc(p.invJust) : val(false))}
           ${ligneDet('Manœuvre', p.man === 'fait' ? esc(fmtH(p.manH) + ' · ' + p.manTxt) : p.man ? 'Non réalisée · ' + esc(p.manJust) : val(false))}
           ${ligneDet('Interventions', p.itv === 'oui' ? 'Oui' : p.itv === 'aucune' ? 'Aucune' : val(false))}
-        </dl></details></li>`).join('') || '<li class="muted small">Aucune garde pour ce filtre.</li>'}</ul>`;
+        </dl>
+        <div class="ng-det-act"><button type="button" class="pill ng-suppr" data-suppr="${esc(p.id)}" data-lib="${esc(dCourt(p.date) + ' (' + p.chef + ')')}"${busy ? ' disabled' : ''}>Supprimer cette garde</button></div>
+        </details></li>`).join('') || '<li class="muted small">Aucune garde pour ce filtre.</li>'}</ul>`;
   }
 
   // Lecture seule (CTD, CDS neige, administrateur) : état de la garde en cours
@@ -333,6 +335,13 @@
   }
 
   async function onClick(ev) {
+    const sp = ev.target.closest('[data-suppr]');
+    if (sp && !busy) {
+      if (!confirm(`Supprimer la garde du ${sp.dataset.lib} ? Elle disparaîtra définitivement, et sa manœuvre ne comptera plus dans les heures FMPA neige.`)) return;
+      const r = await call('supprimer', { id: sp.dataset.suppr });
+      if (r) { toutes = null; await load(); app().flash({ kind: 'ok', text: 'Garde supprimée.' }); app().goto('neige-toutes'); } else render();
+      return;
+    }
     const ft = ev.target.closest('[data-ftout]');
     if (ft) { fTout.etat = ft.dataset.ftout; render(); return; }
     const go = ev.target.closest('[data-go]');
