@@ -6,6 +6,8 @@
 //   neige-manoeuvre   : durée et techniques (comptées en FMPA neige pour chaque présent), ou justification ;
 //   neige-interv      : interventions pendant la garde (si oui : formulaire de saisie d'intervention) ;
 //   neige-fermeture   : vérifie que les trois rubriques sont renseignées, puis ferme la garde.
+//   neige-toutes      : toutes les gardes de l'unité (CDS neige, CTD, administrateurs), filtres année / état.
+// Les étapes 2 à 5 n'apparaissent dans le menu que si le chef de poste a une garde ouverte.
 // Rappel push à 18h30 au chef de poste si la garde est incomplète ; encadrement prévenu le lendemain à 9h.
 (() => {
   'use strict';
@@ -39,6 +41,8 @@
   const DUREES = [0.5, 1, 1.5, 2, 3, 4];
 
   let data = null;
+  let toutes = null;                // gardes de toute l'unité (sous-rubrique Toutes les gardes)
+  let fTout = { annee: String(new Date().getFullYear()), etat: 'tous' };
   let etape = 'ouverture';
   let busy = false;
   let msg = '';
@@ -67,6 +71,7 @@
     if (st) st.textContent = data ? '' : 'Chargement…';
     try {
       data = await app().api('neige', { token: app().token(), op: 'data' });
+      if (etape === 'toutes' && data.superviseur) toutes = (await app().api('neige', { token: app().token(), op: 'toutes' })).postes;
       if (st) st.textContent = '';
       badge();
     } catch (e) {
@@ -94,6 +99,10 @@
     const p = maGarde();
     const k = p ? ETAPES.filter(e => e.id !== 'ouverture' && etatEtape(p, e.id) === 'todo').length : 0;
     document.querySelectorAll('[data-neige-count]').forEach(b => { b.textContent = k ? String(k) : ''; b.hidden = !k; });
+    // Inventaire, Manœuvre, Interventions, Fermeture : seulement quand le chef de poste a une garde ouverte
+    document.querySelectorAll('[data-neige-etape]').forEach(b => { b.hidden = !p; });
+    const sup = !!(data && data.superviseur);
+    document.querySelectorAll('[data-neige-sup]').forEach(b => { b.hidden = !sup; });
   }
 
   // ---------- éléments communs ----------
@@ -237,12 +246,49 @@
     const mien = maGarde();
     const p = mien || (data.superviseur ? gardesOuvertes()[0] : null);
     const focus = document.activeElement && document.activeElement.id === 'neige-filtre';
+    if (etape === 'toutes') {
+      box.innerHTML = (msg ? `<p class="error" role="alert">${esc(msg)}</p>` : '') + vueToutes();
+      return;
+    }
     let corps;
     if (etape === 'ouverture') corps = vueOuverture();
     else if (!mien) corps = (p ? resumeLecture(p) : '') + lectureSeule(p);
     else corps = etape === 'inventaire' ? vueInventaire(mien) : etape === 'manoeuvre' ? vueManoeuvre(mien) : etape === 'interv' ? vueInterv(mien) : vueFermeture(mien);
     box.innerHTML = entete(p) + stepper(p) + (msg ? `<p class="error" role="alert">${esc(msg)}</p>` : '') + corps;
     if (focus) { const i = $('#neige-filtre'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }
+  }
+
+  // ---------- Toutes les gardes (CDS neige, CTD, administrateurs) ----------
+  function ligneDet(k, v) { return `<dt>${k}</dt><dd>${v}</dd>`; }
+  function vueToutes() {
+    if (!data.superviseur) return '<p class="orga-note">Réservé au CDS neige, au CTD et aux administrateurs.</p>';
+    if (!toutes) return '<p class="muted small">Chargement des gardes…</p>';
+    const annees = [...new Set(toutes.map(p => p.date.slice(0, 4)))].sort().reverse();
+    if (!annees.includes(fTout.annee)) annees.unshift(fTout.annee);
+    const incompl = p => p.statut !== 'clos' || (p.manques || []).length > 0;
+    const anL = toutes.filter(p => fTout.annee === 'all' || p.date.startsWith(fTout.annee));
+    const L = anL.filter(p => fTout.etat === 'tous' || (fTout.etat === 'todo' ? incompl(p) : p.statut === 'clos'));
+    const heures = anL.reduce((s, p) => s + (p.man === 'fait' ? p.manH : 0), 0);
+    const nbTodo = anL.filter(incompl).length;
+    const pills = [['tous', 'Toutes'], ['todo', `À compléter${nbTodo ? ' (' + nbTodo + ')' : ''}`], ['clos', 'Fermées']]
+      .map(([v, l]) => `<button type="button" class="pill" data-ftout="${v}" aria-pressed="${fTout.etat === v}">${l}</button>`).join('');
+    const opt = ['all', ...annees].map(a => `<option value="${a}"${a === fTout.annee ? ' selected' : ''}>${a === 'all' ? 'Toutes les années' : a}</option>`).join('');
+    const etat = p => p.statut === 'clos' ? '<span class="chip chip-ro">Fermée</span>' : `<span class="chip orga-chip-complet">En cours · ${(p.manques || []).length} à compléter</span>`;
+    const val = (ok, txt) => ok ? esc(txt) : '<span class="muted">Non renseigné</span>';
+    return `<div class="ng-kpis">
+        <div><strong>${anL.length}</strong><span>garde${anL.length > 1 ? 's' : ''}</span></div>
+        <div><strong>${fmtH(heures)}</strong><span>de manœuvre</span></div>
+        <div class="${nbTodo ? 'ng-kpi-alerte' : ''}"><strong>${nbTodo}</strong><span>à compléter</span></div></div>
+      <div class="ng-filtres"><select id="neige-annee" aria-label="Année">${opt}</select><div class="grid-filters">${pills}</div></div>
+      <ul class="ng-hist ng-toutes">${L.map(p => `<li><details class="ng-det">
+        <summary class="ng-hist-item"><div class="ng-hist-l"><strong>${esc(dLong(p.date))}</strong><span>${esc(hm(p.heure))}${p.fermeture ? ' – ' + esc(hm(p.fermeture)) : ''} · ${esc(p.chef)}</span></div>
+          <div class="ng-hist-r">${p.man === 'fait' ? `<span class="chip chip-edit">${fmtH(p.manH)}</span>` : ''}${etat(p)}</div></summary>
+        <dl class="orga-infos">
+          ${ligneDet('Présents', esc((p.presents || []).map(x => x.label).join(', ')))}
+          ${ligneDet('Inventaire', p.inv === 'fait' ? 'Réalisé' + (p.invObs ? ' · ' + esc(p.invObs) : '') : p.inv ? 'Non réalisé · ' + esc(p.invJust) : val(false))}
+          ${ligneDet('Manœuvre', p.man === 'fait' ? esc(fmtH(p.manH) + ' · ' + p.manTxt) : p.man ? 'Non réalisée · ' + esc(p.manJust) : val(false))}
+          ${ligneDet('Interventions', p.itv === 'oui' ? 'Oui' : p.itv === 'aucune' ? 'Aucune' : val(false))}
+        </dl></details></li>`).join('') || '<li class="muted small">Aucune garde pour ce filtre.</li>'}</ul>`;
   }
 
   // Lecture seule (CTD, CDS neige, administrateur) : état de la garde en cours
@@ -285,6 +331,8 @@
   }
 
   async function onClick(ev) {
+    const ft = ev.target.closest('[data-ftout]');
+    if (ft) { fTout.etat = ft.dataset.ftout; render(); return; }
     const go = ev.target.closest('[data-go]');
     if (go) { msg = ''; app().goto(go.dataset.go); return; }
     const s = ev.target.closest('[data-seg]');
@@ -311,19 +359,20 @@
   }
   function onInput(ev) {
     if (ev.target.id === 'neige-filtre') { filtre = ev.target.value; render(); }
+    if (ev.target.id === 'neige-annee') { fTout.annee = ev.target.value; render(); }
     if (ev.target.name === 'duree') ev.target.form.querySelectorAll('[data-duree]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.duree) === Number(ev.target.value))));
   }
 
   function open(page) {
     etape = String(page || 'neige-ouverture').replace(/^neige-/, '') || 'ouverture';
-    if (!ETAPES.some(e => e.id === etape)) etape = 'ouverture';
+    if (etape !== 'toutes' && !ETAPES.some(e => e.id === etape)) etape = 'ouverture';
     msg = '';
     Object.keys(brouillon).forEach(x => delete brouillon[x]);
     render();
     load();
   }
   function refresh() { return load(); }
-  function reset() { data = null; badge(); }
+  function reset() { data = null; toutes = null; badge(); }
 
   function init() {
     const box = root();

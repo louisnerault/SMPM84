@@ -90,6 +90,12 @@
     if (sec.some(x => String(x).toUpperCase() === 'NEIGE')) return true;
     return (data.qualifications || []).some(q => q.code === 'NEIGE' && q.acquis);
   };
+  // Toutes les gardes postées NEIGE : CDS neige, CTD, administrateurs (Neige.gs : neigeToutes_)
+  const canNeigeSup = data => {
+    if (!data || !data.session) return false;
+    if (isAdm(data.session) || data.session.role === 'ctd') return true;
+    return ((data.fonction && data.fonction.sections) || []).some(x => String(x).toUpperCase() === 'NEIGE');
+  };
   const FMPA_LISTS = ['fmpa-mes', 'fmpa-toutes'];
   // Planning des FMPA (fmpa-orga.js, Orga.gs) : un espace par rôle — à garder cohérent avec ORGA.GERER
   const ORGA_PAGES = ['orga-ct', 'orga-cu', 'orga-insc'];
@@ -103,6 +109,7 @@
     if (name === 'fmpa') return canDeclare(session) && canEncadrer(state.data);
     if (name === 'fmpa-fiche' || name === 'fmpa-mes' || name === 'fmpa-valid') return canDeclare(session);
     if (name === 'fmpa-toutes') return canAllFmpa(session);
+    if (name === 'neige-toutes') return canNeigeSup(state.data);
     if (name.startsWith('neige-')) return canNeige(state.data);
     if (name === 'orga-ct') return canEditAllFmpa(session);
     if (name === 'orga-cu') return canEncadrer(state.data);
