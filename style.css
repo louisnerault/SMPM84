@@ -2627,16 +2627,65 @@ body.partage-on { padding-bottom: 64px; }
 .aud-non summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
 .aud-non-l { font-weight: 400; margin: 4px 0; }
 
-/* Poste neige (neige.js) */
-.neige-list { list-style: none; padding: 0; margin: 0; }
-.neige-poste { border: 1px solid var(--border, #d0d7de); border-radius: 10px; padding: .75rem; margin-bottom: .75rem; }
-.neige-head { display: flex; justify-content: space-between; gap: .5rem; align-items: center; }
-.neige-rub { margin: .35rem 0; padding-left: .5rem; border-left: 3px solid #bbb; }
-.neige-rub.neige-ok { border-left-color: #2e9e5b; }
-.neige-rub.neige-warn { border-left-color: #d98e04; }
-.neige-rub.neige-todo { border-left-color: #c0392b; }
-.neige-manque { color: #c0392b; font-weight: 600; margin: .4rem 0; }
-.neige-form { margin: .75rem 0; }
-.neige-form label { display: block; margin-top: .5rem; }
-.neige-form input[type="radio"], .neige-form input[type="checkbox"] { width: auto; margin-right: .4rem; }
-.neige-agents { max-height: 14rem; overflow: auto; border: 1px solid var(--border, #d0d7de); border-radius: 8px; padding: .4rem; margin-top: .4rem; }
+/* Gardes postées NEIGE (neige.js) */
+.ng-hero {
+  display: flex; align-items: center; gap: 12px; margin: 4px 0 12px; padding: 14px;
+  border-radius: var(--radius); color: #fff;
+  background: linear-gradient(135deg, #0c4a86 0%, #1d6fb8 55%, #5fb0e6 100%);
+  box-shadow: 0 4px 14px rgba(12,74,134,.22);
+}
+.ng-hero > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ng-hero strong { font-size: 1.02rem; }
+.ng-hero span { font-size: .84rem; opacity: .92; }
+.ng-hero-off { background: var(--bg); color: var(--ink); border: 1px dashed var(--line); box-shadow: none; }
+.ng-hero-off .ng-ico { color: var(--primary); background: var(--primary-soft); }
+.ng-hero-clos { background: linear-gradient(135deg, #3d4c61, #66788f); }
+.ng-ico { flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,.18); }
+.ng-badge { flex: none; align-self: flex-start; padding: 3px 10px; border-radius: 99px; font-size: .74rem; font-weight: 800; background: #fff; color: #0c4a86; }
+.ng-badge-clos { color: #3d4c61; }
+.ng-chips { margin-top: 6px; }
+.ng-chips li { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.35); color: #fff; }
+.ng-chips li.ng-chef { background: #fff; color: #0c4a86; font-weight: 700; }
+
+.ng-steps { list-style: none; margin: 0 0 14px; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); position: relative; }
+.ng-steps::before { content: ""; position: absolute; top: 17px; left: 10%; right: 10%; height: 2px; background: var(--line); }
+.ng-step button { position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0; border: 0; background: none; color: var(--muted); }
+.ng-step .ng-dot { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; font-weight: 800; font-size: .9rem; background: var(--card); border: 2px solid var(--line); color: var(--muted); }
+.ng-step .ng-lib { font-size: .7rem; font-weight: 700; text-align: center; line-height: 1.15; }
+.ng-step.ng-ok .ng-dot { background: var(--ok); border-color: var(--ok); color: #fff; }
+.ng-step.ng-nr .ng-dot { background: #b45309; border-color: #b45309; color: #fff; }
+.ng-step.ng-cur .ng-dot { box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 30%, transparent); border-color: var(--primary); }
+.ng-step.ng-cur:not(.ng-ok):not(.ng-nr) .ng-dot { color: var(--primary); }
+.ng-step.ng-cur .ng-lib { color: var(--primary); }
+
+.ng-card { margin-top: 4px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); }
+.ng-card .section-title { margin-top: 0; }
+.ng-card textarea { display: block; width: 100%; box-sizing: border-box; margin-top: 6px; padding: 10px; font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+.ng-card .req { color: var(--danger); }
+.ng-card .orga-note { margin-top: 12px; }
+.ng-seg { margin: 6px 0 4px; }
+.ng-seg button { flex: 1; }
+.ng-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ng-2col label { margin-top: 10px; }
+.ng-agents { max-height: 46vh; overflow-y: auto; margin-top: 8px; }
+.ng-agents .grid-row[data-agent] { cursor: pointer; }
+.ng-check { flex: none; display: grid; place-items: center; width: 28px; height: 28px; margin-right: 6px; border-radius: 50%; border: 2px solid var(--line); color: #fff; font-weight: 800; }
+.grid-row.checked .ng-check { background: var(--primary); border-color: var(--primary); }
+.ng-itv { width: 100%; justify-content: center; margin-top: 10px; }
+
+.ng-check-list { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 8px; }
+.ng-check-list li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.ng-check-list li > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ng-check-list li span:not(.ng-dot) { font-size: .82rem; color: var(--muted); overflow-wrap: anywhere; }
+.ng-check-list .ng-dot { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; color: #fff; font-weight: 800; }
+.ng-li-ok .ng-dot { background: var(--ok); }
+.ng-li-ko { border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+.ng-li-ko .ng-dot { background: var(--danger); }
+.neige-manque { color: var(--danger); font-weight: 700; margin: 12px 0 0; }
+
+.ng-hist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ng-hist-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.ng-hist-l { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ng-hist-l span { font-size: .8rem; color: var(--muted); }
+.ng-hist-r { flex: none; display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 380px) { .ng-step .ng-lib { font-size: .62rem; } .ng-2col { grid-template-columns: 1fr; } }

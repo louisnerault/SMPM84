@@ -80,7 +80,7 @@
     if (data.fonction && typeof data.fonction.imp3 === 'boolean') return data.fonction.imp3;
     return (data.qualifications || []).some(q => String(q.code).replace(/\s/g, '') === 'IMP3' && q.acquis);
   };
-  // Poste neige (neige.js, Neige.gs) : spécialistes qualifiés NEIGE, plus administrateurs, CTD et chefs de section NEIGE
+  // Gardes postées NEIGE (neige.js, Neige.gs ; section Chefs d'unité du menu) : qualifiés NEIGE, administrateurs, CTD, chefs de section NEIGE
   // — à garder cohérent avec Neige.gs : neigeApi_
   const canNeige = data => {
     if (!data || !data.session) return false;
@@ -103,7 +103,7 @@
     if (name === 'fmpa') return canDeclare(session) && canEncadrer(state.data);
     if (name === 'fmpa-fiche' || name === 'fmpa-mes' || name === 'fmpa-valid') return canDeclare(session);
     if (name === 'fmpa-toutes') return canAllFmpa(session);
-    if (name === 'neige') return canNeige(state.data);
+    if (name.startsWith('neige-')) return canNeige(state.data);
     if (name === 'orga-ct') return canEditAllFmpa(session);
     if (name === 'orga-cu') return canEncadrer(state.data);
     if (name === 'interv-toutes') return canAllInterv(session);
@@ -526,6 +526,7 @@
     let orgaId = null;
     if (name.startsWith('fmpa-orga:')) { orgaId = name.slice(10); name = 'orga-insc'; }
     if (name === 'fmpa-orga') name = 'orga-insc';
+    if (name === 'neige') name = 'neige-ouverture';   // notification d'ouverture de garde
     if (!allowedPage(name, state.data && state.data.session)) name = 'livret';
     showFlash(pendingFlash);
     pendingFlash = null;
@@ -553,7 +554,7 @@
     $('#tab-annuaire').hidden = name !== 'annuaire';
     $('#tab-poi').hidden = name !== 'poi';
     $('#tab-inventaire').hidden = name !== 'inventaire';
-    $('#tab-neige').hidden = name !== 'neige';
+    $('#tab-neige').hidden = !name.startsWith('neige-');
     $('#tab-fmpa-orga').hidden = !ORGA_PAGES.includes(name);
     $('#tab-fmpa').hidden = !(name === 'fmpa' || name === 'fmpa-fiche');
     $('#tab-fmpa-list').hidden = !FMPA_LISTS.includes(name);
@@ -573,7 +574,7 @@
     if (name === 'annuaire' && window.SMPM_ANNUAIRE) window.SMPM_ANNUAIRE.open();
     if (name === 'poi' && window.SMPM_POI) window.SMPM_POI.open();
     if (name === 'inventaire' && window.SMPM_INV) window.SMPM_INV.open();
-    if (name === 'neige' && window.SMPM_NEIGE) window.SMPM_NEIGE.open();
+    if (name.startsWith('neige-')) { setNeigeGroup(true); if (window.SMPM_NEIGE) window.SMPM_NEIGE.open(name); }
     if (ORGA_PAGES.includes(name) && window.SMPM_ORGA) window.SMPM_ORGA.open(name.slice(5), orgaId);
     if (name === 'livret' && window.SMPM_CSH) window.SMPM_CSH.home(state.year);
     if (name.startsWith('cs-heures')) setCshGroup(true);
@@ -619,6 +620,10 @@
   }
 
   // Sous-menu Mon livret (repliable, ouvert par défaut)
+  function setNeigeGroup(open) {
+    $('#nav-neige .nav-group-btn').setAttribute('aria-expanded', String(open));
+    $('#nav-neige-sub').hidden = !open;
+  }
   function setLivretGroup(open) {
     $('#nav-livret .nav-group-btn').setAttribute('aria-expanded', String(open));
     $('#nav-livret-sub').hidden = !open;
@@ -1655,6 +1660,9 @@
   });
   $('#nav-interv .nav-group-btn').addEventListener('click', e => {
     setIntervGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
+  });
+  $('#nav-neige .nav-group-btn').addEventListener('click', e => {
+    setNeigeGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
   });
   $('#nav-livret .nav-group-btn').addEventListener('click', e => {
     setLivretGroup(e.currentTarget.getAttribute('aria-expanded') !== 'true');
