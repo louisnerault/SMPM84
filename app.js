@@ -854,6 +854,7 @@
     if (window.SMPM_FMPA_LIST) window.SMPM_FMPA_LIST.reset();
     if (window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.reset();
     if (window.SMPM_ORGA) window.SMPM_ORGA.reset();
+    if (window.SMPM_NEIGE) window.SMPM_NEIGE.reset();
     if (window.SMPM_THEMES) window.SMPM_THEMES.reset(explicit === true);
     applyMode(false);
     state.data = null;
@@ -1092,6 +1093,8 @@
     if (canDeclare(data.session) && window.SMPM_FMPA_VALID) window.SMPM_FMPA_VALID.refresh();
     // planning des FMPA : compteur du menu (encadrement) et « Mes prochaines FMPA » de l'accueil (tous les membres)
     if (window.SMPM_ORGA) { window.SMPM_ORGA.accueil(); if (!offline) window.SMPM_ORGA.refresh(); }
+    // gardes postées NEIGE : pastille du menu (étapes de la garde ouverte encore à renseigner)
+    if (!offline && canNeige(data) && window.SMPM_NEIGE) window.SMPM_NEIGE.refresh();
   }
 
   // ---------- livret individuel : compteurs d'heures et formations ----------

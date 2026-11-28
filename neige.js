@@ -68,6 +68,7 @@
     try {
       data = await app().api('neige', { token: app().token(), op: 'data' });
       if (st) st.textContent = '';
+      badge();
     } catch (e) {
       if (catch401(e)) return;
       if (st) st.textContent = e instanceof app().NetworkError ? 'Pas de réseau : données non chargées.' : (e.message || 'Chargement impossible');
@@ -85,6 +86,14 @@
     if (id === 'manoeuvre') return p.man === 'fait' ? 'ok' : p.man ? 'nr' : 'todo';
     if (id === 'interv') return p.itv ? 'ok' : 'todo';
     return p.statut === 'clos' ? 'ok' : 'todo';
+  }
+
+  // Pastille du menu : étapes restant à renseigner sur la garde ouverte du chef de poste (inventaire, manœuvre,
+  // interventions, fermeture)
+  function badge() {
+    const p = maGarde();
+    const k = p ? ETAPES.filter(e => e.id !== 'ouverture' && etatEtape(p, e.id) === 'todo').length : 0;
+    document.querySelectorAll('[data-neige-count]').forEach(b => { b.textContent = k ? String(k) : ''; b.hidden = !k; });
   }
 
   // ---------- éléments communs ----------
@@ -314,6 +323,7 @@
     load();
   }
   function refresh() { return load(); }
+  function reset() { data = null; badge(); }
 
   function init() {
     const box = root();
@@ -327,5 +337,5 @@
   document.addEventListener('DOMContentLoaded', init);
   if (document.readyState !== 'loading') init();
 
-  window.SMPM_NEIGE = { open, refresh };
+  window.SMPM_NEIGE = { open, refresh, reset };
 })();
